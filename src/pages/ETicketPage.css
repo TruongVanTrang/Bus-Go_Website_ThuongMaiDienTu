@@ -1,0 +1,92 @@
+.eticket-page {
+  background-color: var(--color-neutral-50);
+  min-height: calc(100vh - 200px);
+}
+
+.timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 30px;
+  bottom: -30px;
+  width: 2px;
+  background: var(--color-neutral-300);
+}
+
+.timeline-item {
+  position: relative;
+}
+
+.timeline-number {
+  position: absolute;
+  left: -32px;
+  top: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--color-neutral-200);
+  border: 2px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--color-neutral-700);
+  transition: all 0.3s ease;
+}
+
+.timeline-number.active {
+  background-color: var(--color-success-500);
+  color: white;
+  box-shadow: 0 0 0 4px var(--color-success-50);
+}
+
+.timeline-item:last-child .timeline-number {
+  margin-bottom: 0;
+}
+
+@media print {
+  .eticket-page {
+    background-color: white;
+  }
+
+  .btn,
+  .alert,
+  .card:nth-child(2),
+  button {
+    display: none !important;
+  }
+
+  .card {
+    border: none;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .eticket-page .container-fluid {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .sticky-top {
+    position: relative !important;
+    top: 0 !important;
+    margin-top: 2rem;
+  }
+
+  .timeline {
+    padding-left: 1.5rem;
+  }
+
+  .timeline-number {
+    left: -24px;
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+}

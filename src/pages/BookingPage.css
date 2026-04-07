@@ -1,0 +1,14 @@
+.booking-page {
+  background-color: var(--color-neutral-50);
+  min-height: calc(100vh - 200px);
+}
+
+@media (max-width: 768px) {
+  .booking-page .container-fluid {
+    padding-top: 1.5rem !important;
+  }
+
+  .booking-page h2 {
+    font-size: 1.5rem;
+  }
+}

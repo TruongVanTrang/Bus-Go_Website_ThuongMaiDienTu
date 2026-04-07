@@ -1,0 +1,17 @@
+.search-results-page {
+  background-color: var(--color-neutral-50);
+  min-height: calc(100vh - 300px);
+}
+
+@media (max-width: 991px) {
+  .search-results-page .row {
+    gap: 2rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .search-results-page .container-fluid {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+  }
+}

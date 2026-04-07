@@ -1,0 +1,80 @@
+.search-filters {
+  position: sticky;
+  top: 100px;
+}
+
+.filters-sticky {
+  background: white;
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+}
+
+.filter-section {
+  margin-bottom: 1.5rem;
+}
+
+.filter-section h6 {
+  color: var(--color-neutral-900);
+}
+
+.form-check-input:checked {
+  background-color: var(--color-primary-600);
+  border-color: var(--color-primary-600);
+}
+
+.form-check-input:checked:focus {
+  box-shadow: 0 0 0 0.25rem var(--color-primary-100);
+}
+
+.price-inputs input {
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.price-inputs input:focus {
+  border-color: var(--color-primary-500);
+  outline: none;
+}
+
+.price-range-display {
+  padding: 0.75rem;
+  background-color: var(--color-primary-50);
+  border-radius: 0.375rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+@media (max-width: 991px) {
+  .search-filters {
+    position: relative;
+    top: 0;
+  }
+
+  .filters-sticky {
+    max-height: none;
+  }
+}
+
+/* Scrollbar Styling */
+.filters-sticky::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filters-sticky::-webkit-scrollbar-track {
+  background: var(--color-neutral-100);
+  border-radius: 10px;
+}
+
+.filters-sticky::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-300);
+  border-radius: 10px;
+}
+
+.filters-sticky::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-400);
+}

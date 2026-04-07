@@ -1,0 +1,131 @@
+.search-bar-container {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-600) 0%,
+    var(--color-primary-700) 100%
+  );
+  color: white;
+  padding: 4rem 2rem;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-bar-content {
+  max-width: 1200px;
+  width: 100%;
+}
+
+.search-bar-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+.search-bar-subtitle {
+  font-size: 1.125rem;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.search-form {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+.search-input-group {
+  width: 100%;
+}
+
+.search-input-group label {
+  color: var(--color-neutral-700);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.search-input-group svg {
+  color: var(--color-primary-600);
+}
+
+.form-input {
+  border: 2px solid var(--color-neutral-200);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.form-input:focus {
+  border-color: var(--color-primary-500);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-primary-50);
+}
+
+.form-input::placeholder {
+  color: var(--color-neutral-400);
+}
+
+.btn-primary {
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+@media (max-width: 768px) {
+  .search-bar-container {
+    padding: 2rem 1rem;
+    min-height: auto;
+  }
+
+  .search-bar-title {
+    font-size: 1.875rem;
+  }
+
+  .search-bar-subtitle {
+    font-size: 1rem;
+  }
+
+  .search-form {
+    padding: 1.5rem;
+  }
+
+  .form-input {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .search-bar-title {
+    font-size: 1.5rem;
+  }
+
+  .search-bar-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .search-form {
+    padding: 1rem;
+  }
+
+  .form-input {
+    padding: 0.6rem 0.7rem;
+    font-size: 0.9rem;
+  }
+
+  .btn-primary {
+    padding: 0.65rem 1rem !important;
+    font-size: 0.95rem;
+  }
+}

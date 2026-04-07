@@ -1,0 +1,116 @@
+import { Link } from 'react-router-dom'
+import { FiMenu, FiX } from 'react-icons/fi'
+import { useState } from 'react'
+import './Header.css'
+
+export default function Header() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  return (
+    <header className="bg-white border-bottom shadow-sm sticky-top">
+      <nav className="navbar navbar-expand-lg navbar-light">
+        <div className="container-fluid px-md-5 px-3">
+          {/* Logo */}
+          <Link to="/" className="navbar-brand fw-bold fs-4">
+            <span className="text-primary" style={{ color: 'var(--color-primary-600)' }}>
+              Bus
+            </span>
+            <span className="text-secondary" style={{ color: 'var(--color-secondary-600)' }}>
+              Go
+            </span>
+          </Link>
+
+          {/* Mobile Toggle */}
+          <button
+            className="navbar-toggler border-0 p-0"
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? (
+              <FiX size={24} />
+            ) : (
+              <FiMenu size={24} />
+            )}
+          </button>
+
+          {/* Nav Items */}
+          <div
+            className={`collapse navbar-collapse ${mobileMenuOpen ? 'show' : ''}`}
+            id="navbarNav"
+          >
+            <ul className="navbar-nav ms-auto gap-3">
+              <li className="nav-item">
+                <Link
+                  to="/"
+                  className="nav-link text-neutral-700 fw-500"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Trang Chủ
+                </Link>
+              </li>
+              <li className="nav-item">
+                <Link
+                  to="/search"
+                  className="nav-link text-neutral-700 fw-500"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Tìm Vé
+                </Link>
+              </li>
+              <li className="nav-item">
+                <a
+                  href="#about"
+                  className="nav-link text-neutral-700 fw-500"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Về Chúng Tôi
+                </a>
+              </li>
+              <li className="nav-item">
+                <a
+                  href="#contact"
+                  className="nav-link text-neutral-700 fw-500"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Liên Hệ
+                </a>
+              </li>
+            </ul>
+
+            {/* Auth Buttons - Mobile */}
+            <div className="d-lg-none mt-3 gap-2 d-flex flex-column">
+              <button
+                className="btn btn-outline-primary w-100"
+                style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}
+              >
+                Đăng Nhập
+              </button>
+              <button
+                className="btn w-100"
+                style={{ backgroundColor: 'var(--color-primary-600)', color: 'white' }}
+              >
+                Đăng Ký
+              </button>
+            </div>
+          </div>
+
+          {/* Auth Buttons - Desktop */}
+          <div className="d-none d-lg-flex gap-2 ms-3">
+            <button
+              className="btn btn-outline-primary"
+              style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}
+            >
+              Đăng Nhập
+            </button>
+            <button
+              className="btn"
+              style={{ backgroundColor: 'var(--color-primary-600)', color: 'white' }}
+            >
+              Đăng Ký
+            </button>
+          </div>
+        </div>
+      </nav>
+    </header>
+  )
+}

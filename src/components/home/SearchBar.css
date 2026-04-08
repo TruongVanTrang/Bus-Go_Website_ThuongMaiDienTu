@@ -1,8 +1,8 @@
 .search-bar-container {
   background: linear-gradient(
     135deg,
-    var(--color-primary-600) 0%,
-    var(--color-primary-700) 100%
+    #0066cc 0%,
+    #0052a3 100%
   );
   color: white;
   padding: 4rem 2rem;
@@ -22,19 +22,22 @@
   font-weight: 700;
   line-height: 1.2;
   margin-bottom: 1rem;
+  color: #FFFFFF;
 }
 
 .search-bar-subtitle {
   font-size: 1.125rem;
   opacity: 0.95;
   font-weight: 500;
+  color: #FFFFFF;
 }
 
 .search-form {
   background: white;
   border-radius: 0.75rem;
   padding: 2rem;
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12), 
+              0 10px 20px rgba(0, 0, 0, 0.08);
 }
 
 .search-input-group {
@@ -53,18 +56,22 @@
 }
 
 .form-input {
-  border: 2px solid var(--color-neutral-200);
+  border: 1px solid #e0e0e0;
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
   font-size: 1rem;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   width: 100%;
+  background-color: #fafafa;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .form-input:focus {
   border-color: var(--color-primary-500);
   outline: none;
-  box-shadow: 0 0 0 3px var(--color-primary-50);
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15),
+              inset 0 1px 3px rgba(0, 0, 0, 0.02);
+  background-color: #ffffff;
 }
 
 .form-input::placeholder {
@@ -75,11 +82,13 @@
   font-weight: 600;
   transition: all 0.3s ease;
   border: none;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 8px rgba(0, 102, 204, 0.2);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  box-shadow: 0 8px 16px rgba(0, 102, 204, 0.3);
 }
 
 @media (max-width: 768px) {

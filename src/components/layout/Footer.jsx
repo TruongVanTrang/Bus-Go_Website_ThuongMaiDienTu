@@ -2,41 +2,56 @@ import { FiFacebook, FiInstagram, FiTwitter, FiLinkedin } from 'react-icons/fi'
 
 export default function Footer() {
   return (
-    <footer className="bg-neutral-900 text-white mt-5 pt-5 pb-3">
+    <footer style={{
+      backgroundColor: '#1a1a1a',
+      color: '#ffffff',
+      marginTop: '3rem',
+      paddingTop: '3rem',
+      paddingBottom: '1rem',
+      borderTop: '1px solid #333333'
+    }}>
       <div className="container-fluid px-md-5 px-3">
         <div className="row mb-5">
           {/* About */}
           <div className="col-lg-3 col-md-6 mb-4">
-            <h5 className="fw-bold mb-3">
-              <span style={{ color: 'var(--color-secondary-500)' }}>Bus</span>
-              <span style={{ color: '#fff' }}>Go</span>
+            <h5 className="fw-bold mb-3" style={{ color: '#ffffff' }}>
+              <span style={{ color: '#0066cc' }}>Bus</span>
+              <span style={{ color: '#ffffff' }}>Go</span>
             </h5>
-            <p className="text-muted">
-              Nền tảng tìm kiếm và đặt vé xe bus, xe khách hiện đại tại miền Trung.
+            <p style={{ color: '#b3b3b3', fontSize: '0.95rem', lineHeight: '1.6' }}>
+              Nền tảng tìm kiếm và đặt vé xe bus, xe khách hiện đại tại miền Trung. Cung cấp giải pháp đặt vé an toàn, nhanh chóng và tiện lợi.
             </p>
           </div>
 
           {/* Quick Links */}
           <div className="col-lg-3 col-md-6 mb-4">
-            <h6 className="fw-bold mb-3">Liên Kết Nhanh</h6>
+            <h6 className="fw-bold mb-3" style={{ color: '#ffffff' }}>Liên Kết Nhanh</h6>
             <ul className="list-unstyled">
               <li>
-                <a href="#home" className="text-muted text-decoration-none hover-primary">
+                <a href="#home" style={{ color: '#b3b3b3', textDecoration: 'none', transition: 'color 0.3s' }} 
+                   onMouseEnter={(e) => e.target.style.color = '#0066cc'}
+                   onMouseLeave={(e) => e.target.style.color = '#b3b3b3'}>
                   Trang Chủ
                 </a>
               </li>
               <li className="mt-2">
-                <a href="#search" className="text-muted text-decoration-none hover-primary">
+                <a href="#search" style={{ color: '#b3b3b3', textDecoration: 'none', transition: 'color 0.3s' }}
+                   onMouseEnter={(e) => e.target.style.color = '#0066cc'}
+                   onMouseLeave={(e) => e.target.style.color = '#b3b3b3'}>
                   Tìm Vé
                 </a>
               </li>
               <li className="mt-2">
-                <a href="#about" className="text-muted text-decoration-none hover-primary">
+                <a href="#about" style={{ color: '#b3b3b3', textDecoration: 'none', transition: 'color 0.3s' }}
+                   onMouseEnter={(e) => e.target.style.color = '#0066cc'}
+                   onMouseLeave={(e) => e.target.style.color = '#b3b3b3'}>
                   Về Chúng Tôi
                 </a>
               </li>
               <li className="mt-2">
-                <a href="#contact" className="text-muted text-decoration-none hover-primary">
+                <a href="#contact" style={{ color: '#b3b3b3', textDecoration: 'none', transition: 'color 0.3s' }}
+                   onMouseEnter={(e) => e.target.style.color = '#0066cc'}
+                   onMouseLeave={(e) => e.target.style.color = '#b3b3b3'}>
                   Liên Hệ
                 </a>
               </li>
@@ -45,25 +60,33 @@ export default function Footer() {
 
           {/* Support */}
           <div className="col-lg-3 col-md-6 mb-4">
-            <h6 className="fw-bold mb-3">Hỗ Trợ</h6>
+            <h6 className="fw-bold mb-3" style={{ color: '#ffffff' }}>Hỗ Trợ</h6>
             <ul className="list-unstyled">
               <li>
-                <a href="#faq" className="text-muted text-decoration-none hover-primary">
+                <a href="#faq" style={{ color: '#b3b3b3', textDecoration: 'none', transition: 'color 0.3s' }}
+                   onMouseEnter={(e) => e.target.style.color = '#0066cc'}
+                   onMouseLeave={(e) => e.target.style.color = '#b3b3b3'}>
                   Câu Hỏi Thường Gặp
                 </a>
               </li>
               <li className="mt-2">
-                <a href="#terms" className="text-muted text-decoration-none hover-primary">
+                <a href="#terms" style={{ color: '#b3b3b3', textDecoration: 'none', transition: 'color 0.3s' }}
+                   onMouseEnter={(e) => e.target.style.color = '#0066cc'}
+                   onMouseLeave={(e) => e.target.style.color = '#b3b3b3'}>
                   Điều Khoản và Điều Kiện
                 </a>
               </li>
               <li className="mt-2">
-                <a href="#privacy" className="text-muted text-decoration-none hover-primary">
+                <a href="#privacy" style={{ color: '#b3b3b3', textDecoration: 'none', transition: 'color 0.3s' }}
+                   onMouseEnter={(e) => e.target.style.color = '#0066cc'}
+                   onMouseLeave={(e) => e.target.style.color = '#b3b3b3'}>
                   Chính Sách Bảo Mật
                 </a>
               </li>
               <li className="mt-2">
-                <a href="#support" className="text-muted text-decoration-none hover-primary">
+                <a href="#support" style={{ color: '#b3b3b3', textDecoration: 'none', transition: 'color 0.3s' }}
+                   onMouseEnter={(e) => e.target.style.color = '#0066cc'}
+                   onMouseLeave={(e) => e.target.style.color = '#b3b3b3'}>
                   Hỗ Trợ Khách Hàng
                 </a>
               </li>
@@ -72,27 +95,35 @@ export default function Footer() {
 
           {/* Contact */}
           <div className="col-lg-3 col-md-6 mb-4">
-            <h6 className="fw-bold mb-3">Liên Hệ</h6>
-            <p className="text-muted">
-              📧 Email: support@busgo.vn
+            <h6 className="fw-bold mb-3" style={{ color: '#ffffff' }}>Liên Hệ</h6>
+            <p style={{ color: '#b3b3b3', fontSize: '0.95rem', lineHeight: '1.8', marginBottom: '1rem' }}>
+              📧 <strong>Email:</strong> support@busgo.vn
               <br />
-              📱 Hotline: 1900 123 456
+              📱 <strong>Hotline:</strong> 1900 123 456
               <br />
-              📍 Địa chỉ: Hà Nội, Việt Nam
+              📍 <strong>Địa chỉ:</strong> Hà Nội, Việt Nam
             </p>
 
             {/* Social Icons */}
             <div className="d-flex gap-3 mt-3">
-              <a href="#fb" className="text-muted fs-5 hover-primary">
+              <a href="#fb" style={{ color: '#0066cc', fontSize: '1.25rem', transition: 'all 0.3s' }}
+                 onMouseEnter={(e) => { e.target.style.color = '#ffffff'; e.target.style.transform = 'scale(1.2)'; }}
+                 onMouseLeave={(e) => { e.target.style.color = '#0066cc'; e.target.style.transform = 'scale(1)'; }}>
                 <FiFacebook />
               </a>
-              <a href="#ig" className="text-muted fs-5 hover-primary">
+              <a href="#ig" style={{ color: '#0066cc', fontSize: '1.25rem', transition: 'all 0.3s' }}
+                 onMouseEnter={(e) => { e.target.style.color = '#ffffff'; e.target.style.transform = 'scale(1.2)'; }}
+                 onMouseLeave={(e) => { e.target.style.color = '#0066cc'; e.target.style.transform = 'scale(1)'; }}>
                 <FiInstagram />
               </a>
-              <a href="#tw" className="text-muted fs-5 hover-primary">
+              <a href="#tw" style={{ color: '#0066cc', fontSize: '1.25rem', transition: 'all 0.3s' }}
+                 onMouseEnter={(e) => { e.target.style.color = '#ffffff'; e.target.style.transform = 'scale(1.2)'; }}
+                 onMouseLeave={(e) => { e.target.style.color = '#0066cc'; e.target.style.transform = 'scale(1)'; }}>
                 <FiTwitter />
               </a>
-              <a href="#ln" className="text-muted fs-5 hover-primary">
+              <a href="#ln" style={{ color: '#0066cc', fontSize: '1.25rem', transition: 'all 0.3s' }}
+                 onMouseEnter={(e) => { e.target.style.color = '#ffffff'; e.target.style.transform = 'scale(1.2)'; }}
+                 onMouseLeave={(e) => { e.target.style.color = '#0066cc'; e.target.style.transform = 'scale(1)'; }}>
                 <FiLinkedin />
               </a>
             </div>
@@ -100,18 +131,18 @@ export default function Footer() {
         </div>
 
         {/* Divider */}
-        <hr className="bg-neutral-700" />
+        <hr style={{ borderColor: '#333333', margin: '2rem 0' }} />
 
         {/* Bottom Footer */}
-        <div className="row align-items-center">
+        <div className="row align-items-center pb-3">
           <div className="col-md-6">
-            <p className="text-muted mb-0">
+            <p style={{ color: '#999999', marginBottom: 0, fontSize: '0.9rem' }}>
               © 2024 BusGo. All rights reserved.
             </p>
           </div>
           <div className="col-md-6 text-md-end">
-            <p className="text-muted mb-0">
-              Powered by BusGo Technology
+            <p style={{ color: '#999999', marginBottom: 0, fontSize: '0.9rem' }}>
+              Powered by <span style={{ color: '#0066cc', fontWeight: 600 }}>BusGo Technology</span>
             </p>
           </div>
         </div>

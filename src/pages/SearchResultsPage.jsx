@@ -138,14 +138,16 @@ export default function SearchResultsPage() {
   return (
     <div className="search-results-page">
       <div className="container-fluid px-md-5 px-3 py-5">
-        <div className="row gap-4">
-          {/* Filters Sidebar */}
-          <div className="col-lg-3 order-lg-1 order-2">
-            <SearchFilters filters={filters} setFilters={setFilters} />
+        <div className="row g-4">
+          {/* Filters Sidebar - Left Column */}
+          <div className="col-md-3">
+            <div className="sticky-top" style={{ top: '80px' }}>
+              <SearchFilters filters={filters} setFilters={setFilters} />
+            </div>
           </div>
 
-          {/* Results */}
-          <div className="col-lg-9 order-lg-2 order-1">
+          {/* Results - Right Column */}
+          <div className="col-md-9">
             <div className="mb-4">
               <h2 className="text-neutral-900 fw-bold">
                 Kết quả tìm kiếm

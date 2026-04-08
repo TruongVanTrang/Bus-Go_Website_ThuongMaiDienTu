@@ -3,6 +3,11 @@
   min-height: calc(100vh - 200px);
 }
 
+.eticket-page .container-fluid {
+  padding-left: 2.5rem;
+  padding-right: 2rem;
+}
+
 .timeline {
   position: relative;
   padding-left: 2rem;
@@ -67,10 +72,19 @@
   }
 }
 
+@media (max-width: 1200px) {
+  .eticket-page .container-fluid {
+    padding-left: 2rem;
+    padding-right: 1.5rem;
+  }
+}
+
 @media (max-width: 768px) {
   .eticket-page .container-fluid {
     padding-top: 1.5rem;
     padding-bottom: 1.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 
   .sticky-top {

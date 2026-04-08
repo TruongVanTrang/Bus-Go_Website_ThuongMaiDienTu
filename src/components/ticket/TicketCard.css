@@ -1,13 +1,16 @@
 .ticket-card-wrapper {
-  max-width: 500px;
+  width: 100%;
+  max-width: 800px;
+  margin-left: 110px; 
+  margin-right: auto;
 }
 
 .ticket-card {
   background: white;
   border: 2px solid var(--color-neutral-200);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
@@ -15,7 +18,7 @@
 .ticket-header {
   background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-700) 100%);
   color: white;
-  padding: 1.5rem;
+  padding: 1.5rem 1.75rem;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -49,7 +52,7 @@
 }
 
 .ticket-body {
-  padding: 1.5rem;
+  padding: 1.75rem;
 }
 
 .route-info {
@@ -67,13 +70,14 @@
 .stop-name {
   font-weight: 700;
   color: var(--color-neutral-900);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   margin-bottom: 0.25rem;
 }
 
 .stop-time {
   color: var(--color-primary-600);
   font-weight: 600;
+  font-size: 1.4rem;
 }
 
 .route-divider {
@@ -128,12 +132,12 @@
 .details-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
 .detail-item {
-  padding: 0.75rem;
+  padding: 0.875rem;
   background: var(--color-neutral-50);
   border-radius: 0.5rem;
 }
@@ -179,6 +183,8 @@
   border-radius: 0.5rem;
   padding: 0.5rem;
   background: white;
+  width: 160px !important;
+  height: 160px !important;
 }
 
 .qr-info {
@@ -248,17 +254,52 @@
   }
 }
 
+@media (max-width: 1024px) {
+  .ticket-header {
+    padding: 1.5rem 1.6rem;
+  }
+
+  .ticket-body {
+    padding: 1.5rem;
+  }
+
+  .stop-name {
+    font-size: 1.1rem;
+  }
+
+  .stop-time {
+    font-size: 1.3rem;
+  }
+
+  .qr-section {
+    padding: 1.25rem;
+  }
+
+  .ticket-qr canvas {
+    width: 140px !important;
+    height: 140px !important;
+  }
+}
+
 @media (max-width: 640px) {
   .ticket-card {
     border-radius: 0.5rem;
   }
 
   .ticket-header {
-    padding: 1rem;
+    padding: 1.25rem 1.5rem;
   }
 
   .ticket-body {
-    padding: 1rem;
+    padding: 1.25rem;
+  }
+
+  .stop-name {
+    font-size: 1rem;
+  }
+
+  .stop-time {
+    font-size: 1.2rem;
   }
 
   .route-info {
@@ -270,9 +311,25 @@
     gap: 0.75rem;
   }
 
+  .detail-item {
+    padding: 0.75rem;
+  }
+
+  .detail-label {
+    font-size: 0.7rem;
+  }
+
+  .detail-value {
+    font-size: 0.85rem;
+  }
+
+  .qr-section {
+    padding: 1.25rem;
+  }
+
   .ticket-qr canvas {
-    width: 140px !important;
-    height: 140px !important;
+    width: 130px !important;
+    height: 130px !important;
   }
 
   .ticket-instruction {

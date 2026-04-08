@@ -38,10 +38,10 @@ export default function SearchBar() {
   return (
     <div className="search-bar-container">
       <div className="search-bar-content">
-        <h1 className="search-bar-title mb-4">
+        <h1 className="search-bar-title mb-4" style={{ color: '#FFFFFF' }}>
           Tìm và đặt vé xe bus dễ dàng
         </h1>
-        <p className="search-bar-subtitle mb-4">
+        <p className="search-bar-subtitle mb-4" style={{ color: '#FFFFFF' }}>
           Khám phá hàng ngàn chuyến xe với giá tốt nhất
         </p>
 
@@ -150,26 +150,30 @@ export default function SearchBar() {
         </form>
 
         {/* Quick Stats */}
-        <div className="row mt-5 pt-4 border-top border-primary border-opacity-25 justify-content-around">
+        <div className="row mt-5 pt-4 border-top border-white border-opacity-25 justify-content-around">
           <div className="col-auto text-center">
-            <div className="fs-5 fw-bold" style={{ color: 'var(--color-primary-600)' }}>
+            {/* Đổi inline style thành màu trắng và thêm class text-white */}
+            <div className="fs-5 fw-bold text-white">
               500+
             </div>
-            <div className="text-muted small">Tuyến đường</div>
+            {/* Đổi text-muted thành text-white-50 để có màu trắng mờ đẹp hơn */}
+            <div className="text-white-50 small">Tuyến đường</div>
           </div>
+
           <div className="col-auto text-center">
-            <div className="fs-5 fw-bold" style={{ color: 'var(--color-primary-600)' }}>
+            <div className="fs-5 fw-bold text-white">
               10,000+
             </div>
-            <div className="text-muted small">Chuyến đi</div>
+            <div className="text-white-50 small">Chuyến đi</div>
           </div>
+
           <div className="col-auto text-center">
-            <div className="fs-5 fw-bold" style={{ color: 'var(--color-primary-600)' }}>
+            <div className="fs-5 fw-bold text-white">
               100K+
             </div>
-            <div className="text-muted small">Khách hài lòng</div>
+            <div className="text-white-50 small">Khách hài lòng</div>
           </div>
-        </div>
+      </div>
       </div>
     </div>
   )

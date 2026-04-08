@@ -4,7 +4,9 @@ import Footer from './components/layout/Footer'
 import HomePage from './pages/HomePage'
 import SearchResultsPage from './pages/SearchResultsPage'
 import BookingPage from './pages/BookingPage'
+import PaymentPage from './pages/PaymentPage'
 import ETicketPage from './pages/ETicketPage'
+import UserHistory from './pages/UserHistory'
 
 function App() {
   return (
@@ -16,7 +18,9 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/search" element={<SearchResultsPage />} />
             <Route path="/booking/:tripId" element={<BookingPage />} />
+            <Route path="/payment" element={<PaymentPage />} />
             <Route path="/ticket/:bookingId" element={<ETicketPage />} />
+            <Route path="/history" element={<UserHistory />} />
           </Routes>
         </main>
         <Footer />

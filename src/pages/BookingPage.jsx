@@ -62,13 +62,13 @@ export default function BookingPage() {
       return
     }
 
-    // Simulate booking and redirect to ticket page
-    const bookingId = 'BK' + Date.now()
-    navigate(`/ticket/${bookingId}`, {
+    // Redirect to payment page
+    navigate('/payment', {
       state: {
         trip,
         selectedSeats,
-        passengerInfo
+        passengerInfo,
+        totalPrice: trip.price
       }
     })
   }
@@ -80,83 +80,83 @@ export default function BookingPage() {
   return (
     <div className="booking-page">
       <div className="container-fluid px-md-5 px-3 py-5">
-        <h2 className="mb-4 fw-bold text-neutral-900">Chọn ghế & Đặt chỗ</h2>
+        <h2 className="mb-5 fw-bold text-neutral-900">Chọn ghế & Đặt chỗ</h2>
 
-        <div className="row gap-4">
-          {/* Seat Map */}
-          <div className="col-lg-7">
-            <SeatMap
-              trip={trip}
-              selectedSeats={selectedSeats}
-              onSeatSelect={handleSeatSelect}
-            />
+        {/* Section 1: Seat Map */}
+        <div className="booking-section mb-5">
+          <SeatMap
+            trip={trip}
+            selectedSeats={selectedSeats}
+            onSeatSelect={handleSeatSelect}
+          />
+        </div>
 
-            {/* Passenger Info */}
-            <div className="card mt-4" style={{ backgroundColor: 'white' }}>
-              <div className="card-body">
-                <h5 className="fw-bold mb-4">Thông tin hành khách</h5>
-                
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label fw-600">Họ</label>
-                    <input
-                      type="text"
-                      className="form-control form-input"
-                      name="firstName"
-                      value={passengerInfo.firstName}
-                      onChange={handlePassengerChange}
-                      placeholder="Nhập họ"
-                    />
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label fw-600">Tên</label>
-                    <input
-                      type="text"
-                      className="form-control form-input"
-                      name="lastName"
-                      value={passengerInfo.lastName}
-                      onChange={handlePassengerChange}
-                      placeholder="Nhập tên"
-                    />
-                  </div>
+        {/* Section 2: Passenger Info */}
+        <div className="booking-section mb-5">
+          <div className="card" style={{ backgroundColor: 'white', borderRadius: '0.75rem' }}>
+            <div className="card-body p-4">
+              <h5 className="fw-bold mb-4 text-neutral-900">Thông tin hành khách</h5>
+              
+              <div className="row g-3">
+                <div className="col-md-6">
+                  <label className="form-label fw-600 text-neutral-700">Họ</label>
+                  <input
+                    type="text"
+                    className="form-control form-input"
+                    name="firstName"
+                    value={passengerInfo.firstName}
+                    onChange={handlePassengerChange}
+                    placeholder="Nhập họ"
+                  />
                 </div>
 
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label fw-600">Email</label>
-                    <input
-                      type="email"
-                      className="form-control form-input"
-                      name="email"
-                      value={passengerInfo.email}
-                      onChange={handlePassengerChange}
-                      placeholder="nhap@email.com"
-                    />
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="form-label fw-600">Số điện thoại</label>
-                    <input
-                      type="tel"
-                      className="form-control form-input"
-                      name="phone"
-                      value={passengerInfo.phone}
-                      onChange={handlePassengerChange}
-                      placeholder="0912345678"
-                    />
-                  </div>
+                <div className="col-md-6">
+                  <label className="form-label fw-600 text-neutral-700">Tên</label>
+                  <input
+                    type="text"
+                    className="form-control form-input"
+                    name="lastName"
+                    value={passengerInfo.lastName}
+                    onChange={handlePassengerChange}
+                    placeholder="Nhập tên"
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-600 text-neutral-700">Email</label>
+                  <input
+                    type="email"
+                    className="form-control form-input"
+                    name="email"
+                    value={passengerInfo.email}
+                    onChange={handlePassengerChange}
+                    placeholder="nhap@email.com"
+                  />
+                </div>
+
+                <div className="col-md-6">
+                  <label className="form-label fw-600 text-neutral-700">Số điện thoại</label>
+                  <input
+                    type="tel"
+                    className="form-control form-input"
+                    name="phone"
+                    value={passengerInfo.phone}
+                    onChange={handlePassengerChange}
+                    placeholder="0912345678"
+                  />
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Booking Summary */}
-          <div className="col-lg-5">
-            <BookingSummary
-              trip={trip}
-              selectedSeats={selectedSeats}
-              onConfirm={handleBooking}
-            />
-          </div>
+        {/* Section 3: Booking Summary */}
+        <div className="booking-section">
+          <BookingSummary
+            trip={trip}
+            selectedSeats={selectedSeats}
+            onConfirm={handleBooking}
+          />
         </div>
       </div>
     </div>

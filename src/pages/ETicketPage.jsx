@@ -1,5 +1,11 @@
-import { useLocation, useParams, useNavigate } from 'react-router-dom'
-import { FiDownload, FiPrinter, FiShare2, FiCheckCircle } from 'react-icons/fi'
+// 1. Lấy useState và useEffect từ 'react'
+import { useState, useEffect } from 'react'
+
+// 2. Lấy các hook điều hướng từ 'react-router-dom'
+import { useLocation, useParams, useNavigate } from "react-router-dom"
+
+// 3. Các thư viện icon và component, CSS giữ nguyên
+import { FiDownload, FiPrinter, FiShare2, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
 import TicketCard from '../components/ticket/TicketCard'
 import './ETicketPage.css'
 
@@ -8,8 +14,29 @@ export default function ETicketPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const { state } = location
+  const [paymentVerified, setPaymentVerified] = useState(false)
+  const [verifying, setVerifying] = useState(true)
 
-  // Mock ticket data if not coming from booking page
+  // Check payment status on component mount
+  useEffect(() => {
+    // In a real app, this would be an API call to verify payment status
+    if (state?.paymentStatus === 'Da thanh toan') {
+      setPaymentVerified(true)
+    }
+    
+    // Simulate payment verification delay
+    const timer = setTimeout(() => {
+      setVerifying(false)
+      if (!state?.paymentStatus || state?.paymentStatus !== 'Da thanh toan') {
+        // Payment not verified, redirect to payment page
+        navigate('/payment', { state })
+      }
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [state, navigate])
+
+  // Mock ticket data if not coming from payment page
   const ticketData = state || {
     trip: {
       from: 'Hà Nội',
@@ -26,7 +53,6 @@ export default function ETicketPage() {
   }
 
   const handleDownload = () => {
-    const qrElement = document.querySelector('.ticket-qr svg')
     const canvas = document.querySelector('.ticket-qr canvas')
     
     if (canvas) {
@@ -42,37 +68,114 @@ export default function ETicketPage() {
     window.print()
   }
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'BusGo Ticket',
+          text: `Vé xe bus từ ${ticketData.trip.from} đến ${ticketData.trip.to}`,
+          url: window.location.href
+        })
+      } catch (err) {
+        console.log('Share cancelled:', err)
+      }
+    } else {
+      // Fallback: Copy booking ID to clipboard
+      navigator.clipboard.writeText(bookingId)
+      alert('Mã đặt chỗ đã được sao chép!')
+    }
+  }
+
+  if (verifying) {
+    return (
+      <div className="eticket-page">
+        <div className="container-fluid px-md-5 px-3 d-flex align-items-center justify-content-center min-vh-100">
+          <div className="text-center">
+            <div className="spinner-border text-primary mb-3" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <h5 className="fw-bold text-neutral-900 mb-2">Đang xác thực vé...</h5>
+            <p className="text-muted small">Vui lòng chờ trong giây lát</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!paymentVerified) {
+    return (
+      <div className="eticket-page">
+        <div className="container-fluid px-md-5 px-3 d-flex align-items-center justify-content-center min-vh-100">
+          <div className="text-center">
+            <FiAlertCircle size={60} className="text-danger mb-3" />
+            <h5 className="fw-bold text-neutral-900 mb-2">Thanh toán chưa xác nhận</h5>
+            <p className="text-muted mb-4">
+              Vé của bạn chưa được kích hoạt. Vui lòng hoàn tất thanh toán để nhận vé điện tử.
+            </p>
+            <button
+              onClick={() => navigate('/payment', { state })}
+              className="btn btn-primary"
+              style={{
+                backgroundColor: '#0066cc',
+                borderColor: '#0066cc',
+                padding: '0.75rem 2rem'
+              }}
+            >
+              Tiếp tục thanh toán
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="eticket-page">
       <div className="container-fluid px-md-5 px-3 py-5">
         {/* Success Message */}
-        <div className="alert alert-success mb-4 d-flex align-items-center gap-3" role="alert">
-          <FiCheckCircle size={28} />
-          <div>
-            <div className="fw-bold">Đặt chỗ thành công!</div>
-            <div className="small">Mã đặt chỗ của bạn: <strong>{bookingId}</strong></div>
+        <div className="alert alert-success mb-5 d-flex align-items-center gap-3" role="alert" style={{ borderRadius: '0.75rem' }}>
+          <div style={{ flexShrink: 0 }}>
+            <FiCheckCircle size={32} style={{ color: '#10b981' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="fw-bold text-neutral-900">Thanh toán thành công - Vé đã kích hoạt!</div>
+            <div className="small text-muted">Mã đặt chỗ: <strong>{bookingId}</strong></div>
           </div>
         </div>
 
-        {/* Main Ticket */}
-        <div className="row gap-4 mb-5">
-          <div className="col-lg-8">
+        {/* Main Ticket + Actions Layout */}
+        <div className="row g-3 mb-5">
+          {/* Main Ticket - 70% */}
+          <div className="col-lg-9">
             <TicketCard bookingId={bookingId} ticketData={ticketData} />
           </div>
 
-          {/* Actions */}
-          <div className="col-lg-4">
-            <div className="card sticky-top" style={{ top: '100px', backgroundColor: 'white' }}>
-              <div className="card-body">
-                <h5 className="fw-bold mb-4">Thao tác</h5>
+          {/* Action Sidebar - 30% */}
+          <div className="col-lg-3">
+            <div className="card h-100 sticky-top 
+            actions" style={{ top: '100px', borderRadius: '0.75rem' }}>
+              <div className="card-body p-4">
+                <h5 className="fw-bold mb-4 text-neutral-900">Thao tác với vé</h5>
 
                 <button
                   onClick={handleDownload}
-                  className="btn w-100 mb-3 d-flex align-items-center justify-content-center gap-2"
+                  className="btn btn-action w-100 mb-3 d-flex align-items-center justify-content-center gap-2"
                   style={{
-                    backgroundColor: 'var(--color-primary-600)',
+                    backgroundColor: '#0066cc',
                     color: 'white',
-                    padding: '0.75rem'
+                    padding: '0.85rem',
+                    borderRadius: '0.5rem',
+                    border: 'none',
+                    fontWeight: 600,
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#0052a3'
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 102, 204, 0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#0066cc'
+                    e.target.style.boxShadow = 'none'
                   }}
                 >
                   <FiDownload size={20} />
@@ -81,12 +184,21 @@ export default function ETicketPage() {
 
                 <button
                   onClick={handlePrint}
-                  className="btn w-100 mb-3 d-flex align-items-center justify-content-center gap-2"
+                  className="btn btn-action-outline w-100 mb-3 d-flex align-items-center justify-content-center gap-2"
                   style={{
                     backgroundColor: 'white',
-                    color: 'var(--color-primary-600)',
-                    border: '2px solid var(--color-primary-600)',
-                    padding: '0.75rem'
+                    color: '#0066cc',
+                    border: '2px solid #0066cc',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    fontWeight: 600,
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#f0f7ff'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'white'
                   }}
                 >
                   <FiPrinter size={20} />
@@ -94,24 +206,35 @@ export default function ETicketPage() {
                 </button>
 
                 <button
-                  className="btn w-100 mb-3 d-flex align-items-center justify-content-center gap-2"
+                  onClick={handleShare}
+                  className="btn btn-action-secondary w-100 mb-4 d-flex align-items-center justify-content-center gap-2"
                   style={{
                     backgroundColor: 'white',
-                    color: 'var(--color-secondary-600)',
-                    border: '2px solid var(--color-secondary-600)',
-                    padding: '0.75rem'
+                    color: '#666666',
+                    border: '2px solid #e5e7eb',
+                    padding: '0.75rem',
+                    borderRadius: '0.5rem',
+                    fontWeight: 600,
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#f9fafb'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = 'white'
                   }}
                 >
                   <FiShare2 size={20} />
                   Chia sẻ
                 </button>
 
-                <div className="alert alert-info small mt-4 mb-0">
-                  <div className="fw-bold mb-2">💡 Gợi ý:</div>
-                  <ul className="mb-0 ps-3">
+                <div className="alert alert-info small p-3" style={{ backgroundColor: '#f0f7ff', border: '1px solid #0066cc', borderRadius: '0.5rem' }}>
+                  <div className="fw-bold mb-2 text-neutral-900">💡 Hướng dẫn quan trọng:</div>
+                  <ul className="mb-0 ps-3 text-neutral-700">
                     <li>Lưu mã QR trên điện thoại</li>
                     <li>Xuất trình vé trước 30 phút</li>
-                    <li>Mang CMND khi lên xe</li>
+                    <li>Mang theo CMND khi lên xe</li>
+                    <li>Kiểm tra thời gian khởi hành</li>
                   </ul>
                 </div>
               </div>
@@ -121,28 +244,28 @@ export default function ETicketPage() {
 
         {/* Next Steps */}
         <div className="row">
-          <div className="col-lg-8">
-            <div className="card" style={{ backgroundColor: 'white' }}>
-              <div className="card-body">
-                <h5 className="fw-bold mb-4">Những bước tiếp theo</h5>
+          <div className="col-lg-9">
+            <div className="card" style={{ borderRadius: '0.75rem', border: '1px solid #e5e7eb' }}>
+              <div className="card-body p-4">
+                <h5 className="fw-bold mb-5 text-neutral-900">Quy trình tiếp theo</h5>
 
                 <div className="timeline">
-                  <div className="timeline-item mb-4">
+                  <div className="timeline-item mb-5 pb-5">
                     <div className="timeline-number active">1</div>
                     <div className="timeline-content">
-                      <div className="fw-bold">Lưu vé</div>
+                      <div className="fw-bold text-neutral-900">Lưu hoặc in vé</div>
                       <p className="text-muted small mb-0">
-                        Vui lòng lưu mã QR code của vé hoặc in vé trước 24 giờ khởi hành.
+                        Lưu vé trên điện thoại hoặc in vé từ bây giờ. Bạn có thể lấy bất cứ lúc nào trước chuyến xe.
                       </p>
                     </div>
                   </div>
 
-                  <div className="timeline-item mb-4">
+                  <div className="timeline-item mb-5 pb-5">
                     <div className="timeline-number">2</div>
                     <div className="timeline-content">
-                      <div className="fw-bold">Xuất trình tại quầy</div>
+                      <div className="fw-bold text-neutral-900">Xuất trình tại quầy</div>
                       <p className="text-muted small mb-0">
-                        Đến quầy làm thủ tục 30 phút trước giờ khởi hành để xuất trình vé.
+                        Đến bến xe 30 phút trước giờ khởi hành. Xuất trình mã QR hoặc vé in tại quầy làm thủ tục.
                       </p>
                     </div>
                   </div>
@@ -150,9 +273,9 @@ export default function ETicketPage() {
                   <div className="timeline-item">
                     <div className="timeline-number">3</div>
                     <div className="timeline-content">
-                      <div className="fw-bold">Lên xe</div>
+                      <div className="fw-bold text-neutral-900">Lên xe</div>
                       <p className="text-muted small mb-0">
-                        Mang theo CMND hoặc hộ chiếu khi lên xe, ghế ngồi của bạn đã được đặt trước.
+                        Mang theo CMND/Hộ chiếu để xác nhận và lên xe. Ghế đã được đặt sẵn cho bạn.
                       </p>
                     </div>
                   </div>
@@ -165,10 +288,21 @@ export default function ETicketPage() {
               onClick={() => navigate('/')}
               className="btn w-100 mt-4"
               style={{
-                backgroundColor: 'var(--color-secondary-600)',
+                backgroundColor: '#0066cc',
                 color: 'white',
-                padding: '0.875rem',
-                fontWeight: 600
+                padding: '0.85rem',
+                fontWeight: 600,
+                borderRadius: '0.5rem',
+                border: 'none',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#0052a3'
+                e.target.style.boxShadow = '0 4px 12px rgba(0, 102, 204, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#0066cc'
+                e.target.style.boxShadow = 'none'
               }}
             >
               ← Quay về trang chủ

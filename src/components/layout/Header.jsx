@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { FiMenu, FiX } from 'react-icons/fi'
+import { FiMenu, FiX, FiClock } from 'react-icons/fi'
 import { useState } from 'react'
 import './Header.css'
 
@@ -79,6 +79,14 @@ export default function Header() {
 
             {/* Auth Buttons - Mobile */}
             <div className="d-lg-none mt-3 gap-2 d-flex flex-column">
+              <Link
+                to="/history"
+                className="btn btn-light text-decoration-none"
+                style={{ border: '1px solid #e5e7eb', color: 'var(--color-primary-600)' }}
+              >
+                <FiClock size={18} className="me-2" style={{ display: 'inline' }} />
+                Lịch Sử
+              </Link>
               <button
                 className="btn btn-outline-primary w-100"
                 style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}
@@ -95,7 +103,15 @@ export default function Header() {
           </div>
 
           {/* Auth Buttons - Desktop */}
-          <div className="d-none d-lg-flex gap-2 ms-3">
+          <div className="d-none d-lg-flex gap-2 ms-3 align-items-center">
+            <Link
+              to="/history"
+              className="btn btn-light text-decoration-none"
+              style={{ border: '1px solid #e5e7eb', color: 'var(--color-primary-600)', padding: '0.5rem 1rem' }}
+            >
+              <FiClock size={18} className="me-2" style={{ display: 'inline' }} />
+              Lịch Sử
+            </Link>
             <button
               className="btn btn-outline-primary"
               style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}

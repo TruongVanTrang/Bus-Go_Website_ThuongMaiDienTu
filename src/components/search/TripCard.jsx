@@ -1,11 +1,79 @@
-import { FiClock, FiMapPin, FiUsers, FiStar } from 'react-icons/fi'
+import { FiClock, FiMapPin, FiUsers, FiStar, FiHeart } from 'react-icons/fi'
+import { useState, useEffect } from 'react'
 import './TripCard.css'
 
 export default function TripCard({ trip, onSelect }) {
+  const [isFavorite, setIsFavorite] = useState(false)
   const seatPercentage = (trip.totalSeats - trip.seatsAvailable) / trip.totalSeats * 100
+
+  // Load favorite status from localStorage
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('busgo_favorites')
+    if (savedFavorites) {
+      const favorites = JSON.parse(savedFavorites)
+      setIsFavorite(favorites.some(fav => fav.tripId === trip.id))
+    }
+  }, [trip.id])
+
+  const handleAddToFavorite = (e) => {
+    e.stopPropagation()
+    
+    let savedFavorites = localStorage.getItem('busgo_favorites')
+    let favorites = savedFavorites ? JSON.parse(savedFavorites) : []
+
+    if (isFavorite) {
+      // Remove from favorites
+      favorites = favorites.filter(fav => fav.tripId !== trip.id)
+      setIsFavorite(false)
+    } else {
+      // Add to favorites - lưu route info cho watchlist
+      const newFavorite = {
+        id: `RTE${Date.now()}`,
+        tripId: trip.id,
+        from: trip.from,
+        to: trip.to,
+        operator: trip.operator,
+        averageRating: trip.rating,
+        tripCount: 1
+      }
+      favorites.push(newFavorite)
+      setIsFavorite(true)
+    }
+
+    localStorage.setItem('busgo_favorites', JSON.stringify(favorites))
+  }
 
   return (
     <div className="trip-card">
+      {/* Favorite Button */}
+      <button
+        onClick={handleAddToFavorite}
+        className="trip-favorite-btn"
+        style={{
+          position: 'absolute',
+          top: '1rem',
+          right: '1rem',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '0.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10
+        }}
+        title={isFavorite ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
+      >
+        <FiHeart
+          size={24}
+          style={{
+            color: isFavorite ? 'var(--color-danger-500)' : 'var(--color-neutral-400)',
+            fill: isFavorite ? 'var(--color-danger-500)' : 'none',
+            transition: 'all 0.2s ease'
+          }}
+        />
+      </button>
+
       <div className="row align-items-center g-0">
         {/* Main Info */}
         <div className="col-lg-4 col-md-5 border-end border-neutral-200 p-4">

@@ -1,8 +1,8 @@
 .ticket-card-wrapper {
   width: 100%;
-  max-width: 800px;
-  margin-left: 110px; 
-  margin-right: auto;
+  max-width: 70%;
+  margin-left: 15%; 
+  margin-right: 10%;
 }
 
 .ticket-card {

@@ -8,8 +8,6 @@
   border: 1px solid var(--color-neutral-200);
   border-radius: 0.75rem;
   padding: 1.5rem;
-  max-height: calc(100vh - 150px);
-  overflow-y: auto;
 }
 
 .filter-section {
@@ -54,27 +52,4 @@
     position: relative;
     top: 0;
   }
-
-  .filters-sticky {
-    max-height: none;
-  }
-}
-
-/* Scrollbar Styling */
-.filters-sticky::-webkit-scrollbar {
-  width: 6px;
-}
-
-.filters-sticky::-webkit-scrollbar-track {
-  background: var(--color-neutral-100);
-  border-radius: 10px;
-}
-
-.filters-sticky::-webkit-scrollbar-thumb {
-  background: var(--color-neutral-300);
-  border-radius: 10px;
-}
-
-.filters-sticky::-webkit-scrollbar-thumb:hover {
-  background: var(--color-neutral-400);
 }

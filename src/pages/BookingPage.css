@@ -96,8 +96,64 @@
   }
 }
 
-  .form-input {
-    padding: 0.65rem 0.75rem;
-    font-size: 0.95rem;
-  }
+/* Form Select */
+.form-select {
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background-color: #fafafa;
+}
 
+.form-select:focus {
+  border-color: #0066cc;
+  outline: none;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
+  background-color: #ffffff;
+}
+
+/* Cargo Shipping Section */
+.cargo-section {
+  background: linear-gradient(135deg, #f5f7ff 0%, #f9fafb 100%);
+  border-left: 4px solid #0066cc;
+}
+
+.cargo-section .form-select,
+.cargo-section .form-input {
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+}
+
+.cargo-section .alert-info {
+  background-color: #f0f7ff;
+  border-color: #0066cc;
+  color: #003d99;
+}
+
+.cargo-section .alert-success {
+  background-color: #f0fdf4;
+  border-color: #16a34a;
+  color: #15803d;
+}
+
+/* Summary Card */
+.summary-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  border: 2px solid #e5e7eb;
+}
+
+.summary-card:hover {
+  border-color: #0066cc;
+  box-shadow: 0 8px 16px rgba(0, 102, 204, 0.12);
+}
+
+/* Price Display */
+.price-total {
+  font-size: 1.5rem;
+  color: #0066cc;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(90deg, rgba(0, 102, 204, 0.05), transparent);
+  border-radius: 0.5rem;
+}

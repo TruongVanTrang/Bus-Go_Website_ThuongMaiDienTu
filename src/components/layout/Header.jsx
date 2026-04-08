@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { FiMenu, FiX, FiClock } from 'react-icons/fi'
 import { useState } from 'react'
 import './Header.css'
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const navigate = useNavigate()
 
   return (
     <header className="bg-white border-bottom shadow-sm sticky-top">
@@ -90,6 +91,10 @@ export default function Header() {
               <button
                 className="btn btn-outline-primary w-100"
                 style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}
+                onClick={() => {
+                  navigate('/login')
+                  setMobileMenuOpen(false)
+                }}
               >
                 Đăng Nhập
               </button>
@@ -115,6 +120,7 @@ export default function Header() {
             <button
               className="btn btn-outline-primary"
               style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}
+              onClick={() => navigate('/login')}
             >
               Đăng Nhập
             </button>

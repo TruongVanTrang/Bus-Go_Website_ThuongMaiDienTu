@@ -79,6 +79,10 @@
   }
 }
 
+.sticky-top {
+  z-index: 10;
+}
+
 @media (max-width: 768px) {
   .eticket-page .container-fluid {
     padding-top: 1.5rem;
@@ -91,6 +95,7 @@
     position: relative !important;
     top: 0 !important;
     margin-top: 2rem;
+    z-index: auto;
   }
 
   .timeline {

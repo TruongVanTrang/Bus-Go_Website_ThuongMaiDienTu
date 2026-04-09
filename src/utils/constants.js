@@ -57,6 +57,182 @@ export const TEST_ACCOUNTS = {
   }
 }
 
+// Bus types and pricing (BusGo only)
+export const BUS_TYPES = {
+  // City transit buses (5,000 - 8,000 VNĐ)
+  CITY_SMALL: {
+    id: 'city_small',
+    name: 'Xe buýt nhỏ',
+    category: 'city',
+    seats: 20,
+    priceRange: [5000, 8000],
+    icon: '🚌'
+  },
+  CITY_MEDIUM: {
+    id: 'city_medium',
+    name: 'Xe buýt trung',
+    category: 'city',
+    seats: 30,
+    priceRange: [5000, 8000],
+    icon: '🚌'
+  },
+  CITY_LARGE: {
+    id: 'city_large',
+    name: 'Xe buýt lớn',
+    category: 'city',
+    seats: 28,
+    standing: 39,
+    priceRange: [5000, 8000],
+    icon: '🚌'
+  },
+  MINI_4_5: {
+    id: 'mini_4_5',
+    name: 'Xe 4-5 chỗ',
+    category: 'city',
+    seats: 5,
+    priceRange: [5000, 8000],
+    icon: '🚖'
+  },
+  MINI_7: {
+    id: 'mini_7',
+    name: 'Xe 7 chỗ',
+    category: 'city',
+    seats: 7,
+    priceRange: [5000, 8000],
+    icon: '🚐'
+  },
+  MINI_9: {
+    id: 'mini_9',
+    name: 'Xe 9 chỗ',
+    category: 'city',
+    seats: 9,
+    priceRange: [5000, 8000],
+    icon: '🚐'
+  },
+  MINI_16: {
+    id: 'mini_16',
+    name: 'Xe 16 chỗ',
+    category: 'city',
+    seats: 16,
+    priceRange: [5000, 8000],
+    icon: '🚌'
+  },
+  // Coach buses for inter-city (16-35 seats, 30,000 - 35,000 VNĐ)
+  COACH_4: {
+    id: 'coach_4',
+    name: 'Xe 4 chỗ',
+    category: 'interCity',
+    seats: 4,
+    priceRange: [30000, 35000],
+    icon: '🚌'
+  },
+  COACH_7: {
+    id: 'coach_7',
+    name: 'Xe 7 chỗ',
+    category: 'interCity',
+    seats: 7,
+    priceRange: [30000, 35000],
+    icon: '🚌'
+  },
+
+  COACH_16: {
+    id: 'coach_16',
+    name: 'Xe 16 chỗ',
+    category: 'interCity',
+    seats: 16,
+    priceRange: [30000, 35000],
+    icon: '🚌'
+  },
+  COACH_29_35: {
+    id: 'coach_29_35',
+    name: 'Xe 29-35 chỗ',
+    category: 'interCity',
+    seats: 35,
+    priceRange: [30000, 35000],
+    icon: '🚌'
+  },
+  COACH_SUBURB: {
+    id: 'coach_suburb',
+    name: 'Xe buýt ngoại ô',
+    category: 'interCity',
+    seats: 45,
+    standing: 50,
+    priceRange: [30000, 35000],
+    icon: '🚌'
+  }
+}
+
+// Bus type groups
+export const BUS_CATEGORIES = {
+  city: {
+    id: 'city',
+    name: 'Xe nội thành',
+    description: 'Di chuyển nội thành Đà Nẵng',
+    priceRange: [5000, 8000]
+  },
+  interCity: {
+    id: 'interCity',
+    name: 'Xe ngoại thành',
+    description: 'Di chuyển ngoại thành',
+    priceRange: [30000, 35000]
+  }
+}
+
+// City destinations (Da Nang transit network)
+export const CITY_DESTINATIONS = {
+  central: 'Trung tâm thành phố',
+  danangAirport: 'Sân bay Đà Nẵng',
+  beachAccess: 'Các bãi biển',
+  industrialZone: 'Khu công nghiệp',
+  residentialAreas: 'Khu dân cư',
+  shoppingMalls: 'Các trung tâm thương mại',
+  hospitals: 'Các bệnh viện',
+  universities: 'Các trường đại học'
+}
+
+// Popular city transit stops
+export const CITY_STOPS = [
+  'Bến xe trung tâm',
+  'Sân bay Quốc tế Đà Nẵng',
+  'Cầu Rồng',
+  'Bãi biển Mỹ Khê',
+  'Phố cổ Hội An',
+  'Bãi biển Non Nước',
+  'Hội An',
+  'Khu công nghiệp Hòa Cầm',
+  'Đại học Duy Tân',
+  'Đại học Kinh tế Đà Nẵng',
+  'Cộng Hòa (trung tâm)',
+  'Nguyễn Văn Linh',
+  'Chu Văn An',
+  'Hùng Vương',
+  'Phạm Văn Đồng'
+]
+
+// Inter-city popular routes
+export const INTERCITY_ROUTES = [
+  { from: 'Đà Nẵng', to: 'Hà Nội', distance: '1000 km' },
+  { from: 'Đà Nẵng', to: 'Sài Gòn', distance: '950 km' },
+  { from: 'Đà Nẵng', to: 'Huế', distance: '100 km' },
+  { from: 'Đà Nẵng', to: 'Quảng Nam', distance: '40 km' },
+  { from: 'Đà Nẵng', to: 'Quảng Ngãi', distance: '100 km' },
+  { from: 'Đà Nẵng', to: 'Kon Tum', distance: '200 km' }
+]
+
+// Departure time slots with detailed categorization
+export const DEPARTURE_TIMES = {
+  early: { id: 'early', label: 'Rất sớm', start: '04:00', end: '06:00' },
+  morning_early: { id: 'morning_early', label: 'Sáng sớm', start: '06:00', end: '08:00' },
+  morning: { id: 'morning', label: 'Sáng', start: '08:00', end: '10:00' },
+  late_morning: { id: 'late_morning', label: 'Sáng muộn', start: '10:00', end: '12:00' },
+  early_afternoon: { id: 'early_afternoon', label: 'Trưa sớm', start: '12:00', end: '14:00' },
+  afternoon: { id: 'afternoon', label: 'Chiều', start: '14:00', end: '16:00' },
+  late_afternoon: { id: 'late_afternoon', label: 'Chiều muộn', start: '16:00', end: '18:00' },
+  evening: { id: 'evening', label: 'Tối', start: '18:00', end: '20:00' },
+  late_evening: { id: 'late_evening', label: 'Tối muộn', start: '20:00', end: '22:00' },
+  night: { id: 'night', label: 'Đêm', start: '22:00', end: '04:00' }
+}
+
 // Menu items based on role
 export const ROLE_MENU = {
   [USER_ROLES.ADMIN]: [

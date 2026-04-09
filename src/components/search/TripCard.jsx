@@ -78,8 +78,13 @@ export default function TripCard({ trip, onSelect }) {
         {/* Main Info */}
         <div className="col-lg-4 col-md-5 border-end border-neutral-200 p-4">
           <div className="trip-header mb-4">
-            <div className="trip-operator-badge" style={{ color: 'var(--color-secondary-600)' }}>
-              {trip.operator}
+            <div className="d-flex align-items-center gap-2">
+              <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary-600)' }}>
+                BusGo
+              </span>
+              <span style={{ fontSize: '12px', color: 'var(--color-neutral-500)' }}>
+                Chuyến xe do BusGo điều hành
+              </span>
             </div>
             <div className="d-flex align-items-center gap-2 mt-2">
               <FiStar size={16} style={{ color: 'var(--color-secondary-500)' }} />

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import TripCard from '../components/search/TripCard'
 import SearchFilters from '../components/search/SearchFilters'
+import { BUS_TYPES } from '../utils/constants'
 import './SearchResultsPage.css'
 
 export default function SearchResultsPage() {
@@ -10,10 +11,14 @@ export default function SearchResultsPage() {
   const [trips, setTrips] = useState([])
   const [filteredTrips, setFilteredTrips] = useState([])
   const [filters, setFilters] = useState({
-    priceRange: [0, 2000000],
+    priceRange: [0, 500000],
     amenities: [],
-    busType: 'all',
-    departureTime: 'all'
+    busType: '',
+    departureTime: '',
+    category: searchParams.get('category') || '',
+    from: searchParams.get('from') || '',
+    to: searchParams.get('to') || '',
+    departureDate: searchParams.get('date') || ''
   })
 
   // Mock data - In real app, fetch from API
@@ -24,19 +29,51 @@ export default function SearchResultsPage() {
         from: searchParams.get('from') || 'Hà Nội',
         to: searchParams.get('to') || 'Sài Gòn',
         date: searchParams.get('date') || '2024-01-15',
-        departureTime: '08:00',
-        arrivalTime: '17:30',
+        departureTime: '05:00',
+        arrivalTime: '14:30',
         duration: '9h 30m',
         busType: 'bus',
         seatsAvailable: 25,
         totalSeats: 45,
         price: 250000,
-        operator: 'BusGo Express',
+        operator: 'BusGo',
         amenities: ['AC', 'Wifi', 'Phone Charger'],
         rating: 4.5
       },
       {
         id: 2,
+        from: searchParams.get('from') || 'Hà Nội',
+        to: searchParams.get('to') || 'Sài Gòn',
+        date: searchParams.get('date') || '2024-01-15',
+        departureTime: '07:30',
+        arrivalTime: '17:00',
+        duration: '9h 30m',
+        busType: 'minibus',
+        seatsAvailable: 8,
+        totalSeats: 16,
+        price: 450000,
+        operator: 'BusGo',
+        amenities: ['AC', 'Wifi', 'Phone Charger', 'Blanket'],
+        rating: 4.8
+      },
+      {
+        id: 3,
+        from: searchParams.get('from') || 'Hà Nội',
+        to: searchParams.get('to') || 'Sài Gòn',
+        date: searchParams.get('date') || '2024-01-15',
+        departureTime: '09:00',
+        arrivalTime: '18:30',
+        duration: '9h 30m',
+        busType: 'bus',
+        seatsAvailable: 15,
+        totalSeats: 45,
+        price: 280000,
+        operator: 'BusGo',
+        amenities: ['AC', 'Wifi', 'Phone Charger', 'Toilet'],
+        rating: 4.6
+      },
+      {
+        id: 4,
         from: searchParams.get('from') || 'Hà Nội',
         to: searchParams.get('to') || 'Sài Gòn',
         date: searchParams.get('date') || '2024-01-15',
@@ -46,13 +83,13 @@ export default function SearchResultsPage() {
         busType: 'minibus',
         seatsAvailable: 12,
         totalSeats: 16,
-        price: 450000,
-        operator: 'Premium Minibus',
+        price: 480000,
+        operator: 'BusGo',
         amenities: ['AC', 'Wifi', 'Phone Charger', 'Blanket'],
-        rating: 4.8
+        rating: 4.7
       },
       {
-        id: 3,
+        id: 5,
         from: searchParams.get('from') || 'Hà Nội',
         to: searchParams.get('to') || 'Sài Gòn',
         date: searchParams.get('date') || '2024-01-15',
@@ -63,12 +100,60 @@ export default function SearchResultsPage() {
         seatsAvailable: 8,
         totalSeats: 45,
         price: 200000,
-        operator: 'BusGo Economy',
+        operator: 'BusGo',
         amenities: ['AC'],
         rating: 4.0
       },
       {
-        id: 4,
+        id: 6,
+        from: searchParams.get('from') || 'Hà Nội',
+        to: searchParams.get('to') || 'Sài Gòn',
+        date: searchParams.get('date') || '2024-01-15',
+        departureTime: '16:30',
+        arrivalTime: '02:00',
+        duration: '9h 30m',
+        busType: 'bus',
+        seatsAvailable: 32,
+        totalSeats: 45,
+        price: 220000,
+        operator: 'BusGo',
+        amenities: ['AC', 'Blanket'],
+        rating: 4.4
+      },
+      {
+        id: 7,
+        from: searchParams.get('from') || 'Hà Nội',
+        to: searchParams.get('to') || 'Sài Gòn',
+        date: searchParams.get('date') || '2024-01-15',
+        departureTime: '18:00',
+        arrivalTime: '03:30',
+        duration: '9h 30m',
+        busType: 'bus',
+        seatsAvailable: 38,
+        totalSeats: 45,
+        price: 180000,
+        operator: 'BusGo',
+        amenities: ['AC', 'Pillow & Blanket', 'Toilet'],
+        rating: 4.3
+      },
+      {
+        id: 8,
+        from: searchParams.get('from') || 'Hà Nội',
+        to: searchParams.get('to') || 'Sài Gòn',
+        date: searchParams.get('date') || '2024-01-15',
+        departureTime: '20:00',
+        arrivalTime: '05:30',
+        duration: '9h 30m',
+        busType: 'minibus',
+        seatsAvailable: 5,
+        totalSeats: 16,
+        price: 520000,
+        operator: 'BusGo',
+        amenities: ['AC', 'Wifi', 'Phone Charger', 'Blanket', 'Toilet'],
+        rating: 4.9
+      },
+      {
+        id: 9,
         from: searchParams.get('from') || 'Hà Nội',
         to: searchParams.get('to') || 'Sài Gòn',
         date: searchParams.get('date') || '2024-01-15',
@@ -78,10 +163,26 @@ export default function SearchResultsPage() {
         busType: 'bus',
         seatsAvailable: 35,
         totalSeats: 45,
-        price: 180000,
-        operator: 'Night Express',
+        price: 190000,
+        operator: 'BusGo',
         amenities: ['AC', 'Pillow & Blanket'],
-        rating: 4.3
+        rating: 4.2
+      },
+      {
+        id: 10,
+        from: searchParams.get('from') || 'Hà Nội',
+        to: searchParams.get('to') || 'Sài Gòn',
+        date: searchParams.get('date') || '2024-01-15',
+        departureTime: '23:30',
+        arrivalTime: '09:00',
+        duration: '9h 30m',
+        busType: 'bus',
+        seatsAvailable: 42,
+        totalSeats: 45,
+        price: 170000,
+        operator: 'BusGo',
+        amenities: ['AC'],
+        rating: 4.1
       }
     ]
     
@@ -97,13 +198,17 @@ export default function SearchResultsPage() {
         return false
       }
 
-      // Bus type filter
-      if (filters.busType !== 'all' && trip.busType !== filters.busType) {
-        return false
+      // Bus type filter - Map từ busType ID sang trip.busType
+      if (filters.busType && filters.busType !== '') {
+        // Get bus type info từ BUS_TYPES
+        const selectedBusType = Object.values(BUS_TYPES).find(bt => bt.id === filters.busType)
+        if (selectedBusType && trip.busType !== selectedBusType.busType) {
+          return false
+        }
       }
 
       // Amenities filter
-      if (filters.amenities.length > 0) {
+      if (filters.amenities && filters.amenities.length > 0) {
         const hasAllAmenities = filters.amenities.every(amenity =>
           trip.amenities.includes(amenity)
         )
@@ -112,20 +217,36 @@ export default function SearchResultsPage() {
         }
       }
 
-      // Departure time filter
-      if (filters.departureTime !== 'all') {
+      // Departure time filter - Chi tiết theo mốc thời gian
+      if (filters.departureTime && filters.departureTime !== '') {
         const hour = parseInt(trip.departureTime.split(':')[0])
-        if (filters.departureTime === 'morning' && (hour < 6 || hour >= 12)) {
-          return false
+        const minute = parseInt(trip.departureTime.split(':')[1])
+        
+        const timeRanges = {
+          early: { start: 4, end: 6 },
+          morning_early: { start: 6, end: 8 },
+          morning: { start: 8, end: 10 },
+          late_morning: { start: 10, end: 12 },
+          early_afternoon: { start: 12, end: 14 },
+          afternoon: { start: 14, end: 16 },
+          late_afternoon: { start: 16, end: 18 },
+          evening: { start: 18, end: 20 },
+          late_evening: { start: 20, end: 22 },
+          night: { start: 22, end: 4 }
         }
-        if (filters.departureTime === 'afternoon' && (hour < 12 || hour >= 18)) {
-          return false
-        }
-        if (filters.departureTime === 'evening' && (hour < 18 || hour >= 24)) {
-          return false
-        }
-        if (filters.departureTime === 'night' && (hour < 22 || hour < 6)) {
-          return false
+
+        const range = timeRanges[filters.departureTime]
+        if (range) {
+          if (range.start < range.end) {
+            if (hour < range.start || hour >= range.end) {
+              return false
+            }
+          } else {
+            // Night time (22:00-04:00)
+            if (hour < range.start && hour >= range.end) {
+              return false
+            }
+          }
         }
       }
 
@@ -168,11 +289,38 @@ export default function SearchResultsPage() {
                 ))}
               </div>
             ) : (
-              <div className="alert alert-info text-center py-5">
-                <h5>Không tìm thấy chuyến xe phù hợp</h5>
-                <p className="text-muted mb-0">
+              <div className="alert alert-warning text-center py-5">
+                <h5 className="mb-3">
+                  <span style={{ fontSize: '24px', marginRight: '8px' }}>🔍</span>
+                  Không tìm thấy chuyến xe phù hợp
+                </h5>
+                <p className="text-muted mb-4">
                   Hãy thử thay đổi các bộ lọc hoặc tiêu chí tìm kiếm
                 </p>
+                <button
+                  onClick={() => {
+                    setFilters({
+                      priceRange: [0, 500000],
+                      amenities: [],
+                      busType: '',
+                      departureTime: '',
+                      category: '',
+                      from: '',
+                      to: '',
+                      departureDate: ''
+                    })
+                  }}
+                  className="btn"
+                  style={{
+                    backgroundColor: 'var(--color-primary-600)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '0.75rem 2rem',
+                    fontWeight: '600'
+                  }}
+                >
+                  ↺ Làm mới các bộ lọc
+                </button>
               </div>
             )}
           </div>

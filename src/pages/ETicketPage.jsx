@@ -131,6 +131,74 @@ export default function ETicketPage() {
 
   return (
     <div className="eticket-page">
+      
+      {/* =========================================================
+          STYLE IN ẤN: CHO PHÉP IN VÉ + HƯỚNG DẪN 3 BƯỚC
+      ========================================================== */}
+      <style media="print">{`
+        @page {
+          size: auto;
+          margin: 10mm 15mm; /* Lề trên/dưới 10mm, lề trái/phải 15mm */
+        }
+        
+        /* 1. RESET TOÀN BỘ CHIỀU CAO VÀ KHOẢNG TRỐNG CỦA TRANG */
+        html, body, #root, .eticket-page {
+          height: auto !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background-color: white !important;
+        }
+
+        /* 2. ẨN CÁC PHẦN RÂU RIA */
+        .alert-success, 
+        .col-lg-3, 
+        button,
+        header, 
+        nav, 
+        footer,
+        .navbar {
+          display: none !important;
+        }
+
+        /* 3. PHÁ VỠ FLEXBOX: Chuyển thẻ bọc thành Block để không bị đẩy trang */
+        .container-fluid, .row, .col-lg-9 {
+          display: block !important; 
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+
+        /* 4. CĂN GIỮA VÉ VÀ HƯỚNG DẪN */
+        .ticket-card-wrapper, .card {
+          display: block !important;
+          width: 100% !important;
+          max-width: 650px !important;
+          margin: 15px auto 20px auto !important; /* Căn giữa tuyệt đối, cách đỉnh 15px để không bị lẹm */
+          page-break-before: avoid !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+
+        /* 5. TỐI ƯU MỰC IN */
+        .ticket-card, .card {
+          box-shadow: none !important;
+          border: 2px solid #000 !important;
+        }
+        .text-muted, .text-neutral-900 {
+          color: #222 !important;
+        }
+        .bg-primary {
+          background-color: #fff !important;
+          color: #000 !important;
+          border: 2px solid #000 !important;
+        }
+        .text-white {
+          color: #000 !important;
+        }
+      `}</style>
+      {/* ========================================================= */}
+
       <div className="container-fluid px-md-5 px-3 py-5">
         {/* Success Message */}
         <div className="alert alert-success mb-5 d-flex align-items-center gap-3" role="alert" style={{ borderRadius: '0.75rem' }}>
@@ -144,7 +212,7 @@ export default function ETicketPage() {
         </div>
 
         {/* Main Ticket + Actions Layout */}
-        <div className="row g-3 mb-5">
+        <div className="row g-3 mb-4">
           {/* Main Ticket - 70% */}
           <div className="col-lg-9">
             <TicketCard bookingId={bookingId} ticketData={ticketData} />
@@ -152,8 +220,7 @@ export default function ETicketPage() {
 
           {/* Action Sidebar - 30% */}
           <div className="col-lg-3">
-            <div className="card h-100 sticky-top 
-            actions" style={{ top: '100px', borderRadius: '0.75rem' }}>
+            <div className="card h-100 sticky-top actions" style={{ top: '100px', borderRadius: '0.75rem' }}>
               <div className="card-body p-4">
                 <h5 className="fw-bold mb-4 text-neutral-900">Thao tác với vé</h5>
 
@@ -242,51 +309,56 @@ export default function ETicketPage() {
           </div>
         </div>
 
-        {/* Next Steps */}
+        {/* Next Steps - HƯỚNG DẪN ĐƯỢC IN KÈM THEO VÉ */}
         <div className="row">
           <div className="col-lg-9">
             <div className="card" style={{ borderRadius: '0.75rem', border: '1px solid #e5e7eb' }}>
               <div className="card-body p-4">
-                <h5 className="fw-bold mb-5 text-neutral-900">Quy trình tiếp theo</h5>
+                <h5 className="fw-bold mb-4 text-neutral-900">Quy trình tiếp theo</h5>
 
-                <div className="timeline">
-                  <div className="timeline-item mb-5 pb-5">
-                    <div className="timeline-number active">1</div>
-                    <div className="timeline-content">
-                      <div className="fw-bold text-neutral-900">Lưu hoặc in vé</div>
-                      <p className="text-muted small mb-0">
+                {/* Lưới 3 cột ngang */}
+                <div className="row g-4">
+                  {/* Bước 1 */}
+                  <div className="col-md-4">
+                    <div className="d-flex flex-column align-items-center text-center">
+                      <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mb-3 shadow-sm" style={{ width: '45px', height: '45px', fontSize: '1.2rem', fontWeight: 'bold' }}>1</div>
+                      <div className="fw-bold text-neutral-900 mb-2">Lưu hoặc in vé</div>
+                      <p className="text-muted small mb-0 px-2">
                         Lưu vé trên điện thoại hoặc in vé từ bây giờ. Bạn có thể lấy bất cứ lúc nào trước chuyến xe.
                       </p>
                     </div>
                   </div>
 
-                  <div className="timeline-item mb-5 pb-5">
-                    <div className="timeline-number">2</div>
-                    <div className="timeline-content">
-                      <div className="fw-bold text-neutral-900">Xuất trình tại quầy</div>
-                      <p className="text-muted small mb-0">
+                  {/* Bước 2 */}
+                  <div className="col-md-4">
+                    <div className="d-flex flex-column align-items-center text-center">
+                      <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mb-3 shadow-sm" style={{ width: '45px', height: '45px', fontSize: '1.2rem', fontWeight: 'bold' }}>2</div>
+                      <div className="fw-bold text-neutral-900 mb-2">Xuất trình tại quầy</div>
+                      <p className="text-muted small mb-0 px-2">
                         Đến bến xe 30 phút trước giờ khởi hành. Xuất trình mã QR hoặc vé in tại quầy làm thủ tục.
                       </p>
                     </div>
                   </div>
 
-                  <div className="timeline-item">
-                    <div className="timeline-number">3</div>
-                    <div className="timeline-content">
-                      <div className="fw-bold text-neutral-900">Lên xe</div>
-                      <p className="text-muted small mb-0">
+                  {/* Bước 3 */}
+                  <div className="col-md-4">
+                    <div className="d-flex flex-column align-items-center text-center">
+                      <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mb-3 shadow-sm" style={{ width: '45px', height: '45px', fontSize: '1.2rem', fontWeight: 'bold' }}>3</div>
+                      <div className="fw-bold text-neutral-900 mb-2">Lên xe</div>
+                      <p className="text-muted small mb-0 px-2">
                         Mang theo CMND/Hộ chiếu để xác nhận và lên xe. Ghế đã được đặt sẵn cho bạn.
                       </p>
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
 
             {/* Back to Home Button */}
             <button
               onClick={() => navigate('/')}
-              className="btn w-100 mt-4"
+              className="btn w-100 mt-4 shadow-sm"
               style={{
                 backgroundColor: '#0066cc',
                 color: 'white',

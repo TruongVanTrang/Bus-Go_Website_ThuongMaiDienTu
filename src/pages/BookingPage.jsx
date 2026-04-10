@@ -4,12 +4,14 @@ import SeatMap from '../components/booking/SeatMap'
 import PassengerQuantity from '../components/booking/PassengerQuantity'
 import Stepper from '../components/common/Stepper'
 import BackButton from '../components/common/BackButton'
+import { useCargoPrice } from '../hooks/useCargoPrice'
 import './BookingPage.css'
 
 export default function BookingPage() {
   const { tripId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const { calculateCargoPrice, cargoTypes } = useCargoPrice()
   const [trip, setTrip] = useState(null)
   const [selectedSeats, setSelectedSeats] = useState([])
   const [passengerQuantity, setPassengerQuantity] = useState(0)
@@ -27,28 +29,27 @@ export default function BookingPage() {
     estimatedPrice: 0
   })
 
-  // Mock trip data
+  // Fetch trip data from service (mock or API)
   useEffect(() => {
     // If trip data is passed from SearchResultsPage, use it
     if (location.state?.trip) {
       setTrip(location.state.trip)
     } else {
-      // Fallback to mock data
-      const mockTrip = {
-        id: tripId,
+      // Use fallback mock data with tripId
+      setTrip({
+        id: parseInt(tripId) || 1,
         from: 'Hà Nội',
         to: 'Sài Gòn',
         departureTime: '08:00',
         date: '2024-01-15',
-        operator: 'BusGo Express',
         category: 'interCity',
         busType: 'bus',
         seats: 35,
         price: 250000,
-        distance: 1650,
+        amenities: ['AC', 'Wifi', 'Phone Charger'],
+        rating: 4.5,
         occupiedSeats: [1, 3, 5, 10, 15, 20, 25]
-      }
-      setTrip(mockTrip)
+      })
     }
   }, [tripId, location.state])
 
@@ -68,74 +69,6 @@ export default function BookingPage() {
       ...prev,
       [name]: value
     }))
-  }
-
-  // Cargo type definitions
-  const cargoTypes = {
-    none: {
-      label: 'Không gửi hàng',
-      priceRange: 'Miễn phí',
-      minPrice: 0,
-      maxPrice: 0
-    },
-    light: {
-      label: 'Hàng nhẹ/Tài liệu (<10kg)',
-      priceRange: 'Miễn phí',
-      minPrice: 0,
-      maxPrice: 0
-    },
-    heavy: {
-      label: 'Hàng nặng (>10kg)',
-      priceRange: '3.000đ - 6.500đ/kg',
-      minPrice: 3000,
-      maxPrice: 6500
-    },
-    scooter: {
-      label: 'Xe tay ga',
-      priceRange: '1.000.000đ',
-      minPrice: 1000000,
-      maxPrice: 1000000
-    },
-    maxi_scooter: {
-      label: 'Xe tay côn/SH',
-      priceRange: '1.300.000đ',
-      minPrice: 1300000,
-      maxPrice: 1300000
-    },
-    motorcycle: {
-      label: 'Gửi xe máy thông thường',
-      priceRange: '320.000đ - 400.000đ',
-      minPrice: 320000,
-      maxPrice: 400000
-    }
-  }
-
-  // Calculate cargo price based on type and weight/distance
-  const calculateCargoPrice = (type, weight = '') => {
-    if (type === 'none' || type === 'light') return 0
-    
-    if (type === 'heavy' && weight) {
-      const w = parseFloat(weight)
-      if (w < 10) return 0 // Miễn phí nếu < 10kg
-      const pricePerKg = (cargoTypes.heavy.minPrice + cargoTypes.heavy.maxPrice) / 2 // Trung bình
-      return Math.round(w * pricePerKg)
-    }
-
-    if (type === 'scooter') {
-      return cargoTypes.scooter.minPrice
-    }
-
-    if (type === 'maxi_scooter') {
-      return cargoTypes.maxi_scooter.minPrice
-    }
-
-    if (type === 'motorcycle') {
-      // Random giữa 320k - 400k
-      return cargoTypes.motorcycle.minPrice + Math.random() * 
-             (cargoTypes.motorcycle.maxPrice - cargoTypes.motorcycle.minPrice)
-    }
-
-    return 0
   }
 
   const handleCargoTypeChange = (e) => {
@@ -159,11 +92,17 @@ export default function BookingPage() {
   }
 
   const getTotalPrice = () => {
+    if (!trip) return 0
     const seatsToBook = trip.category === 'city' ? passengerQuantity : selectedSeats.length
     return trip.price * seatsToBook + cargoInfo.estimatedPrice
   }
 
   const handleBooking = () => {
+    if (!trip) {
+      alert('Chuyến xe không tìm thấy')
+      return
+    }
+
     // For city trips, use passenger quantity; for intercity, use selected seats
     const seatsToBook = trip.category === 'city' ? passengerQuantity : selectedSeats.length
     

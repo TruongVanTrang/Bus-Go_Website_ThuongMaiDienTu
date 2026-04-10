@@ -4,6 +4,7 @@ import { FiCheckCircle, FiClock, FiLock } from 'react-icons/fi'
 import QRCode from 'qrcode.react'
 import Stepper from '../components/common/Stepper'
 import BackButton from '../components/common/BackButton'
+import { mockPaymentMethods } from '../utils/mockData'
 import './PaymentPage.css'
 
 export default function PaymentPage() {
@@ -42,51 +43,8 @@ export default function PaymentPage() {
     (bookingData.selectedSeats.length * (bookingData.totalPrice || 250000)) + (bookingData.cargoInfo?.estimatedPrice || 0) : 
     250000 + (bookingData.cargoInfo?.estimatedPrice || 0)
 
-  // Payment methods configuration
-  const paymentMethods = {
-    visa: {
-      name: 'Visa',
-      category: 'Thẻ quốc tế',
-      logo: '💳',
-      description: 'Thanh toán qua thẻ Visa quốc tế'
-    },
-    mastercard: {
-      name: 'Mastercard',
-      category: 'Thẻ quốc tế',
-      logo: '💳',
-      description: 'Thanh toán qua thẻ Mastercard quốc tế'
-    },
-    jcb: {
-      name: 'JCB',
-      category: 'Thẻ quốc tế',
-      logo: '💳',
-      description: 'Thanh toán qua thẻ JCB quốc tế'
-    },
-    atm_napas: {
-      name: 'ATM Napas',
-      category: 'Thẻ nội địa',
-      logo: '🏦',
-      description: 'Thanh toán qua thẻ ATM nội địa qua cổng Napas'
-    },
-    momo: {
-      name: 'Momo',
-      category: 'Ví điện tử',
-      logo: '📱',
-      description: 'Thanh toán qua ví điện tử Momo'
-    },
-    zalopay: {
-      name: 'ZaloPay',
-      category: 'Ví điện tử',
-      logo: '📱',
-      description: 'Thanh toán qua ví điện tử ZaloPay'
-    },
-    vnpay: {
-      name: 'VNPay',
-      category: 'Ví điện tử',
-      logo: '📱',
-      description: 'Thanh toán qua ví điện tử VNPay'
-    }
-  }
+  // Payment methods configuration - Imported from mockData
+  const paymentMethods = mockPaymentMethods
 
   // Generate QR code based on payment method
   const generatePaymentQR = (method) => {

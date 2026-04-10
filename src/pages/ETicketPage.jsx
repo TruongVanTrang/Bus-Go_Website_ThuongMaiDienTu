@@ -7,6 +7,8 @@ import { useLocation, useParams, useNavigate } from "react-router-dom"
 // 3. Các thư viện icon và component, CSS giữ nguyên
 import { FiDownload, FiPrinter, FiShare2, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
 import TicketCard from '../components/ticket/TicketCard'
+import Stepper from '../components/common/Stepper'
+import FeedbackForm from '../components/feedback/FeedbackForm'
 import './ETicketPage.css'
 
 export default function ETicketPage() {
@@ -16,6 +18,7 @@ export default function ETicketPage() {
   const { state } = location
   const [paymentVerified, setPaymentVerified] = useState(false)
   const [verifying, setVerifying] = useState(true)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   // Check payment status on component mount
   useEffect(() => {
@@ -138,10 +141,9 @@ export default function ETicketPage() {
       <style media="print">{`
         @page {
           size: auto;
-          margin: 10mm 15mm; /* Lề trên/dưới 10mm, lề trái/phải 15mm */
+          margin: 10mm 15mm;
         }
         
-        /* 1. RESET TOÀN BỘ CHIỀU CAO VÀ KHOẢNG TRỐNG CỦA TRANG */
         html, body, #root, .eticket-page {
           height: auto !important;
           min-height: 0 !important;
@@ -150,18 +152,21 @@ export default function ETicketPage() {
           background-color: white !important;
         }
 
-        /* 2. ẨN CÁC PHẦN RÂU RIA */
+        /* Ẩn tất cả các phần không cần in */
         .alert-success, 
         .col-lg-3, 
         button,
         header, 
         nav, 
         footer,
-        .navbar {
+        .navbar,
+        .row > .col-lg-3,
+        .card,
+        .alert {
           display: none !important;
         }
 
-        /* 3. PHÁ VỠ FLEXBOX: Chuyển thẻ bọc thành Block để không bị đẩy trang */
+        /* Chỉ hiển thị vé */
         .container-fluid, .row, .col-lg-9 {
           display: block !important; 
           width: 100% !important;
@@ -169,35 +174,28 @@ export default function ETicketPage() {
           padding: 0 !important;
         }
 
-        /* 4. CĂN GIỮA VÉ VÀ HƯỚNG DẪN */
-        .ticket-card-wrapper, .card {
+        .ticket-card-wrapper {
           display: block !important;
           width: 100% !important;
           max-width: 650px !important;
-          margin: 15px auto 20px auto !important; /* Căn giữa tuyệt đối, cách đỉnh 15px để không bị lẹm */
+          margin: 0 auto !important;
           page-break-before: avoid !important;
           page-break-inside: avoid !important;
           break-inside: avoid !important;
         }
 
-        /* 5. TỐI ƯU MỰC IN */
-        .ticket-card, .card {
+        .ticket-card {
           box-shadow: none !important;
           border: 2px solid #000 !important;
         }
-        .text-muted, .text-neutral-900 {
-          color: #222 !important;
-        }
-        .bg-primary {
-          background-color: #fff !important;
-          color: #000 !important;
-          border: 2px solid #000 !important;
-        }
-        .text-white {
-          color: #000 !important;
-        }
       `}</style>
       {/* ========================================================= */}
+
+      {/* Stepper */}
+      <Stepper
+        currentStep={3}
+        steps={[]}
+      />
 
       <div className="container-fluid px-md-5 px-3 py-5">
         {/* Success Message */}
@@ -366,7 +364,8 @@ export default function ETicketPage() {
                 fontWeight: 600,
                 borderRadius: '0.5rem',
                 border: 'none',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                marginBottom: '1rem'
               }}
               onMouseEnter={(e) => {
                 e.target.style.backgroundColor = '#0052a3'
@@ -379,8 +378,40 @@ export default function ETicketPage() {
             >
               ← Quay về trang chủ
             </button>
+
+            {/* Feedback Button */}
+            <button
+              onClick={() => setFeedbackOpen(true)}
+              className="btn w-100 shadow-sm"
+              style={{
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                padding: '0.85rem',
+                fontWeight: 600,
+                borderRadius: '0.5rem',
+                border: 'none',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = '#d97706'
+                e.target.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = '#f59e0b'
+                e.target.style.boxShadow = 'none'
+              }}
+            >
+              ⭐ Đánh giá trải nghiệm
+            </button>
           </div>
         </div>
+
+        {/* Feedback Form Modal */}
+        <FeedbackForm
+          isOpen={feedbackOpen}
+          onClose={() => setFeedbackOpen(false)}
+          bookingId={bookingId}
+        />
       </div>
     </div>
   )

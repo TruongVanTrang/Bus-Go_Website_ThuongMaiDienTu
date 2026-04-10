@@ -7,7 +7,7 @@ import './SearchBar.css'
 
 export default function SearchBar() {
   const navigate = useNavigate()
-  const [step, setStep] = useState(1) // Step 1: Category, Step 2: Bus Type, Step 3: Route
+  const [step, setStep] = useState(1) // Step 1: Category, Step 2: Route Details
   const [formData, setFormData] = useState({
     category: '',
     busType: '',
@@ -16,12 +16,6 @@ export default function SearchBar() {
     date: '',
     departureTime: ''
   })
-
-  // Get available bus types for selected category
-  const busList = useMemo(() => {
-    if (!formData.category) return []
-    return Object.values(BUS_TYPES).filter(bus => bus.category === formData.category)
-  }, [formData.category])
 
   // Get available destinations based on category
   const destinations = useMemo(() => {
@@ -44,14 +38,6 @@ export default function SearchBar() {
       departureTime: ''
     }))
     setStep(2)
-  }
-
-  const handleBusTypeSelect = (busTypeId) => {
-    setFormData(prev => ({
-      ...prev,
-      busType: busTypeId
-    }))
-    setStep(3)
   }
 
   const handleChange = (e) => {
@@ -140,84 +126,9 @@ export default function SearchBar() {
           </div>
         )}
 
-        {/* Step 2: Select Bus Type */}
+        {/* Step 2: Route and Details */}
         {step === 2 && (
-          <div className="search-step-section">
-            <h4 className="text-white mb-4">
-              <span 
-                style={{ cursor: 'pointer', fontSize: '14px', opacity: '0.7' }}
-                onClick={() => setStep(1)}
-              >
-                ← Quay lại
-              </span>
-              <span style={{ fontSize: '16px', fontWeight: '600', marginLeft: '10px' }}>
-                Bước 2: Chọn loại xe - {BUS_CATEGORIES[formData.category]?.name}
-              </span>
-            </h4>
-            <div className="bus-type-selector" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-              {busList.map(bus => (
-                <div
-                  key={bus.id}
-                  className="bus-type-card"
-                  onClick={() => handleBusTypeSelect(bus.id)}
-                  style={{
-                    padding: '20px',
-                    border: '2px solid #FFC107',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    backgroundColor: '#FFFFFF',
-                    color: '#333333',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#FFF9E6'
-                    e.currentTarget.style.borderColor = '#FF8C00'
-                    e.currentTarget.style.transform = 'translateY(-8px)'
-                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#FFFFFF'
-                    e.currentTarget.style.borderColor = '#FFC107'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  <div style={{ fontSize: '32px', marginBottom: '10px' }}>{bus.icon}</div>
-                  <h6 style={{ marginBottom: '5px', fontWeight: '700', fontSize: '14px', color: '#0066cc' }}>{bus.name}</h6>
-                  <p style={{ fontSize: '12px', color: '#666666', marginBottom: '5px' }}>
-                    {bus.seats} chỗ ngồi{bus.standing && `, ${bus.standing} chỗ đứng`}
-                  </p>
-                  {bus.description && (
-                    <p style={{ fontSize: '11px', color: '#999999', marginTop: '5px' }}>{bus.description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Route and Details */}
-        {step === 3 && (
           <form onSubmit={handleSearch} className="search-form">
-            <div style={{ marginBottom: '15px' }}>
-              <p 
-                style={{ 
-                  cursor: 'pointer', 
-                  fontSize: '14px', 
-                  opacity: '0.7', 
-                  color: 'blue',
-                  marginBottom: '10px'
-                }}
-                onClick={() => setStep(2)}
-              >
-                ← Quay lại chọn loại xe
-              </p>
-              <p style={{ color: 'blue', fontSize: '12px', opacity: '0.9' }}>
-                <strong>Đã chọn:</strong> {BUS_CATEGORIES[formData.category]?.name} - {BUS_TYPES[formData.busType]?.name}
-              </p>
-            </div>
-
             <div className="row g-3">
               {/* From */}
               <div className="col-lg-3 col-md-6">

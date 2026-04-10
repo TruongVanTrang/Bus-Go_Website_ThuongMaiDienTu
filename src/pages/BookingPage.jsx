@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import SeatMap from '../components/booking/SeatMap'
-import BookingSummary from '../components/booking/BookingSummary'
+import PassengerQuantity from '../components/booking/PassengerQuantity'
+import Stepper from '../components/common/Stepper'
+import BackButton from '../components/common/BackButton'
 import './BookingPage.css'
 
 export default function BookingPage() {
   const { tripId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const [trip, setTrip] = useState(null)
   const [selectedSeats, setSelectedSeats] = useState([])
+  const [passengerQuantity, setPassengerQuantity] = useState(0)
   const [passengerInfo, setPassengerInfo] = useState({
     firstName: '',
     lastName: '',
@@ -25,97 +29,28 @@ export default function BookingPage() {
 
   // Mock trip data
   useEffect(() => {
-    const mockTrip = {
-      id: tripId,
-      from: 'Hà Nội',
-      to: 'Sài Gòn',
-      departureTime: '08:00',
-      date: '2024-01-15',
-      operator: 'BusGo Express',
-      busType: 'bus',
-      seats: 45,
-      price: 250000,
-      distance: 1650,
-      occupiedSeats: [1, 3, 5, 10, 15, 20, 25]
+    // If trip data is passed from SearchResultsPage, use it
+    if (location.state?.trip) {
+      setTrip(location.state.trip)
+    } else {
+      // Fallback to mock data
+      const mockTrip = {
+        id: tripId,
+        from: 'Hà Nội',
+        to: 'Sài Gòn',
+        departureTime: '08:00',
+        date: '2024-01-15',
+        operator: 'BusGo Express',
+        category: 'interCity',
+        busType: 'bus',
+        seats: 35,
+        price: 250000,
+        distance: 1650,
+        occupiedSeats: [1, 3, 5, 10, 15, 20, 25]
+      }
+      setTrip(mockTrip)
     }
-    setTrip(mockTrip)
-  }, [tripId])
-
-  // Cargo type definitions
-  const cargoTypes = {
-    none: {
-      label: 'Không gửi hàng',
-      priceRange: 'Miễn phí',
-      minPrice: 0,
-      maxPrice: 0
-    },
-    light: {
-      label: 'Hàng nhẹ/Tài liệu (<10kg)',
-      priceRange: '20.000đ - 60.000đ',
-      minPrice: 20000,
-      maxPrice: 60000
-    },
-    heavy: {
-      label: 'Hàng nặng (>10kg)',
-      priceRange: '2.000đ - 6.400đ/kg',
-      minPrice: 2000,
-      maxPrice: 6400
-    },
-    scooter: {
-      label: 'Xe tay ga',
-      priceRange: '1.200.000đ - 1.300.000đ',
-      minPrice: 1200000,
-      maxPrice: 1300000
-    },
-    maxi_scooter: {
-      label: 'Xe tay côn/SH',
-      priceRange: '1.300.000đ - 2.000.000đ',
-      minPrice: 1300000,
-      maxPrice: 2000000
-    },
-    motorcycle: {
-      label: 'Gửi xe máy thông thường',
-      priceRange: 'Tính theo khoảng cách',
-      minPrice: 200000,
-      maxPrice: 600000
-    }
-  }
-
-  // Calculate cargo price based on type and weight/distance
-  const calculateCargoPrice = (type, weight = '') => {
-    if (type === 'none') return 0
-    
-    if (type === 'heavy' && weight) {
-      const w = parseFloat(weight)
-      if (w < 10) return cargoTypes.heavy.minPrice
-      const pricePerKg = cargoTypes.heavy.maxPrice
-      return Math.min(w * pricePerKg, 100000) // Cap at 100k
-    }
-
-    if (type === 'motorcycle' && trip) {
-      // Distance-based calculation: 200-600k for 1650km distance
-      const distanceFactor = Math.min(trip.distance / 1650, 1)
-      return cargoTypes.motorcycle.minPrice + 
-             (cargoTypes.motorcycle.maxPrice - cargoTypes.motorcycle.minPrice) * distanceFactor
-    }
-
-    if (type === 'light') {
-      return cargoTypes.light.minPrice + Math.random() * 
-             (cargoTypes.light.maxPrice - cargoTypes.light.minPrice)
-    }
-
-    if (type === 'scooter') {
-      return cargoTypes.scooter.minPrice + Math.random() * 
-             (cargoTypes.scooter.maxPrice - cargoTypes.scooter.minPrice)
-    }
-
-    if (type === 'maxi_scooter') {
-      return cargoTypes.maxi_scooter.minPrice + Math.random() * 
-             (cargoTypes.maxi_scooter.maxPrice - cargoTypes.maxi_scooter.minPrice)
-    }
-
-    return 0
-  }
+  }, [tripId, location.state])
 
   const handleSeatSelect = (seatNumber) => {
     setSelectedSeats(prev => {
@@ -133,6 +68,74 @@ export default function BookingPage() {
       ...prev,
       [name]: value
     }))
+  }
+
+  // Cargo type definitions
+  const cargoTypes = {
+    none: {
+      label: 'Không gửi hàng',
+      priceRange: 'Miễn phí',
+      minPrice: 0,
+      maxPrice: 0
+    },
+    light: {
+      label: 'Hàng nhẹ/Tài liệu (<10kg)',
+      priceRange: 'Miễn phí',
+      minPrice: 0,
+      maxPrice: 0
+    },
+    heavy: {
+      label: 'Hàng nặng (>10kg)',
+      priceRange: '3.000đ - 6.500đ/kg',
+      minPrice: 3000,
+      maxPrice: 6500
+    },
+    scooter: {
+      label: 'Xe tay ga',
+      priceRange: '1.000.000đ',
+      minPrice: 1000000,
+      maxPrice: 1000000
+    },
+    maxi_scooter: {
+      label: 'Xe tay côn/SH',
+      priceRange: '1.300.000đ',
+      minPrice: 1300000,
+      maxPrice: 1300000
+    },
+    motorcycle: {
+      label: 'Gửi xe máy thông thường',
+      priceRange: '320.000đ - 400.000đ',
+      minPrice: 320000,
+      maxPrice: 400000
+    }
+  }
+
+  // Calculate cargo price based on type and weight/distance
+  const calculateCargoPrice = (type, weight = '') => {
+    if (type === 'none' || type === 'light') return 0
+    
+    if (type === 'heavy' && weight) {
+      const w = parseFloat(weight)
+      if (w < 10) return 0 // Miễn phí nếu < 10kg
+      const pricePerKg = (cargoTypes.heavy.minPrice + cargoTypes.heavy.maxPrice) / 2 // Trung bình
+      return Math.round(w * pricePerKg)
+    }
+
+    if (type === 'scooter') {
+      return cargoTypes.scooter.minPrice
+    }
+
+    if (type === 'maxi_scooter') {
+      return cargoTypes.maxi_scooter.minPrice
+    }
+
+    if (type === 'motorcycle') {
+      // Random giữa 320k - 400k
+      return cargoTypes.motorcycle.minPrice + Math.random() * 
+             (cargoTypes.motorcycle.maxPrice - cargoTypes.motorcycle.minPrice)
+    }
+
+    return 0
   }
 
   const handleCargoTypeChange = (e) => {
@@ -156,12 +159,16 @@ export default function BookingPage() {
   }
 
   const getTotalPrice = () => {
-    return trip.price * selectedSeats.length + cargoInfo.estimatedPrice
+    const seatsToBook = trip.category === 'city' ? passengerQuantity : selectedSeats.length
+    return trip.price * seatsToBook + cargoInfo.estimatedPrice
   }
 
   const handleBooking = () => {
-    if (selectedSeats.length === 0) {
-      alert('Vui lòng chọn ít nhất một ghế')
+    // For city trips, use passenger quantity; for intercity, use selected seats
+    const seatsToBook = trip.category === 'city' ? passengerQuantity : selectedSeats.length
+    
+    if (seatsToBook === 0) {
+      alert(trip.category === 'city' ? 'Vui lòng chọn số lượng hành khách' : 'Vui lòng chọn ít nhất một ghế')
       return
     }
 
@@ -179,7 +186,8 @@ export default function BookingPage() {
     navigate('/payment', {
       state: {
         trip,
-        selectedSeats,
+        selectedSeats: trip.category === 'city' ? [] : selectedSeats,
+        passengerQuantity: trip.category === 'city' ? passengerQuantity : 0,
         passengerInfo,
         cargoInfo,
         totalPrice: getTotalPrice()
@@ -193,16 +201,40 @@ export default function BookingPage() {
 
   return (
     <div className="booking-page">
+      {/* Stepper */}
+      <Stepper
+        currentStep={0}
+        steps={[
+          { title: 'Chọn chỗ', description: 'Sơ đồ ghế' },
+          { title: 'Thông tin', description: 'Hành khách' },
+          { title: 'Thanh toán', description: 'Phương thức' },
+          { title: 'Vé', description: 'Hoàn tất' }
+        ]}
+      />
+
       <div className="container-fluid px-md-5 px-3 py-5">
+        {/* Back Button */}
+        <div className="mb-4">
+          <BackButton label="Quay lại" />
+        </div>
+
         <h2 className="mb-5 fw-bold text-neutral-900">Chọn ghế & Đặt chỗ</h2>
 
-        {/* Section 1: Seat Map */}
+        {/* Section 1: Seat Selection - Different based on category */}
         <div className="booking-section mb-5">
-          <SeatMap
-            trip={trip}
-            selectedSeats={selectedSeats}
-            onSeatSelect={handleSeatSelect}
-          />
+          {trip.category === 'city' ? (
+            <PassengerQuantity
+              trip={trip}
+              quantity={passengerQuantity}
+              onQuantityChange={setPassengerQuantity}
+            />
+          ) : (
+            <SeatMap
+              trip={trip}
+              selectedSeats={selectedSeats}
+              onSeatSelect={handleSeatSelect}
+            />
+          )}
         </div>
 
         {/* Section 2: Passenger Info */}
@@ -313,7 +345,7 @@ export default function BookingPage() {
                 {/* Show weight input for heavy cargo */}
                 {cargoInfo.type === 'heavy' && (
                   <div className="col-12">
-                    <label className="form-label fw-600 text-neutral-700">Cân nặng (kg)</label>
+                    <label className="form-label fw-600 text-neutral-700">Cân nặng (kg) - Tối thiểu 10kg</label>
                     <input
                       type="number"
                       className="form-control form-input"
@@ -323,9 +355,14 @@ export default function BookingPage() {
                       onChange={handleCargoWeightChange}
                       placeholder="Nhập cân nặng từ 10kg trở lên"
                     />
-                    {cargoInfo.weight && (
+                    {cargoInfo.weight && parseFloat(cargoInfo.weight) >= 10 && (
                       <small className="text-muted">
                         Ước tính: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cargoInfo.estimatedPrice)}
+                      </small>
+                    )}
+                    {cargoInfo.weight && parseFloat(cargoInfo.weight) < 10 && (
+                      <small className="text-success">
+                        Miễn phí (dưới 10kg)
                       </small>
                     )}
                   </div>
@@ -336,22 +373,17 @@ export default function BookingPage() {
                   <div className="col-12">
                     <div className="alert alert-info mb-0">
                       <div className="small">
-                        <strong>Ước tính cước phí:</strong> {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cargoInfo.estimatedPrice)}
+                        <strong>Cước phí:</strong> {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cargoInfo.estimatedPrice)}
                       </div>
-                      {cargoInfo.type === 'motorcycle' && (
-                        <div className="small mt-2">
-                          Cước phí được tính dựa trên khoảng cách {trip?.distance}km giữa {trip?.from} - {trip?.to}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
 
-                {cargoInfo.type !== 'none' && cargoInfo.type !== 'heavy' && (
+                {cargoInfo.type === 'light' && (
                   <div className="col-12">
                     <div className="alert alert-success mb-0">
                       <div className="small">
-                        <strong>Cước phí dự kiến:</strong> {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cargoInfo.estimatedPrice)}
+                        <strong>Cước phí:</strong> Miễn phí
                       </div>
                     </div>
                   </div>
@@ -370,9 +402,9 @@ export default function BookingPage() {
               <div className="row g-3">
                 <div className="col-12">
                   <div className="d-flex justify-content-between mb-2">
-                    <span className="text-muted">Giá vé ({selectedSeats.length} ghế):</span>
+                    <span className="text-muted">Giá vé ({trip.category === 'city' ? passengerQuantity : selectedSeats.length} {trip.category === 'city' ? 'hành khách' : 'ghế'}):</span>
                     <span className="fw-600">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(trip?.price * selectedSeats.length || 0)}
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(trip?.price * (trip.category === 'city' ? passengerQuantity : selectedSeats.length) || 0)}
                     </span>
                   </div>
                   

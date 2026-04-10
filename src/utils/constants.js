@@ -211,12 +211,24 @@ export const CITY_STOPS = [
 
 // Inter-city popular routes
 export const INTERCITY_ROUTES = [
-  { from: 'Đà Nẵng', to: 'Hà Nội', distance: '1000 km' },
-  { from: 'Đà Nẵng', to: 'Sài Gòn', distance: '950 km' },
-  { from: 'Đà Nẵng', to: 'Huế', distance: '100 km' },
-  { from: 'Đà Nẵng', to: 'Quảng Nam', distance: '40 km' },
-  { from: 'Đà Nẵng', to: 'Quảng Ngãi', distance: '100 km' },
-  { from: 'Đà Nẵng', to: 'Kon Tum', distance: '200 km' }
+  { from: 'Đà Nẵng', to: 'Hà Nội', distance: '1000 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Sài Gòn', distance: '950 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Huế', distance: '100 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Quảng Nam', distance: '40 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Quảng Ngãi', distance: '100 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Kon Tum', distance: '200 km', category: 'interCity' }
+]
+
+// City transit routes (nội thành)
+export const CITY_ROUTES = [
+  { from: 'Bến xe trung tâm', to: 'Sân bay Quốc tế Đà Nẵng', distance: '5 km', category: 'city' },
+  { from: 'Bến xe trung tâm', to: 'Bãi biển Mỹ Khê', distance: '3 km', category: 'city' },
+  { from: 'Cầu Rồng', to: 'Phố cổ Hội An', distance: '30 km', category: 'city' },
+  { from: 'Sân bay Quốc tế Đà Nẵng', to: 'Bãi biển Non Nước', distance: '25 km', category: 'city' },
+  { from: 'Đại học Duy Tân', to: 'Trung tâm thành phố', distance: '8 km', category: 'city' },
+  { from: 'Khu công nghiệp Hòa Cầm', to: 'Bến xe trung tâm', distance: '12 km', category: 'city' },
+  { from: 'Đại học Kinh tế Đà Nẵng', to: 'Cộng Hòa (trung tâm)', distance: '6 km', category: 'city' },
+  { from: 'Hùng Vương', to: 'Phạm Văn Đồng', distance: '4 km', category: 'city' }
 ]
 
 // Departure time slots with detailed categorization

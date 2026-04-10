@@ -1,0 +1,128 @@
+.stepper-container {
+  width: 100%;
+  padding: 2rem 0;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.stepper-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  gap: 1rem;
+}
+
+.stepper-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  position: relative;
+}
+
+.stepper-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.stepper-circle.pending {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  border: 2px solid #d1d5db;
+}
+
+.stepper-circle.active {
+  background-color: #0066cc;
+  color: white;
+  border: 2px solid #0052a3;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+  transform: scale(1.1);
+}
+
+.stepper-circle.completed {
+  background-color: #22c55e;
+  color: white;
+  border: 2px solid #16a34a;
+}
+
+.stepper-icon,
+.stepper-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepper-label {
+  text-align: center;
+  width: 100%;
+}
+
+.stepper-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.stepper-description {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.stepper-line {
+  position: absolute;
+  top: 25px;
+  left: 50%;
+  width: 100%;
+  height: 3px;
+  background-color: #e5e7eb;
+  transform: translateX(50%);
+  transition: background-color 0.3s ease;
+  z-index: -1;
+}
+
+.stepper-line.completed {
+  background-color: #22c55e;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .stepper-wrapper {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .stepper-item {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .stepper-circle {
+    width: 40px;
+    height: 40px;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .stepper-label {
+    text-align: left;
+  }
+
+  .stepper-line {
+    display: none;
+  }
+}

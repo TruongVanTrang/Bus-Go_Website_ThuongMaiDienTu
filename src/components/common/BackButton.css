@@ -1,0 +1,59 @@
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  color: #0066cc;
+  border: 1px solid #0066cc;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  background-color: #f0f7ff;
+  border-color: #0052a3;
+  color: #0052a3;
+  transform: translateX(-2px);
+}
+
+.back-button:active {
+  transform: translateX(-1px);
+}
+
+/* Topbar variant */
+.back-button.topbar {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.5rem 0.75rem;
+  background-color: transparent;
+  border: none;
+  color: #374151;
+}
+
+.back-button.topbar:hover {
+  background-color: #f3f4f6;
+  border: none;
+  color: #0066cc;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .back-button {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .back-button span {
+    display: none;
+  }
+
+  .back-button.topbar {
+    left: 0.5rem;
+  }
+}

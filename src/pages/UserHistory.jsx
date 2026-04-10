@@ -662,8 +662,8 @@ export default function UserHistory() {
                   </div>
                 </div>
 
-                {/* Cargo Tracking Timeline */}
-                {selectedBooking.cargoInfo?.type !== 'none' && (
+                {/* Cargo Tracking Timeline - Chỉ hiển thị khi chuyến đã hoàn thành hoặc đã hủy */}
+                {selectedBooking.cargoInfo?.type !== 'none' && getTripStatus(selectedBooking) !== 'upcoming' && (
                   <div className="cargo-tracking mt-4">
                     <h6 className="fw-bold mb-3">Theo dõi hàng hóa</h6>
                     <div className="timeline">

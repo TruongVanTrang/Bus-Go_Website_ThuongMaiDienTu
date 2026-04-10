@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FiCheckCircle, FiClock, FiLock } from 'react-icons/fi'
 import QRCode from 'qrcode.react'
+import Stepper from '../components/common/Stepper'
+import BackButton from '../components/common/BackButton'
 import './PaymentPage.css'
 
 export default function PaymentPage() {
@@ -141,6 +143,25 @@ export default function PaymentPage() {
       setConfirmLoading(false)
       setIsConfirmed(true)
       
+      // Mock: Send email with ticket (in real app, call backend API)
+      const emailData = {
+        to: bookingData.passengerInfo?.email || 'customer@example.com',
+        subject: `Vé xe BusGo - Mã đặt chỗ ${bookingId}`,
+        body: `Vé điện tử của bạn đã sẵn sàng. Mã QR và thông tin chi tiết được gửi kèm.`,
+        bookingId,
+        qrCode: JSON.stringify({
+          bookingId,
+          amount: totalAmount,
+          merchant: 'BusGo',
+          method: selectedPaymentMethod
+        })
+      }
+      
+      // Store in localStorage (mock email sending)
+      const sentEmails = JSON.parse(localStorage.getItem('busgo_emails') || '[]')
+      sentEmails.push({ ...emailData, timestamp: new Date().toISOString() })
+      localStorage.setItem('busgo_emails', JSON.stringify(sentEmails))
+
       // Redirect to ticket page after 2 seconds
       setTimeout(() => {
         navigate(`/ticket/${bookingId}`, {
@@ -191,7 +212,23 @@ export default function PaymentPage() {
 
   return (
     <div className="payment-page">
+      {/* Stepper */}
+      <Stepper
+        currentStep={2}
+        steps={[
+          { title: 'Chọn chỗ', description: 'Sơ đồ ghế' },
+          { title: 'Thông tin', description: 'Hành khách' },
+          { title: 'Thanh toán', description: 'Phương thức' },
+          { title: 'Vé', description: 'Hoàn tất' }
+        ]}
+      />
+
       <div className="container-fluid px-md-5 px-3 py-5">
+        {/* Back Button */}
+        <div className="mb-4">
+          <BackButton label="Quay lại" />
+        </div>
+
         {/* Header */}
         <div className="row mb-5">
           <div className="col-12">

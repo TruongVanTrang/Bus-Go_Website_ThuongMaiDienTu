@@ -1,0 +1,21 @@
+.passenger-quantity-container {
+  width: 100%;
+}
+
+.quantity-selector {
+  padding: 2rem 0;
+}
+
+.passenger-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.passenger-item {
+  transition: all 0.2s ease;
+}
+
+.passenger-item:hover {
+  background-color: #f0f7ff !important;
+  border-color: #0066cc !important;
+}

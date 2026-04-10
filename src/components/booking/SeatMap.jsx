@@ -1,34 +1,26 @@
 import './SeatMap.css'
 
 export default function SeatMap({ trip, selectedSeats, onSeatSelect }) {
-  // Generate seat layout based on bus type
+  // Generate seat layout - 2 types: 16-seater (4 columns) or 35-seater (5 columns)
   const generateSeats = () => {
     let seats = []
+    const totalSeats = trip.seats
     
-    if (trip.busType === 'bus') {
-      // 45-seater bus layout: 5 rows with 9 seats each
-      for (let row = 0; row < 9; row++) {
+    if (totalSeats === 35) {
+      // 35-seater: 5 columns, 7 rows
+      for (let row = 0; row < 7; row++) {
         for (let col = 0; col < 5; col++) {
           const seatNumber = row * 5 + col + 1
-          if (seatNumber <= trip.seats) {
-            seats.push(seatNumber)
-          }
+          seats.push(seatNumber)
         }
       }
-    } else if (trip.busType === 'minibus') {
-      // 16-seater minibus: 4 rows with 4 seats each
+    } else if (totalSeats === 16) {
+      // 16-seater: 4 columns, 4 rows
       for (let row = 0; row < 4; row++) {
         for (let col = 0; col < 4; col++) {
           const seatNumber = row * 4 + col + 1
-          if (seatNumber <= trip.seats) {
-            seats.push(seatNumber)
-          }
+          seats.push(seatNumber)
         }
-      }
-    } else {
-      // 4-seater: standard layout
-      for (let i = 1; i <= trip.seats; i++) {
-        seats.push(i)
       }
     }
 
@@ -46,7 +38,7 @@ export default function SeatMap({ trip, selectedSeats, onSeatSelect }) {
   }
 
   const seats = generateSeats()
-  const seatsPerRow = trip.busType === 'bus' ? 5 : (trip.busType === 'minibus' ? 4 : 2)
+  const seatsPerRow = trip.seats === 35 ? 5 : 4
 
   return (
     <div className="seat-map-container">

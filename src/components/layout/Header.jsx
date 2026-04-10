@@ -1,16 +1,42 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { FiMenu, FiX, FiClock } from 'react-icons/fi'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { FiMenu, FiX, FiClock, FiArrowLeft } from 'react-icons/fi'
 import { useState } from 'react'
 import './Header.css'
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Show back button on specific routes
+  const showBackButton = ['/booking', '/payment', '/ticket', '/search'].some(route =>
+    location.pathname.startsWith(route)
+  )
 
   return (
     <header className="bg-white border-bottom shadow-sm sticky-top">
       <nav className="navbar navbar-expand-lg navbar-light">
         <div className="container-fluid px-md-5 px-3">
+          {/* Back Button - Mobile & Desktop */}
+          {showBackButton && (
+            <button
+              onClick={() => navigate(-1)}
+              className="btn btn-sm me-2"
+              style={{
+                backgroundColor: 'transparent',
+                color: '#0066cc',
+                border: 'none',
+                padding: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}
+              title="Quay lại"
+            >
+              <FiArrowLeft size={20} />
+            </button>
+          )}
+
           {/* Logo */}
           <Link to="/" className="navbar-brand fw-bold fs-4">
             <span className="text-primary" style={{ color: 'var(--color-primary-600)' }}>

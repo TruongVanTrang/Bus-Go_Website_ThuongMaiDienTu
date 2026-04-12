@@ -1,21 +1,31 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiMapPin, FiCalendar, FiChevronRight } from 'react-icons/fi'
+import { FiMapPin, FiCalendar, FiChevronRight, FiZap, FiWifi, FiActivity } from 'react-icons/fi'
 import { MdDirectionsBus } from 'react-icons/md'
 import { BUS_CATEGORIES, BUS_TYPES, CITY_STOPS, INTERCITY_ROUTES, DEPARTURE_TIMES } from '../../utils/constants'
 import './SearchBar.css'
 
 export default function SearchBar() {
   const navigate = useNavigate()
-  const [step, setStep] = useState(1) // Step 1: Category, Step 2: Route Details
   const [formData, setFormData] = useState({
-    category: '',
+    category: 'city',
     busType: '',
     from: '',
     to: '',
     date: '',
     departureTime: ''
   })
+  const [showSmartTags, setShowSmartTags] = useState(false)
+
+  // Smart Suggestion Tags
+  const smartTags = [
+    { id: 1, icon: '🚐', label: 'Xe 16 chỗ cao cấp', busType: '16-seater-premium' },
+    { id: 2, icon: '📡', label: 'Có WiFi & Sạc', feature: 'wifi_charger' },
+    { id: 3, icon: '🌙', label: 'Chuyến đêm', time: 'night' },
+    { id: 4, icon: '💰', label: 'Giá dưới 200k', price: 'budget' },
+    { id: 5, icon: '⭐', label: 'Xe 5 sao', rating: 5 },
+    { id: 6, icon: '🚌', label: 'Xe 35 chỗ', busType: '35-seater' }
+  ]
 
   // Get available destinations based on category
   const destinations = useMemo(() => {
@@ -37,7 +47,6 @@ export default function SearchBar() {
       date: '',
       departureTime: ''
     }))
-    setStep(2)
   }
 
   const handleChange = (e) => {
@@ -76,58 +85,50 @@ export default function SearchBar() {
           Khám phá các tuyến xe nội - ngoại thành Đà Nẵng của chúng tôi - BusGo
         </p>
 
-        {/* Step 1: Select Bus Category */}
-        {step === 1 && (
-          <div className="search-step-section">
-            <h4 className="text-white mb-4">
-              <span style={{ fontSize: '16px', fontWeight: '600' }}>Bước 1:</span> Chọn loại dịch vụ
-            </h4>
-            <div className="bus-category-selector">
-              {Object.entries(BUS_CATEGORIES).map(([key, category]) => (
-                <div
-                  key={key}
-                  className="category-card"
-                  onClick={() => handleCategorySelect(key)}
-                  style={{
-                    padding: '20px',
-                    margin: '10px',
-                    border: '2px solid #FFC107',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    backgroundColor: '#FFFFFF',
-                    color: '#333333',
-                    transition: 'all 0.3s ease',
-                    flex: '1',
-                    minWidth: '200px',
-                    textAlign: 'center',
-                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#FFF9E6'
-                    e.currentTarget.style.borderColor = '#FF8C00'
-                    e.currentTarget.style.transform = 'translateY(-8px)'
-                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#FFFFFF'
-                    e.currentTarget.style.borderColor = '#FFC107'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>🚌</div>
-                  <h5 style={{ marginBottom: '8px', fontWeight: '700', color: '#0066cc' }}>{category.name}</h5>
-                  <p style={{ fontSize: '13px', opacity: '0.85', marginBottom: '0', color: '#666666' }}>
-                    {category.description}
-                  </p>
-                </div>
-              ))}
-            </div>
+        {/* Smart Suggestion Tags */}
+        <div className="smart-tags-section mb-4">
+          <p className="smart-tags-label">Tìm kiếm nhanh:</p>
+          <div className="smart-tags-container">
+            {smartTags.map(tag => (
+              <button
+                key={tag.id}
+                className="smart-tag-btn"
+                onClick={() => {
+                  setShowSmartTags(false)
+                  // Handle smart tag selection
+                }}
+                title={tag.label}
+              >
+                <span className="tag-icon">{tag.icon}</span>
+                <span className="tag-label">{tag.label}</span>
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* Step 2: Route and Details */}
-        {step === 2 && (
+        {/* Buttons and Search Form Wrapper */}
+        <div className="search-wrapper">
+          {/* Category Selection Buttons */}
+          <div className="route-type-buttons">
+            <button
+              type="button"
+              className={`route-type-btn ${formData.category === 'city' ? 'active' : ''}`}
+              onClick={() => handleCategorySelect('city')}
+            >
+              <span className="btn-icon">🏢</span>
+              <span className="btn-text">Nội thành</span>
+            </button>
+            <button
+              type="button"
+              className={`route-type-btn ${formData.category === 'interCity' ? 'active' : ''}`}
+              onClick={() => handleCategorySelect('interCity')}
+            >
+              <span className="btn-icon">🗺️</span>
+              <span className="btn-text">Ngoại thành</span>
+            </button>
+          </div>
+
+          {/* Search Form */}
           <form onSubmit={handleSearch} className="search-form">
             <div className="row g-3">
               {/* From */}
@@ -259,7 +260,7 @@ export default function SearchBar() {
               </div>
             </div>
           </form>
-        )}
+        </div>
 
         {/* Quick Stats */}
         <div className="row mt-5 pt-4 border-top border-white border-opacity-25 justify-content-around">

@@ -1,0 +1,383 @@
+/* ===== FEATURED TRIPS SECTION ===== */
+.featured-trips-section {
+  padding: 60px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.header-content h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.header-content .icon {
+  font-size: 36px;
+}
+
+.header-content p {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+
+/* ===== FEATURED CARDS CONTAINER ===== */
+.featured-trips-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ===== FEATURED CARD ===== */
+.featured-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  animation: cardSlideIn 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.featured-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 40px rgba(102, 126, 234, 0.25);
+}
+
+.featured-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+/* ===== BADGES ===== */
+.discount-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8787 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+  z-index: 10;
+}
+
+.discount-badge span {
+  font-size: 20px;
+}
+
+.featured-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* ===== CARD HEADER ===== */
+.card-header {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.header-top {
+  margin-bottom: 12px;
+}
+
+.route-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.city-from,
+.city-to {
+  color: #1a1a1a;
+}
+
+.separator {
+  color: #667eea;
+  font-weight: 700;
+}
+
+.rating-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stars {
+  display: flex;
+  gap: 4px;
+}
+
+.stars svg {
+  color: #ddd;
+  transition: color 0.2s ease;
+}
+
+.stars svg.filled {
+  color: #ffc107;
+  fill: #ffc107;
+}
+
+.rating-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffc107;
+}
+
+.review-count {
+  font-size: 12px;
+  color: #999;
+}
+
+/* ===== POPULARITY BAR ===== */
+.popularity-bar {
+  margin-bottom: 16px;
+}
+
+.bar-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.bar-label svg {
+  color: #667eea;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+/* ===== BUS INFO ===== */
+.bus-info {
+  margin-bottom: 12px;
+}
+
+.bus-type-badge {
+  display: inline-block;
+  padding: 8px 14px;
+  background: #e8eaf6;
+  color: #667eea;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ===== AMENITIES ===== */
+.amenities-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.amenity-item {
+  padding: 6px 12px;
+  background: #fff3cd;
+  color: #856404;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ===== PRICING SECTION ===== */
+.pricing-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.price-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.original-price {
+  font-size: 12px;
+  color: #999;
+  text-decoration: line-through;
+}
+
+.current-price {
+  font-size: 22px;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.btn-book-featured {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-book-featured:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.btn-book-featured:active {
+  transform: translateY(0);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .featured-trips-container {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .header-content h2 {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .featured-trips-section {
+    padding: 40px 15px;
+  }
+
+  .section-header {
+    margin-bottom: 35px;
+  }
+
+  .header-content h2 {
+    font-size: 24px;
+    gap: 8px;
+  }
+
+  .header-content .icon {
+    font-size: 28px;
+  }
+
+  .header-content p {
+    font-size: 14px;
+  }
+
+  .featured-trips-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .featured-card {
+    padding: 20px;
+  }
+
+  .discount-badge {
+    width: 50px;
+    height: 50px;
+    font-size: 12px;
+  }
+
+  .current-price {
+    font-size: 18px;
+  }
+
+  .pricing-section {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .btn-book-featured {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .featured-trips-section {
+    padding: 30px 10px;
+  }
+
+  .header-content h2 {
+    font-size: 20px;
+  }
+
+  .featured-card {
+    padding: 16px;
+  }
+
+  .route-display {
+    font-size: 14px;
+  }
+
+  .amenities-display {
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .amenity-item {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+}

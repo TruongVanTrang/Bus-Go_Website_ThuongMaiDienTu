@@ -6,6 +6,13 @@ export default function Stepper({ currentStep, steps }) {
       <div className="stepper-wrapper">
         {steps.map((step, index) => (
           <div key={index} className="stepper-item">
+            {/* Connector Line (before circle) */}
+            {index > 0 && (
+              <div
+                className={`stepper-line-before ${index <= currentStep ? 'completed' : 'pending'}`}
+              />
+            )}
+
             {/* Step Circle */}
             <div
               className={`stepper-circle ${
@@ -19,18 +26,18 @@ export default function Stepper({ currentStep, steps }) {
               )}
             </div>
 
+            {/* Connector Line (after circle) */}
+            {index < steps.length - 1 && (
+              <div
+                className={`stepper-line-after ${index < currentStep ? 'completed' : 'pending'}`}
+              />
+            )}
+
             {/* Step Label */}
             <div className="stepper-label">
               <div className="stepper-title">{step.title}</div>
               <div className="stepper-description">{step.description}</div>
             </div>
-
-            {/* Connector Line */}
-            {index < steps.length - 1 && (
-              <div
-                className={`stepper-line ${index < currentStep ? 'completed' : 'pending'}`}
-              />
-            )}
           </div>
         ))}
       </div>

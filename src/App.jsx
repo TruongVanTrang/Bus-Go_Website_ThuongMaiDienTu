@@ -8,9 +8,12 @@ import BookingPage from './pages/BookingPage'
 import PaymentPage from './pages/PaymentPage'
 import ETicketPage from './pages/ETicketPage'
 import UserHistory from './pages/UserHistory'
+import WatchlistPage from './pages/WatchlistPage'
+import UserProfile from './pages/UserProfile'
 
 // Auth Components
 import LoginPage from './auth/LoginPage'
+import RegisterPage from './auth/RegisterPage'
 import UnauthorizedPage from './auth/UnauthorizedPage'
 import { ProtectedRoute, RoleProtectedRoute, StaffProtectedRoute } from './auth/ProtectedRoute'
 
@@ -23,6 +26,7 @@ function App() {
       <Routes>
         {/* ==================== AUTH ROUTES ==================== */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* ==================== ADMIN ROUTES (Staff only) ==================== */}
@@ -121,6 +125,32 @@ function App() {
               <Header />
               <main className="flex-grow-1">
                 <UserHistory />
+              </main>
+              <Footer />
+              <ChatBot />
+            </div>
+          }
+        />
+        <Route
+          path="/watchlist"
+          element={
+            <div className="d-flex flex-column min-vh-100">
+              <Header />
+              <main className="flex-grow-1">
+                <WatchlistPage />
+              </main>
+              <Footer />
+              <ChatBot />
+            </div>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <div className="d-flex flex-column min-vh-100">
+              <Header />
+              <main className="flex-grow-1">
+                <UserProfile />
               </main>
               <Footer />
               <ChatBot />

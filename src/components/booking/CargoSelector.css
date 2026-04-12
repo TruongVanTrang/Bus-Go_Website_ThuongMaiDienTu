@@ -1,0 +1,295 @@
+/* ===== CARGO SELECTOR CONTAINER ===== */
+.cargo-selector-container {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.cargo-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f5f5f5;
+}
+
+.cargo-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 8px;
+}
+
+.cargo-header p {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+/* ===== CARGO TYPES ===== */
+.cargo-types {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.cargo-option {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  text-align: left;
+}
+
+.cargo-option:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.cargo-option.selected {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border-color: #667eea;
+}
+
+.cargo-icon {
+  font-size: 32px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.cargo-info {
+  flex: 1;
+}
+
+.cargo-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.cargo-description {
+  font-size: 12px;
+  color: #999;
+}
+
+.cargo-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ===== CARGO DETAILS SECTION ===== */
+.cargo-details-section {
+  background: #f9f9f9;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-left: 4px solid #667eea;
+}
+
+.weight-input-group {
+  margin-bottom: 16px;
+}
+
+.weight-input-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+.weight-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.weight-input {
+  width: 100%;
+  padding: 10px 12px;
+  padding-right: 35px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.weight-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 8px rgba(102, 126, 234, 0.15);
+  background: white;
+}
+
+.weight-unit {
+  position: absolute;
+  right: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #999;
+}
+
+.weight-info {
+  background: white;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.price-breakdown {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #666;
+}
+
+.price-breakdown .price-total {
+  font-weight: 700;
+  color: #667eea;
+  background: #e8eaf6;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* ===== VEHICLE INFO BOX ===== */
+.vehicle-info-box {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  border-left: 4px solid #ffc107;
+}
+
+.info-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 10px;
+}
+
+.info-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.info-list li {
+  font-size: 12px;
+  color: #666;
+  padding: 6px 0;
+  display: flex;
+  align-items: flex-start;
+}
+
+.info-list li::before {
+  content: '✓';
+  color: #27ae60;
+  font-weight: 700;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+/* ===== PRICE SUMMARY ===== */
+.cargo-price-summary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+  padding: 16px;
+  color: white;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.summary-row:last-child {
+  margin-bottom: 0;
+  font-size: 16px;
+  font-weight: 700;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  padding-top: 10px;
+}
+
+.summary-row .label {
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.summary-row .value {
+  font-weight: 700;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .cargo-types {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .cargo-option {
+    padding: 12px;
+  }
+
+  .cargo-icon {
+    font-size: 28px;
+    margin-right: 8px;
+  }
+
+  .cargo-label {
+    font-size: 13px;
+  }
+
+  .cargo-description {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cargo-selector-container {
+    padding: 16px;
+  }
+
+  .cargo-types {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .cargo-option {
+    padding: 12px;
+  }
+
+  .cargo-check {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  .price-breakdown {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import SeatMap from '../components/booking/SeatMap'
 import PassengerQuantity from '../components/booking/PassengerQuantity'
+import CargoSelector from '../components/booking/CargoSelector'
 import Stepper from '../components/common/Stepper'
 import BackButton from '../components/common/BackButton'
 import { useCargoPrice } from '../hooks/useCargoPrice'
@@ -261,75 +262,12 @@ export default function BookingPage() {
 
         {/* Section 3: Cargo Shipping */}
         <div className="booking-section mb-5">
-          <div className="card" style={{ backgroundColor: 'white', borderRadius: '0.75rem' }}>
-            <div className="card-body p-4">
-              <h5 className="fw-bold mb-4 text-neutral-900">Đăng ký gửi hàng hóa (Tùy chọn)</h5>
-              
-              <div className="row g-3">
-                <div className="col-12">
-                  <label className="form-label fw-600 text-neutral-700">Loại hàng hóa</label>
-                  <select
-                    className="form-select form-input"
-                    value={cargoInfo.type}
-                    onChange={handleCargoTypeChange}
-                  >
-                    {Object.entries(cargoTypes).map(([key, value]) => (
-                      <option key={key} value={key}>
-                        {value.label} - {value.priceRange}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Show weight input for heavy cargo */}
-                {cargoInfo.type === 'heavy' && (
-                  <div className="col-12">
-                    <label className="form-label fw-600 text-neutral-700">Cân nặng (kg) - Tối thiểu 10kg</label>
-                    <input
-                      type="number"
-                      className="form-control form-input"
-                      min="10"
-                      step="0.5"
-                      value={cargoInfo.weight}
-                      onChange={handleCargoWeightChange}
-                      placeholder="Nhập cân nặng từ 10kg trở lên"
-                    />
-                    {cargoInfo.weight && parseFloat(cargoInfo.weight) >= 10 && (
-                      <small className="text-muted">
-                        Ước tính: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cargoInfo.estimatedPrice)}
-                      </small>
-                    )}
-                    {cargoInfo.weight && parseFloat(cargoInfo.weight) < 10 && (
-                      <small className="text-success">
-                        Miễn phí (dưới 10kg)
-                      </small>
-                    )}
-                  </div>
-                )}
-
-                {/* Price estimate for motorcycle */}
-                {(cargoInfo.type === 'motorcycle' || cargoInfo.type === 'scooter' || cargoInfo.type === 'maxi_scooter') && (
-                  <div className="col-12">
-                    <div className="alert alert-info mb-0">
-                      <div className="small">
-                        <strong>Cước phí:</strong> {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cargoInfo.estimatedPrice)}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {cargoInfo.type === 'light' && (
-                  <div className="col-12">
-                    <div className="alert alert-success mb-0">
-                      <div className="small">
-                        <strong>Cước phí:</strong> Miễn phí
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <CargoSelector
+            cargoInfo={cargoInfo}
+            onCargoTypeChange={handleCargoTypeChange}
+            onCargoWeightChange={handleCargoWeightChange}
+            cargoTypes={cargoTypes}
+          />
         </div>
 
         {/* Section 4: Booking Summary */}

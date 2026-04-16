@@ -1,3 +1,59 @@
+// Mock data for watchlist trips (brief version)
+export const mockWatchlistTrips = [
+  {
+    id: 101,
+    from: 'Đà Nẵng',
+    to: 'Hà Nội',
+    date: '2026-04-20',
+    departureTime: '05:00',
+    busType: 'bus',
+    price: 250000,
+    operator: 'BusGo',
+    rating: 4.5,
+    averageRating: 4.5,
+    type: 'trip'
+  },
+  {
+    id: 102,
+    from: 'Đà Nẵng',
+    to: 'Sài Gòn',
+    date: '2026-04-22',
+    departureTime: '14:00',
+    busType: 'minibus',
+    price: 450000,
+    operator: 'Sunshine Express',
+    rating: 4.8,
+    averageRating: 4.8,
+    type: 'trip'
+  },
+  {
+    id: 103,
+    from: 'Đà Nẵng',
+    to: 'Huế',
+    date: '2026-04-25',
+    departureTime: '08:30',
+    busType: 'bus',
+    price: 120000,
+    operator: 'BusGo Express',
+    rating: 4.6,
+    averageRating: 4.6,
+    type: 'trip'
+  },
+  {
+    id: 104,
+    from: 'Đà Nẵng',
+    to: 'Nha Trang',
+    date: '2026-04-28',
+    departureTime: '10:00',
+    busType: 'minibus',
+    price: 280000,
+    operator: 'Premium Transport',
+    rating: 4.7,
+    averageRating: 4.7,
+    type: 'trip'
+  }
+]
+
 // Mock data for trips
 export const mockTrips = [
   // Inter-city trips (35-seater) - All starting from Đà Nẵng
@@ -18,7 +74,16 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC', 'Wifi', 'Phone Charger'],
     rating: 4.5,
-    occupiedSeats: [1, 3, 5, 10, 15, 20, 25]
+    description: 'Chuyến xe tuyến đường Đà Nẵng - Hà Nội với dịch vụ tiêu chuẩn quốc tế. Trang bị đầy đủ tiện nghi với điều hòa, WiFi và sạc điện thoại. Xe khởi hành sớm, đảm bảo bạn đến đích vào buổi chiều.',
+    occupiedSeats: [1, 3, 5, 10, 15, 20, 25],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '05:00', type: 'start' },
+      { name: 'Giao lộ Quảng Ngãi', time: '06:30', type: 'stop' },
+      { name: 'Đặc khu Quảng Nam', time: '08:00', type: 'stop' },
+      { name: 'Huế', time: '10:00', type: 'stop' },
+      { name: 'Vinh', time: '12:30', type: 'stop' },
+      { name: 'Bến xe Hà Nội', time: '15:30', type: 'end' }
+    ]
   },
   {
     id: 2,
@@ -34,10 +99,19 @@ export const mockTrips = [
     totalSeats: 35,
     seats: 35,
     price: 450000,
-    operator: 'BusGo',
+    operator: 'BusGo Premium',
     amenities: ['AC', 'Wifi', 'Phone Charger', 'Blanket'],
     rating: 4.8,
-    occupiedSeats: [2, 4, 6, 8]
+    description: 'Chuyến xe cao cấp với trang bị xe minibus hiện đại nhất. Cung cấp chăn ấm, WiFi và sạc điện thoại cho từng hành khách. Dịch vụ ăn nhẹ và nước uống miễn phí.',
+    occupiedSeats: [2, 4, 6, 8],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '07:30', type: 'start' },
+      { name: 'Giao lộ Quảng Ngãi', time: '09:00', type: 'stop' },
+      { name: 'Đặc khu Quảng Nam', time: '10:30', type: 'stop' },
+      { name: 'Huế (Lâu Đài)', time: '12:30', type: 'stop' },
+      { name: 'Vinh', time: '15:00', type: 'stop' },
+      { name: 'Bến xe Hà Nội', time: '17:00', type: 'end' }
+    ]
   },
   {
     id: 3,
@@ -56,7 +130,16 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC', 'Wifi', 'Phone Charger', 'Toilet'],
     rating: 4.6,
-    occupiedSeats: [1, 5, 10, 15, 20]
+    description: 'Chuyến xe thường xuyên với đầy đủ tiện nghi nhà vệ sinh trên xe. Phù hợp cho khách du lịch và công tác.',
+    occupiedSeats: [1, 5, 10, 15, 20],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '09:00', type: 'start' },
+      { name: 'Giao lộ Quảng Ngãi', time: '10:30', type: 'stop' },
+      { name: 'Đặc khu Quảng Nam', time: '12:00', type: 'stop' },
+      { name: 'Huế', time: '14:00', type: 'stop' },
+      { name: 'Vinh', time: '16:30', type: 'stop' },
+      { name: 'Bến xe Hà Nội', time: '18:30', type: 'end' }
+    ]
   },
   {
     id: 4,
@@ -72,10 +155,19 @@ export const mockTrips = [
     totalSeats: 35,
     seats: 35,
     price: 480000,
-    operator: 'BusGo',
+    operator: 'Sunshine Express',
     amenities: ['AC', 'Wifi', 'Phone Charger', 'Blanket'],
     rating: 4.7,
-    occupiedSeats: [3, 7, 11]
+    description: 'Dịch vụ cao cấp Sunshine Express với xe minibus tư nhân. Gồm chăn, gối, WiFi và dịch vụ ăn nhẹ hạng nhất.',
+    occupiedSeats: [3, 7, 11],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '10:30', type: 'start' },
+      { name: 'Giao lộ Quảng Ngãi', time: '12:00', type: 'stop' },
+      { name: 'Đặc khu Quảng Nam', time: '13:30', type: 'stop' },
+      { name: 'Huế', time: '15:30', type: 'stop' },
+      { name: 'Vinh', time: '18:00', type: 'stop' },
+      { name: 'Bến xe Hà Nội', time: '20:00', type: 'end' }
+    ]
   },
   {
     id: 5,
@@ -94,7 +186,15 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC'],
     rating: 4.0,
-    occupiedSeats: [2, 6, 10, 14, 18, 22, 26, 30]
+    description: 'Tuyến đường Đà Nẵng - TP.HCM với giá tốt nhất. Khởi hành chiều, đến TP.HCM vào đêm hôm sau.',
+    occupiedSeats: [2, 6, 10, 14, 18, 22, 26, 30],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '14:00', type: 'start' },
+      { name: 'Huế', time: '16:00', type: 'stop' },
+      { name: 'Nha Trang', time: '19:00', type: 'stop' },
+      { name: 'Phan Rang', time: '21:00', type: 'stop' },
+      { name: 'Bến xe Miền Đông', time: '23:30', type: 'end' }
+    ]
   },
   {
     id: 6,
@@ -113,7 +213,15 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC', 'Blanket'],
     rating: 4.4,
-    occupiedSeats: [1, 2, 3]
+    description: 'Chuyến xe chiều tối tới TP.HCM với chăn và điều hòa thoải mái. Lý tưởng cho những ai muốn đi chiều.',
+    occupiedSeats: [1, 2, 3],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '16:30', type: 'start' },
+      { name: 'Huế', time: '18:30', type: 'stop' },
+      { name: 'Nha Trang', time: '21:30', type: 'stop' },
+      { name: 'Phan Rang', time: '23:30', type: 'stop' },
+      { name: 'Bến xe Miền Đông', time: '02:00', type: 'end' }
+    ]
   },
   {
     id: 7,
@@ -132,7 +240,15 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC', 'Pillow & Blanket', 'Toilet'],
     rating: 4.3,
-    occupiedSeats: []
+    description: 'Chuyến xe buổi tối rẻ nhất với dịch vụ đầy đủ. Có gối, chăn và nhà vệ sinh trên xe.',
+    occupiedSeats: [],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '18:00', type: 'start' },
+      { name: 'Huế', time: '20:00', type: 'stop' },
+      { name: 'Nha Trang', time: '23:00', type: 'stop' },
+      { name: 'Phan Rang', time: '01:00', type: 'stop' },
+      { name: 'Bến xe Miền Đông', time: '03:30', type: 'end' }
+    ]
   },
   {
     id: 8,
@@ -148,10 +264,18 @@ export const mockTrips = [
     totalSeats: 35,
     seats: 35,
     price: 520000,
-    operator: 'BusGo',
+    operator: 'Luxury Transport',
     amenities: ['AC', 'Wifi', 'Phone Charger', 'Blanket', 'Toilet'],
     rating: 4.9,
-    occupiedSeats: [5, 10, 15, 20, 25, 30]
+    description: 'Xe minibus sang trọng nhất với tất cả tiện nghi cao cấp. Gồm WiFi, sạc điện, chăn ấm, gối và nhà vệ sinh.',
+    occupiedSeats: [5, 10, 15, 20, 25, 30],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '20:00', type: 'start' },
+      { name: 'Huế', time: '22:00', type: 'stop' },
+      { name: 'Nha Trang', time: '01:00', type: 'stop' },
+      { name: 'Phan Rang', time: '03:00', type: 'stop' },
+      { name: 'Bến xe Miền Đông', time: '05:30', type: 'end' }
+    ]
   },
   {
     id: 9,
@@ -170,7 +294,14 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC', 'Pillow & Blanket'],
     rating: 4.2,
-    occupiedSeats: []
+    description: 'Đêm khuya đi Huế với giá rẻ. Cung cấp gối và chăn cho giấc ngủ thoải mái.',
+    occupiedSeats: [],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '22:00', type: 'start' },
+      { name: 'Lăng Cô', time: '23:30', type: 'stop' },
+      { name: 'Phía Dương', time: '01:00', type: 'stop' },
+      { name: 'Bến xe Huế', time: '07:30', type: 'end' }
+    ]
   },
   {
     id: 10,
@@ -189,7 +320,14 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC'],
     rating: 4.1,
-    occupiedSeats: [1, 2]
+    description: 'Tuyến địa phương Đà Nẵng - Quảng Nam với giá rẻ nhất. Khởi hành đêm khuya.',
+    occupiedSeats: [1, 2],
+    stops: [
+      { name: 'Bến xe Đà Nẵng', time: '23:30', type: 'start' },
+      { name: 'Giao lộ Quảng Ngãi', time: '01:00', type: 'stop' },
+      { name: 'Đặc khu Quảng Nam', time: '03:00', type: 'stop' },
+      { name: 'Trung tâm Quảng Nam', time: '09:00', type: 'end' }
+    ]
   },
   // City transit trips (16-seater)
   {
@@ -209,7 +347,13 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC'],
     rating: 4.3,
-    occupiedSeats: [1, 5, 10]
+    description: 'Tuyến sân bay dễ tiếp cận từ trung tâm thành phố. Khởi hành sáng sớm, xác suất tắc đường thấp nhất.',
+    occupiedSeats: [1, 5, 10],
+    stops: [
+      { name: 'Bến xe trung tâm', time: '06:00', type: 'start' },
+      { name: 'Đại lộ Võ Văn Kiệt', time: '06:10', type: 'stop' },
+      { name: 'Sân bay Quốc tế Đà Nẵng', time: '06:30', type: 'end' }
+    ]
   },
   {
     id: 12,
@@ -228,7 +372,13 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC'],
     rating: 4.4,
-    occupiedSeats: [3, 8]
+    description: 'Nhanh chóng tới bãi biển đẹp nhất Đà Nẵng. Chuyến xe sáng lý tưởng cho dạo biển sớm.',
+    occupiedSeats: [3, 8],
+    stops: [
+      { name: 'Bến xe trung tâm', time: '07:00', type: 'start' },
+      { name: 'Ngã tư Hùng Vương', time: '07:10', type: 'stop' },
+      { name: 'Bãi biển Mỹ Khê', time: '07:20', type: 'end' }
+    ]
   },
   {
     id: 13,
@@ -247,7 +397,14 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC', 'Wifi'],
     rating: 4.5,
-    occupiedSeats: [2, 4, 6, 8, 10, 12]
+    description: 'Đi Hội An từ Cầu Rồng với WiFi miễn phí. Phù hợp cho khách du lịch muốn khám phá phố cổ.',
+    occupiedSeats: [2, 4, 6, 8, 10, 12],
+    stops: [
+      { name: 'Cầu Rồng', time: '08:00', type: 'start' },
+      { name: 'Trung tâm thành phố', time: '08:15', type: 'stop' },
+      { name: 'Đường cao tốc Đà Nẵng - Hội An', time: '08:30', type: 'stop' },
+      { name: 'Phố cổ Hội An', time: '08:45', type: 'end' }
+    ]
   },
   {
     id: 14,
@@ -266,7 +423,13 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC'],
     rating: 4.2,
-    occupiedSeats: [1, 7, 14]
+    description: 'Từ sân bay đến bãi biển đáp ứng tiêu chuẩn UNESCO. Tuyến du lịch phổ biến.',
+    occupiedSeats: [1, 7, 14],
+    stops: [
+      { name: 'Sân bay Quốc tế Đà Nẵng', time: '09:00', type: 'start' },
+      { name: 'Khu đô thị Sơn Trà', time: '09:20', type: 'stop' },
+      { name: 'Non Nước Beach Resort', time: '09:50', type: 'end' }
+    ]
   },
   {
     id: 15,
@@ -285,7 +448,13 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC'],
     rating: 4.6,
-    occupiedSeats: [5]
+    description: 'Tuyến xe sinh viên từ trường ĐH Duy Tân tới trung tâm. Tiện lợi cho học tập và công tác.',
+    occupiedSeats: [5],
+    stops: [
+      { name: 'Đại học Duy Tân', time: '10:00', type: 'start' },
+      { name: 'Khu công nghiệp', time: '10:10', type: 'stop' },
+      { name: 'Trung tâm thành phố', time: '10:25', type: 'end' }
+    ]
   },
   {
     id: 16,
@@ -304,7 +473,13 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC'],
     rating: 4.1,
-    occupiedSeats: [2, 6, 9, 12, 15]
+    description: 'Tuyến xe công nghiệp để công nhân tới trung tâm. Khởi hành buổi trưa.',
+    occupiedSeats: [2, 6, 9, 12, 15],
+    stops: [
+      { name: 'Khu công nghiệp Hòa Cầm', time: '11:00', type: 'start' },
+      { name: 'Cơ sở đào tạo', time: '11:15', type: 'stop' },
+      { name: 'Bến xe trung tâm', time: '11:35', type: 'end' }
+    ]
   },
   {
     id: 17,
@@ -323,7 +498,13 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC'],
     rating: 4.7,
-    occupiedSeats: []
+    description: 'Tuyến xuất phát từ Đại học Kinh tế. Nhanh chóng tới khu trung tâm thương mại.',
+    occupiedSeats: [],
+    stops: [
+      { name: 'Đại học Kinh tế Đà Nẵng', time: '12:00', type: 'start' },
+      { name: 'Bệnh viện A', time: '12:10', type: 'stop' },
+      { name: 'Cộng Hòa (trung tâm)', time: '12:20', type: 'end' }
+    ]
   },
   {
     id: 18,
@@ -342,7 +523,13 @@ export const mockTrips = [
     operator: 'BusGo',
     amenities: ['AC'],
     rating: 4.4,
-    occupiedSeats: [4, 11]
+    description: 'Tuyến dài nhất trên đường Phạm Văn Đồng. Tiện lợi giữa khu thương mại và dân cư.',
+    occupiedSeats: [4, 11],
+    stops: [
+      { name: 'Hùng Vương', time: '13:00', type: 'start' },
+      { name: 'Ngã tư Phạm Văn Đồng', time: '13:08', type: 'stop' },
+      { name: 'Phạm Văn Đồng', time: '13:15', type: 'end' }
+    ]
   }
 ]
 

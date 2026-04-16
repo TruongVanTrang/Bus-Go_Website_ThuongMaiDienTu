@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage'
 import SearchResultsPage from './pages/SearchResultsPage'
 import BookingPage from './pages/BookingPage'
 import PaymentPage from './pages/PaymentPage'
+import CargoConsignmentPage from './pages/CargoConsignmentPage'
 import ETicketPage from './pages/ETicketPage'
 import UserHistory from './pages/UserHistory'
 import WatchlistPage from './pages/WatchlistPage'
@@ -99,6 +100,19 @@ function App() {
               <Header />
               <main className="flex-grow-1">
                 <PaymentPage />
+              </main>
+              <Footer />
+              <ChatBot />
+            </div>
+          }
+        />
+        <Route
+          path="/cargo-consignment"
+          element={
+            <div className="d-flex flex-column min-vh-100">
+              <Header />
+              <main className="flex-grow-1">
+                <CargoConsignmentPage />
               </main>
               <Footer />
               <ChatBot />

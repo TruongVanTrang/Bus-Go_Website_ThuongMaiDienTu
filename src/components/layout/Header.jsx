@@ -39,12 +39,12 @@ export default function Header() {
   }, [profileMenuOpen])
 
   // Show back button on specific routes
-  const showBackButton = ['/booking', '/payment', '/ticket', '/search'].some(route =>
+  const showBackButton = ['/booking', '/payment', '/ticket', '/search', '/cargo-consignment'].some(route =>
     location.pathname.startsWith(route)
   )
 
-  // Hide tabs on certain routes
-  const hideServiceTabs = ['/booking', '/payment', '/ticket', '/login'].some(route =>
+  // Hide tabs on certain routes (only show on home page)
+  const hideServiceTabs = ['/booking', '/payment', '/ticket', '/login', '/search', '/cargo-consignment', '/history'].some(route =>
     location.pathname.startsWith(route)
   )
 
@@ -341,7 +341,10 @@ export default function Header() {
                   </span>
                   <div className="d-flex gap-2">
                     <button
-                      onClick={() => setServiceType('booking')}
+                      onClick={() => {
+                        setServiceType('booking')
+                        navigate('/')
+                      }}
                       className={`btn btn-sm px-4 rounded-pill fw-500 transition-all`}
                       style={{
                         backgroundColor: serviceType === 'booking' ? 'var(--color-primary-600)' : '#e5e7eb',
@@ -351,10 +354,13 @@ export default function Header() {
                         transition: 'all 0.3s ease'
                       }}
                     >
-                      🛫 Đặt Ghế
+                      🛫 Đặt vé xe
                     </button>
                     <button
-                      onClick={() => setServiceType('cargo')}
+                      onClick={() => {
+                        setServiceType('cargo')
+                        navigate('/cargo-consignment')
+                      }}
                       className={`btn btn-sm px-4 rounded-pill fw-500`}
                       style={{
                         backgroundColor: serviceType === 'cargo' ? 'var(--color-primary-600)' : '#e5e7eb',

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiHeart, FiTrash2, FiMapPin, FiClock, FiDollarSign, FiSearch, FiBell, FiArrowRight } from 'react-icons/fi'
-import BackButton from '../components/common/BackButton'
+import BackButton from '../../components/common/BackButton'
 import './WatchlistPage.css'
 
 export default function WatchlistPage() {

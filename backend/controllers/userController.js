@@ -12,7 +12,7 @@ const getProfile = async (req, res) => {
       .input('maNguoiDung', sql.Int, userId)
       .query(`
         SELECT maNguoiDung as id, tenNguoiDung as name, email, soDienThoai as phone, 
-               daXacThucEmail, daXacThucPhone, trangThaiTaiKhoan, ngayTaoTaiKhoan
+               daXacThucEmail, trangThaiTaiKhoan, ngayTaoTaiKhoan
         FROM NguoiDung 
         WHERE maNguoiDung = @maNguoiDung
       `);

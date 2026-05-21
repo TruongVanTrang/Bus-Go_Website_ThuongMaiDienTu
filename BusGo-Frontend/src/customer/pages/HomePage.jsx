@@ -1,9 +1,9 @@
-import SearchBar from '../components/home/SearchBar'
-import HomeSuggestions from '../components/home/HomeSuggestions'
-import UpcomingTrips from '../components/home/UpcomingTrips'
-import MultiSearchMethods from '../components/home/MultiSearchMethods'
-import Features from '../components/home/Features'
-import Testimonials from '../components/home/Testimonials'
+import SearchBar from '../../components/home/SearchBar'
+import HomeSuggestions from '../../components/home/HomeSuggestions'
+import UpcomingTrips from '../../components/home/UpcomingTrips'
+import MultiSearchMethods from '../../components/home/MultiSearchMethods'
+import Features from '../../components/home/Features'
+import Testimonials from '../../components/home/Testimonials'
 
 export default function HomePage() {
   return (

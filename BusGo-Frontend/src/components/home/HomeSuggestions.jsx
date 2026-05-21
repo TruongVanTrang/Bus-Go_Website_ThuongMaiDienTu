@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { FiAlertCircle, FiCheckCircle, FiClock, FiTrendingUp, FiChevronRight } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
+import { StorageUtil } from '../../utils/helpers'
 import './HomeSuggestions.css'
 
 export default function HomeSuggestions() {
   const [recentActivity, setRecentActivity] = useState([])
   const [userInfo, setUserInfo] = useState({
-    emailVerified: false,
-    phoneVerified: false,
+    emailVerified: true,
+    phoneVerified: true,
     hasName: true
   })
   const [mostBookedRoutes, setMostBookedRoutes] = useState([])
@@ -15,10 +16,26 @@ export default function HomeSuggestions() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Load user data from localStorage (mock)
-    const savedUserInfo = localStorage.getItem('userInfo')
-    if (savedUserInfo) {
-      setUserInfo(JSON.parse(savedUserInfo))
+    // Load user data using StorageUtil
+    const savedUser = StorageUtil.getUser()
+    if (savedUser) {
+      const savedUserInfo = localStorage.getItem('userInfo')
+      if (savedUserInfo) {
+        setUserInfo(JSON.parse(savedUserInfo))
+      } else {
+        setUserInfo({
+          emailVerified: true,
+          phoneVerified: true,
+          hasName: !!savedUser.name
+        })
+      }
+    } else {
+      // Guest user
+      setUserInfo({
+        emailVerified: true,
+        phoneVerified: true,
+        hasName: false
+      })
     }
 
     // Load recent activity from localStorage
@@ -123,32 +140,18 @@ export default function HomeSuggestions() {
   return (
     <div className="home-suggestions">
       {/* Information Alerts */}
-      {(!userInfo.emailVerified || !userInfo.phoneVerified) && (
+      {!userInfo.emailVerified && (
         <div className="suggestions-alerts">
-          {!userInfo.emailVerified && (
-            <div className="alert-card alert-warning">
-              <div className="alert-icon">
-                <FiAlertCircle size={20} />
-              </div>
-              <div className="alert-content">
-                <p className="alert-title">⚠️ Email chưa được xác minh</p>
-                <p className="alert-desc">Xác minh email để bảo mật tài khoản và nhận thông báo đặt vé</p>
-              </div>
-              <button className="btn-verify">Xác minh</button>
+          <div className="alert-card alert-warning">
+            <div className="alert-icon">
+              <FiAlertCircle size={20} />
             </div>
-          )}
-          {!userInfo.phoneVerified && (
-            <div className="alert-card alert-danger">
-              <div className="alert-icon">
-                <FiAlertCircle size={20} />
-              </div>
-              <div className="alert-content">
-                <p className="alert-title">⚠️ Số điện thoại chưa xác minh</p>
-                <p className="alert-desc">Cần xác minh SĐT để tài xế có thể liên lạc với bạn</p>
-              </div>
-              <button className="btn-verify">Xác minh ngay</button>
+            <div className="alert-content">
+              <p className="alert-title">⚠️ Email chưa được xác minh</p>
+              <p className="alert-desc">Xác minh email để bảo mật tài khoản và nhận thông báo đặt vé</p>
             </div>
-          )}
+            <button className="btn-verify">Xác minh</button>
+          </div>
         </div>
       )}
 

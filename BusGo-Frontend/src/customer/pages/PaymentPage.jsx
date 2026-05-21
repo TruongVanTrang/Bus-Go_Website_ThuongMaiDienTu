@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FiCheckCircle, FiClock, FiLock } from 'react-icons/fi'
 import QRCode from 'qrcode.react'
-import Stepper from '../components/common/Stepper'
-import BackButton from '../components/common/BackButton'
-import { mockPaymentMethods } from '../utils/mockData'
+import Stepper from '../../components/common/Stepper'
+import BackButton from '../../components/common/BackButton'
+import { mockPaymentMethods } from '../../utils/mockData'
 import './PaymentPage.css'
 
 export default function PaymentPage() {

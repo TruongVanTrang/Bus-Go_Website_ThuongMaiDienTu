@@ -44,8 +44,7 @@ CREATE TABLE NguoiDung (
     matKhau VARCHAR(255) NOT NULL,
     trangThaiTaiKhoan NVARCHAR(20) DEFAULT 'active',
     daXacThucEmail BIT DEFAULT 0,
-    daXacThucPhone BIT DEFAULT 0, -- THÊM MỚI: Xác thực SMS
-    lastLoginDate DATETIME NULL, -- THÊM MỚI: Lần đăng nhập cuối cùng
+    lastLoginDate DATETIME NULL, 
     ngayTaoTaiKhoan DATETIME DEFAULT GETDATE(),
     ngayCapNhatCuoi DATETIME DEFAULT GETDATE(),
     CONSTRAINT CK_Email_Format CHECK (email LIKE '%@%.%')
@@ -383,21 +382,40 @@ VALUES
     (N'VNPay', N'cong-thanh-toan', '🏦', N'Cổng thanh toán VNPay');
 GO
 
--- 25. Thêm người dùng mẫu
-INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail, daXacThucPhone)
+-- 25. Thêm người dùng mẫu và các tài khoản vai trò
+INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail)
 VALUES 
-    (N'Admin Hệ Thống', 'admin@busgo.vn', '0905123456', 'secure_hash', 1, 1),
-    (N'Khách hàng mẫu', 'customer@busgo.vn', '0912345678', 'secure_hash', 1, 1);
+    (N'Admin Hệ Thống', 'admin@busgo.vn', '0905123456', '$2b$10$kVDCzxke2YOep.aywavS1.Y5TTdYttAdQuot.pH21jG9hwZjF/eji', 1), -- pwd: admin123
+    (N'Khách hàng mẫu', 'customer@busgo.vn', '0912345670', '$2b$10$duKmIUD9PYTkniBNZw23i.NkbZu5ah5Lgm7JSSFiAaXd6yOOOCBzm', 1), -- pwd: customer123
+    (N'Trương Trạng', 'vantrang04042005@gmail.com', '0372575316', '$2b$10$OhPLwF/l2qHGmlrzbIdImOaghj15H/bD0gT45AzhFoh1HPDzRZw0O', 1),
+    (N'Admin BusGo', 'admin@busgo.com', '0987654321', '$2b$10$CYQA0YG1D0eNOs0PbCwF0ufWNHcn4tqx2BnzlCBBJ90pU7gsLMo3a', 1), -- pwd: admin123
+    (N'Tài xế Nguyễn Văn A', 'driver@busgo.com', '0912345678', '$2b$10$zbDMul9Z/FsZAUY/wKQb7u/lKSZCbkZh8arB46d.ZvyeznWNsppdK', 1), -- pwd: staff123
+    (N'Nhân viên soát vé Trần Thị B', 'ticket@busgo.com', '0911111111', '$2b$10$MU2cEqbeEUVLZ3SI4yUS4OmfF8GJZJI5tgUKdGRjwP6.kaUqnNojS', 1), -- pwd: staff123
+    (N'Nhân viên hỗ trợ Lê Văn C', 'support@busgo.com', '0922222222', '$2b$10$C8XiBgVsyFWKgYjHsqb9vu5F/lV3cxrP3mnb0WrZMNRU5oqJJukvm', 1), -- pwd: staff123
+    (N'Khách hàng', 'user@gmail.com', '0998765432', '$2b$10$Z7WYlaUauSEg7vlq7KYa5eT2gGWHIlyxMwDknxdbQR5FBhUFhHUky', 1); -- pwd: user123
 GO
 
 -- 26. Thêm Admin
 INSERT INTO Admin (maAdmin, phanQuyen) 
-VALUES (1, N'Full Access');
+VALUES 
+    (1, N'Full Access'),
+    (4, N'Full Access');
 GO
 
--- 27. Thêm Khách hàng
+-- 27. Thêm Nhân viên
+INSERT INTO NhanVien (maNhanVien, vaiTro, lichLamViec)
+VALUES
+    (5, N'DRIVER', N'Hành chính'),
+    (6, N'TICKET_STAFF', N'Hành chính'),
+    (7, N'SUPPORT_STAFF', N'Hành chính');
+GO
+
+-- 27.5 Thêm Khách hàng
 INSERT INTO KhachHang (maKhachHang, diemTichLuy, capDoThanhVien)
-VALUES (2, 0, 'bronze');
+VALUES 
+    (2, 0, 'bronze'),
+    (3, 0, 'bronze'),
+    (8, 0, 'bronze');
 GO
 
 -- 28. Thêm Tuyến đường (Nội thành)
@@ -628,506 +646,91 @@ BEGIN
 END;
 GO
 
--- ============================================================================
--- PHẦN 11: TÓMLÝ NHỮNG THAY ĐỔI (v2.0)
--- ============================================================================
--- BẢNG CẬP NHẬT:
--- 1. NguoiDung: +daXacThucPhone, +lastLoginDate
--- 2. KhachHang: +lastBookingDate
--- 3. VeDienTu: +firstName, +lastName, +maPhuongThuc
--- 4. HangHoa: +tenNguoiGui, +soDienThoaiNguoiGui, +tenNguoiNhan, +soDienThoaiNguoiNhan, 
---            +giaTrucDeclare, +giaBAO_HIEM, +trangThaiVanChuyen
--- 5. Feedback: +diemPhucVu, +diemGiaoThiep
---
--- BẢNG MỚI:
--- 1. KyGuiHang: Cho CargoConsignmentPage
--- 2. DanhGiaChiTiet: Cho chi tiết đánh giá
--- 3. ThongBaoTheoDoiHang: Cho theo dõi hàng hóa
---
--- TRIGGER MỚI:
--- 1. TRG_UpdateLastBookingDate: Cập nhật lần đặt vé cuối cùng
---
--- VIEW MỚI:
--- 1. vw_HangHoaChiTiet: Xem hàng hóa chi tiết
---
--- PROCEDURE MỚI:
--- 1. sp_LayLichSuVeKhachHang: Lịch sử đặt vé
--- 2. sp_TimKyGuiHang: Tìm ký gửi hàng
---
--- ============================================================================
--- ============================================================================
--- BusGo Database - Cập nhật phù hợp với giao diện FE hiện tại
--- ============================================================================
+-- Seed dữ liệu ChuyenXe mẫu cho các ngày
+DECLARE @Dates TABLE (Ngay DATE);
+INSERT INTO @Dates VALUES ('2024-01-15'), ('2026-05-21'), ('2026-05-22'), ('2026-05-23');
 
--- 1. Khởi tạo Database
-USE master;
-GO
-IF EXISTS (SELECT * FROM sys.databases WHERE name = 'BusGoDBs')
+DECLARE @Ngay DATE;
+DECLARE date_cursor CURSOR FOR SELECT Ngay FROM @Dates;
+
+OPEN date_cursor;
+FETCH NEXT FROM date_cursor INTO @Ngay;
+
+WHILE @@FETCH_STATUS = 0
 BEGIN
-    ALTER DATABASE BusGoDBs SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-    DROP DATABASE BusGoDBs;
-END
-GO
-WAITFOR DELAY '00:00:02';
-GO
-CREATE DATABASE BusGoDBs;
-GO
-USE BusGoDBs;
-GO
+    -- 1. Tuyến Đà Nẵng -> Hà Nội (maTuyen = 5, maXe = 4, xe 35 chỗ)
+    INSERT INTO ChuyenXe (maTuyenDuong, maPhuongTien, thoiGianDi, thoiGianDen, giaCoBan, soGheConTrong, soLuongGheDat, trangThaiChuyen, tienIchChiTiet, diemDanhGia, soLuotDanhGia)
+    VALUES 
+    (5, 4, CAST(@Ngay AS DATETIME) + CAST('05:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('14:30:00' AS DATETIME), 250000, 35, 0, 'da_len_lich', '["AC", "Wifi", "Phone Charger"]', 4.5, 12),
+    (5, 5, CAST(@Ngay AS DATETIME) + CAST('07:30:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('17:00:00' AS DATETIME), 450000, 35, 0, 'da_len_lich', '["AC", "Wifi", "Phone Charger", "Blanket"]', 4.8, 8),
+    (5, 6, CAST(@Ngay AS DATETIME) + CAST('09:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('18:30:00' AS DATETIME), 280000, 35, 0, 'da_len_lich', '["AC", "Wifi", "Phone Charger", "Toilet"]', 4.6, 15);
 
--- ============================================================================
--- PHẦN 1: BẢNG CƠ BẢN
--- ============================================================================
+    -- 2. Tuyến Đà Nẵng -> Sài Gòn (maTuyen = 6, maXe = 5, xe 35 chỗ)
+    INSERT INTO ChuyenXe (maTuyenDuong, maPhuongTien, thoiGianDi, thoiGianDen, giaCoBan, soGheConTrong, soLuongGheDat, trangThaiChuyen, tienIchChiTiet, diemDanhGia, soLuotDanhGia)
+    VALUES 
+    (6, 5, CAST(@Ngay AS DATETIME) + CAST('14:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('23:30:00' AS DATETIME), 200000, 35, 0, 'da_len_lich', '["AC"]', 4.0, 6),
+    (6, 6, CAST(@Ngay AS DATETIME) + CAST('20:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('05:30:00' AS DATETIME) + 1, 520000, 35, 0, 'da_len_lich', '["AC", "Wifi", "Phone Charger", "Blanket", "Toilet"]', 4.9, 21);
 
--- 2. Bảng Phương thức thanh toán
-CREATE TABLE PhuongThucThanhToan (
-    maPhuongThuc INT IDENTITY(1,1) PRIMARY KEY,
-    tenPhuongThuc NVARCHAR(50) NOT NULL UNIQUE,
-    loaiPhuongThuc NVARCHAR(50),
-    bieuTuong NVARCHAR(5),
-    moTa NVARCHAR(255),
-    daKichHoat BIT DEFAULT 1,
-    phiBanToiThieu DECIMAL(18, 2) DEFAULT 0,
-    tyLePhi DECIMAL(5, 2) DEFAULT 0
-);
+    -- 3. Tuyến Đà Nẵng -> Huế (maTuyen = 7, maXe = 6, xe 35 chỗ)
+    INSERT INTO ChuyenXe (maTuyenDuong, maPhuongTien, thoiGianDi, thoiGianDen, giaCoBan, soGheConTrong, soLuongGheDat, trangThaiChuyen, tienIchChiTiet, diemDanhGia, soLuotDanhGia)
+    VALUES 
+    (7, 6, CAST(@Ngay AS DATETIME) + CAST('08:30:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('10:30:00' AS DATETIME), 120000, 35, 0, 'da_len_lich', '["AC", "Wifi"]', 4.6, 9);
 
--- 3. Bảng Người dùng (Lớp cha)
-CREATE TABLE NguoiDung (
-    maNguoiDung INT IDENTITY(1,1) PRIMARY KEY,
-    tenNguoiDung NVARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE,
-    soDienThoai VARCHAR(15),
-    matKhau VARCHAR(255) NOT NULL,
-    trangThaiTaiKhoan NVARCHAR(20) DEFAULT 'active',
-    daXacThucEmail BIT DEFAULT 0,
-    ngayTaoTaiKhoan DATETIME DEFAULT GETDATE(),
-    ngayCapNhatCuoi DATETIME DEFAULT GETDATE(),
-    CONSTRAINT CK_Email_Format CHECK (email LIKE '%@%.%')
-);
+    -- 4. Tuyến Đà Nẵng -> Quảng Nam (maTuyen = 8, maXe = 6, xe 35 chỗ)
+    INSERT INTO ChuyenXe (maTuyenDuong, maPhuongTien, thoiGianDi, thoiGianDen, giaCoBan, soGheConTrong, soLuongGheDat, trangThaiChuyen, tienIchChiTiet, diemDanhGia, soLuotDanhGia)
+    VALUES 
+    (8, 6, CAST(@Ngay AS DATETIME) + CAST('10:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('11:00:00' AS DATETIME), 170000, 35, 0, 'da_len_lich', '["AC"]', 4.1, 4);
 
--- 4. Bảng Admin
-CREATE TABLE Admin (
-    maAdmin INT PRIMARY KEY,
-    phanQuyen NVARCHAR(50),
-    CONSTRAINT FK_Admin_NguoiDung FOREIGN KEY (maAdmin) REFERENCES NguoiDung(maNguoiDung)
-);
+    -- 5. Tuyến Nội thành: Bến xe trung tâm -> Sân bay (maTuyen = 1, maXe = 1, xe 16 chỗ)
+    INSERT INTO ChuyenXe (maTuyenDuong, maPhuongTien, thoiGianDi, thoiGianDen, giaCoBan, soGheConTrong, soLuongGheDat, trangThaiChuyen, tienIchChiTiet, diemDanhGia, soLuotDanhGia)
+    VALUES 
+    (1, 1, CAST(@Ngay AS DATETIME) + CAST('06:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('06:30:00' AS DATETIME), 50000, 16, 0, 'da_len_lich', '["AC"]', 4.3, 10),
+    (1, 2, CAST(@Ngay AS DATETIME) + CAST('12:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('12:30:00' AS DATETIME), 50000, 16, 0, 'da_len_lich', '["AC"]', 4.2, 5);
 
--- 5. Bảng Nhân viên
-CREATE TABLE NhanVien (
-    maNhanVien INT PRIMARY KEY,
-    vaiTro NVARCHAR(100),
-    lichLamViec NVARCHAR(MAX),
-    CONSTRAINT FK_NhanVien_NguoiDung FOREIGN KEY (maNhanVien) REFERENCES NguoiDung(maNguoiDung)
-);
+    -- 6. Tuyến Nội thành: Bến xe trung tâm -> Bãi biển Mỹ Khê (maTuyen = 2, maXe = 2, xe 16 chỗ)
+    INSERT INTO ChuyenXe (maTuyenDuong, maPhuongTien, thoiGianDi, thoiGianDen, giaCoBan, soGheConTrong, soLuongGheDat, trangThaiChuyen, tienIchChiTiet, diemDanhGia, soLuotDanhGia)
+    VALUES 
+    (2, 2, CAST(@Ngay AS DATETIME) + CAST('07:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('07:20:00' AS DATETIME), 35000, 16, 0, 'da_len_lich', '["AC"]', 4.4, 7);
 
--- 6. Bảng Khách hàng
-CREATE TABLE KhachHang (
-    maKhachHang INT PRIMARY KEY,
-    diemTichLuy INT DEFAULT 0,
-    congTichLuy INT DEFAULT 0,
-    tongTienDaChiTra DECIMAL(18, 2) DEFAULT 0,
-    capDoThanhVien NVARCHAR(50) DEFAULT 'bronze',
-    CONSTRAINT FK_KhachHang_NguoiDung FOREIGN KEY (maKhachHang) REFERENCES NguoiDung(maNguoiDung)
-);
+    -- 7. Tuyến Nội thành: Cầu Rồng -> Phố cổ Hội An (maTuyen = 3, maXe = 3, xe 16 chỗ)
+    INSERT INTO ChuyenXe (maTuyenDuong, maPhuongTien, thoiGianDi, thoiGianDen, giaCoBan, soGheConTrong, soLuongGheDat, trangThaiChuyen, tienIchChiTiet, diemDanhGia, soLuotDanhGia)
+    VALUES 
+    (3, 3, CAST(@Ngay AS DATETIME) + CAST('08:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('08:45:00' AS DATETIME), 60000, 16, 0, 'da_len_lich', '["AC", "Wifi"]', 4.5, 18),
+    (3, 1, CAST(@Ngay AS DATETIME) + CAST('14:00:00' AS DATETIME), CAST(@Ngay AS DATETIME) + CAST('14:45:00' AS DATETIME), 60000, 16, 0, 'da_len_lich', '["AC", "Wifi"]', 4.4, 11);
 
--- ============================================================================
--- PHẦN 2: BẢNG TUYẾN ĐƯỜNG VÀ PHƯƠNG TIỆN
--- ============================================================================
-
--- 7. Bảng Tuyến đường (Nội thành + Ngoại thành)
-CREATE TABLE TuyenDuong (
-    maTuyenDuong INT IDENTITY(1,1) PRIMARY KEY,
-    diemDi NVARCHAR(100) NOT NULL,
-    diemDen NVARCHAR(100) NOT NULL,
-    loaiDichVu NVARCHAR(20) NOT NULL, -- 'city' (nội thành) hoặc 'interCity' (ngoại thành)
-    khoangCach FLOAT,
-    danhSachTramDung NVARCHAR(MAX),
-    ngayTao DATETIME DEFAULT GETDATE()
-);
-
--- 8. Bảng Phương tiện (16 chỗ hoặc 35 chỗ)
-CREATE TABLE PhuongTien (
-    maPhuongTien INT IDENTITY(1,1) PRIMARY KEY,
-    bienSoXe VARCHAR(20) UNIQUE NOT NULL,
-    nhanHieu NVARCHAR(50),
-    mauSac NVARCHAR(30),
-    namSanXuat INT,
-    tongSoGhe INT NOT NULL, -- 16 hoặc 35
-    loaiXe NVARCHAR(50), -- '16-seater' hoặc '35-seater'
-    trangThaiXe NVARCHAR(50) DEFAULT 'san_sang', -- san_sang, bao_tri, ngoai_hoat_dong
-    tienIch NVARCHAR(MAX), -- JSON: ['AC', 'Wifi', 'Phone Charger']
-    ngayMuaVao DATE,
-    ngayBaoTriLanSau DATE,
-    maTaiXeChinh INT FOREIGN KEY REFERENCES NhanVien(maNhanVien)
-);
-
--- ============================================================================
--- PHẦN 3: BẢNG CHUYẾN XE VÀ GHẾ NGỒI
--- ============================================================================
-
--- 9. Bảng Chuyến xe
-CREATE TABLE ChuyenXe (
-    maChuyenXe INT IDENTITY(1,1) PRIMARY KEY,
-    maTuyenDuong INT NOT NULL FOREIGN KEY REFERENCES TuyenDuong(maTuyenDuong),
-    maPhuongTien INT NOT NULL FOREIGN KEY REFERENCES PhuongTien(maPhuongTien),
-    maNhanVien INT FOREIGN KEY REFERENCES NhanVien(maNhanVien),
-    thoiGianDi DATETIME NOT NULL,
-    thoiGianDen DATETIME NOT NULL,
-    giaCoBan DECIMAL(18, 2) NOT NULL,
-    soGheConTrong INT,
-    soLuongGheDat INT DEFAULT 0, -- Số lượng ghế đã đặt
-    trangThaiChuyen NVARCHAR(50) DEFAULT 'da_len_lich', -- da_len_lich, dang_khoi_hanh, da_hoan_thanh
-    tienIchChiTiet NVARCHAR(MAX), -- JSON chi tiết tiện ích
-    diemDanhGia DECIMAL(3, 2) DEFAULT 4.0,
-    soLuotDanhGia INT DEFAULT 0,
-    ngayTao DATETIME DEFAULT GETDATE(),
-    CONSTRAINT CK_ChuyenXe_Rating CHECK (diemDanhGia >= 1 AND diemDanhGia <= 5),
-    CONSTRAINT CK_ChuyenXe_Times CHECK (thoiGianDi < thoiGianDen)
-);
-
--- 10. Bảng Ghế ngồi (Sơ đồ động cho ngoại thành, số lượng cho nội thành)
-CREATE TABLE GheNgoi (
-    maGhe INT IDENTITY(1,1) PRIMARY KEY,
-    maChuyenXe INT NOT NULL FOREIGN KEY REFERENCES ChuyenXe(maChuyenXe),
-    soGhe VARCHAR(10) NOT NULL, -- Số ghế (A1, A2, B1, etc.) hoặc số thứ tự
-    loaiGhe NVARCHAR(20) DEFAULT 'standard', -- standard, vip
-    viTriGhe NVARCHAR(20), -- front, middle, back (chỉ dùng cho ngoại thành)
-    giaSoGhe DECIMAL(18, 2) DEFAULT 0,
-    trangThaiGhe NVARCHAR(50) DEFAULT 'trong', -- trong, da_dat, giu_tam_thoi
-    CONSTRAINT UQ_GheNgoi UNIQUE (maChuyenXe, soGhe)
-);
-
--- ============================================================================
--- PHẦN 4: BẢNG VÉ ĐIỆN TỬ VÀ HÀNG HÓA
--- ============================================================================
-
--- 11. Bảng Vé điện tử
-CREATE TABLE VeDienTu (
-    maVe INT IDENTITY(1,1) PRIMARY KEY,
-    maKhachHang INT FOREIGN KEY REFERENCES KhachHang(maKhachHang),
-    maChuyenXe INT NOT NULL FOREIGN KEY REFERENCES ChuyenXe(maChuyenXe),
-    maGhe INT FOREIGN KEY REFERENCES GheNgoi(maGhe),
-    hoTenHanhKhach NVARCHAR(100) NOT NULL,
-    emailHanhKhach VARCHAR(100),
-    soDienThoaiHanhKhach VARCHAR(15),
-    diemDon NVARCHAR(255), -- Điểm đón khách
-    diemTra NVARCHAR(255), -- Điểm trả khách
-    maQR VARCHAR(255) UNIQUE,
-    ngayDatVe DATETIME DEFAULT GETDATE(),
-    giaVe DECIMAL(18, 2) NOT NULL,
-    giaHangHoa DECIMAL(18, 2) DEFAULT 0,
-    giaThanhToan DECIMAL(18, 2) NOT NULL, -- giaVe + giaHangHoa
-    trangThaiVe NVARCHAR(50) DEFAULT 'cho_thanh_toan', -- cho_thanh_toan, da_thanh_toan, da_su_dung, da_huy
-    ghiChu NVARCHAR(MAX),
-    ngayCapNhat DATETIME DEFAULT GETDATE(),
-    CONSTRAINT CK_VeDienTu_Price CHECK (giaThanhToan >= 0)
-);
-
--- 12. Bảng Hàng hóa (Ký gửi hàng kèm vé)
-CREATE TABLE HangHoa (
-    maHangHoa INT IDENTITY(1,1) PRIMARY KEY,
-    maVe INT NOT NULL FOREIGN KEY REFERENCES VeDienTu(maVe),
-    loaiHangHoa NVARCHAR(50) NOT NULL, -- none, light, heavy, scooter, maxi_scooter, motorcycle
-    moTa NVARCHAR(255),
-    trongLuong FLOAT, -- Cân nặng (kg) - cho hàng nặng
-    giaHangHoa DECIMAL(18, 2) NOT NULL,
-    ngayTao DATETIME DEFAULT GETDATE(),
-    ghiChu NVARCHAR(MAX)
-);
-
--- ============================================================================
--- PHẦN 5: BẢNG THANH TOÁN VÀ HÓA ĐƠN
--- ============================================================================
-
--- 13. Bảng Hóa đơn
-CREATE TABLE HoaDon (
-    maHoaDon INT IDENTITY(1,1) PRIMARY KEY,
-    maVe INT NOT NULL FOREIGN KEY REFERENCES VeDienTu(maVe),
-    soHoaDonTam VARCHAR(50) UNIQUE,
-    soTien DECIMAL(18, 2) NOT NULL,
-    maPhuongThuc INT FOREIGN KEY REFERENCES PhuongThucThanhToan(maPhuongThuc),
-    trangThaiThanhToan NVARCHAR(50) DEFAULT 'pending', -- pending, completed, failed
-    maChuyenDich VARCHAR(100),
-    ngayThanhToan DATETIME,
-    ngayTao DATETIME DEFAULT GETDATE()
-);
-
--- ============================================================================
--- PHẦN 6: BẢNG FEEDBACK VÀ THÔNG BÁO
--- ============================================================================
-
--- 14. Bảng Feedback (Đánh giá trải nghiệm)
-CREATE TABLE Feedback (
-    maFeedback INT IDENTITY(1,1) PRIMARY KEY,
-    maVe INT NOT NULL FOREIGN KEY REFERENCES VeDienTu(maVe),
-    maKhachHang INT NOT NULL FOREIGN KEY REFERENCES KhachHang(maKhachHang),
-    diemDanhGia INT NOT NULL, -- 1-5 sao
-    nhanXet NVARCHAR(MAX),
-    ngayTao DATETIME DEFAULT GETDATE(),
-    CONSTRAINT CK_Feedback_Rating CHECK (diemDanhGia >= 1 AND diemDanhGia <= 5)
-);
-
--- 15. Bảng Yêu thích (Tuyến yêu thích)
-CREATE TABLE YeuThich (
-    maYeuThich INT IDENTITY(1,1) PRIMARY KEY,
-    maKhachHang INT NOT NULL FOREIGN KEY REFERENCES KhachHang(maKhachHang),
-    maTuyenDuong INT NOT NULL FOREIGN KEY REFERENCES TuyenDuong(maTuyenDuong),
-    ngayTao DATETIME DEFAULT GETDATE(),
-    UNIQUE (maKhachHang, maTuyenDuong)
-);
-
--- 16. Bảng Thông báo
-CREATE TABLE ThongBao (
-    maThongBao INT IDENTITY(1,1) PRIMARY KEY,
-    maKhachHang INT NOT NULL FOREIGN KEY REFERENCES KhachHang(maKhachHang),
-    tieuDe NVARCHAR(255) NOT NULL,
-    noiDung NVARCHAR(MAX),
-    daDoc BIT DEFAULT 0,
-    thoiGianTao DATETIME DEFAULT GETDATE()
-);
-
--- ============================================================================
--- PHẦN 7: INDEX VÀ TRIGGER
--- ============================================================================
-
--- 17. Tạo Index để tối ưu tìm kiếm
-CREATE NONCLUSTERED INDEX IDX_ChuyenXe_Search ON ChuyenXe(maTuyenDuong, thoiGianDi);
-CREATE NONCLUSTERED INDEX IDX_ChuyenXe_Status ON ChuyenXe(trangThaiChuyen);
-CREATE NONCLUSTERED INDEX IDX_VeDienTu_QR ON VeDienTu(maQR);
-CREATE NONCLUSTERED INDEX IDX_VeDienTu_Status ON VeDienTu(trangThaiVe);
-CREATE NONCLUSTERED INDEX IDX_GheNgoi_Status ON GheNgoi(maChuyenXe, trangThaiGhe);
-CREATE NONCLUSTERED INDEX IDX_TuyenDuong_LoaiDichVu ON TuyenDuong(loaiDichVu);
-GO
-
--- 18. Trigger: Tự động cập nhật số ghế trống
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'TR' AND name = 'TRG_UpdateSoGheConTrong')
-    DROP TRIGGER TRG_UpdateSoGheConTrong;
-GO
-CREATE TRIGGER TRG_UpdateSoGheConTrong
-ON GheNgoi
-AFTER UPDATE, INSERT, DELETE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE ChuyenXe
-    SET soGheConTrong = (
-        SELECT COUNT(*) 
-        FROM GheNgoi 
-        WHERE maChuyenXe = ChuyenXe.maChuyenXe 
-        AND trangThaiGhe = 'trong'
-    )
-    WHERE maChuyenXe IN (
-        SELECT DISTINCT maChuyenXe FROM inserted 
-        UNION 
-        SELECT DISTINCT maChuyenXe FROM deleted
-    );
+    FETCH NEXT FROM date_cursor INTO @Ngay;
 END;
+
+CLOSE date_cursor;
+DEALLOCATE date_cursor;
 GO
 
--- 19. Trigger: Tự động cập nhật giá thanh toán khi có hàng hóa
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'TR' AND name = 'TRG_UpdateGiaThanhToan')
-    DROP TRIGGER TRG_UpdateGiaThanhToan;
-GO
-CREATE TRIGGER TRG_UpdateGiaThanhToan
-ON HangHoa
-AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE VeDienTu
-    SET giaThanhToan = giaVe + ISNULL((
-        SELECT SUM(giaHangHoa) 
-        FROM HangHoa 
-        WHERE maVe = VeDienTu.maVe
-    ), 0)
-    WHERE maVe IN (SELECT DISTINCT maVe FROM inserted);
-END;
-GO
-
--- ============================================================================
--- PHẦN 8: DỮ LIỆU MẪU
--- ============================================================================
-
--- 20. Thêm phương thức thanh toán
-INSERT INTO PhuongThucThanhToan (tenPhuongThuc, loaiPhuongThuc, bieuTuong, moTa)
-VALUES 
-    (N'Visa', N'the-quoc-te', '💳', N'Thẻ Visa quốc tế'),
-    (N'Momo', N'vi-dien-tu', '📱', N'Ví điện tử Momo'),
-    (N'ATM Nội địa', N'the-noi-dia', '🏦', N'Thẻ ATM nội địa');
-GO
-
--- 21. Thêm người dùng mẫu
-INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau)
-VALUES 
-    (N'Admin Hệ Thống', 'admin@busgo.vn', '0905123456', 'secure_hash'),
-    (N'Khách hàng mẫu', 'customer@busgo.vn', '0912345678', 'secure_hash');
-GO
-
--- 22. Thêm Admin
-INSERT INTO Admin (maAdmin, phanQuyen) 
-VALUES (1, N'Full Access');
-GO
-
--- 23. Thêm Khách hàng
-INSERT INTO KhachHang (maKhachHang, diemTichLuy, capDoThanhVien)
-VALUES (2, 0, 'bronze');
-GO
-
--- 24. Thêm Tuyến đường (Nội thành)
-INSERT INTO TuyenDuong (diemDi, diemDen, loaiDichVu, khoangCach)
-VALUES 
-    (N'Bến xe trung tâm', N'Sân bay Quốc tế Đà Nẵng', 'city', 5),
-    (N'Bến xe trung tâm', N'Bãi biển Mỹ Khê', 'city', 3),
-    (N'Cầu Rồng', N'Phố cổ Hội An', 'city', 30),
-    (N'Sân bay Quốc tế Đà Nẵng', N'Bãi biển Non Nước', 'city', 25);
-GO
-
--- 25. Thêm Tuyến đường (Ngoại thành)
-INSERT INTO TuyenDuong (diemDi, diemDen, loaiDichVu, khoangCach)
-VALUES 
-    (N'Đà Nẵng', N'Hà Nội', 'interCity', 1000),
-    (N'Đà Nẵng', N'Sài Gòn', 'interCity', 950),
-    (N'Đà Nẵng', N'Huế', 'interCity', 100),
-    (N'Đà Nẵng', N'Quảng Nam', 'interCity', 40);
-GO
-
--- 26. Thêm Phương tiện (16 chỗ - Nội thành)
-INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, trangThaiXe, tienIch)
-VALUES 
-    (N'29A-12345', N'Hyundai', N'Trắng', 2022, 16, '16-seater', 'san_sang', '["AC", "Wifi"]'),
-    (N'29A-12346', N'Hyundai', N'Xanh', 2022, 16, '16-seater', 'san_sang', '["AC", "Wifi"]'),
-    (N'29A-12347', N'Hyundai', N'Trắng', 2023, 16, '16-seater', 'san_sang', '["AC", "Wifi", "Phone Charger"]');
-GO
-
--- 27. Thêm Phương tiện (35 chỗ - Ngoại thành)
-INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, trangThaiXe, tienIch)
-VALUES 
-    (N'29A-54321', N'Toyota', N'Trắng', 2021, 35, '35-seater', 'san_sang', '["AC", "Wifi", "Phone Charger", "Toilet"]'),
-    (N'29A-54322', N'Toyota', N'Bạc', 2021, 35, '35-seater', 'san_sang', '["AC", "Wifi", "Phone Charger"]'),
-    (N'29A-54323', N'Hyundai', N'Trắng', 2022, 35, '35-seater', 'san_sang', '["AC", "Wifi", "Pillow & Blanket"]');
-GO
-
--- ============================================================================
--- PHẦN 9: VIEW HỖ TRỢ
--- ============================================================================
-
--- 28. View: Danh sách chuyến xe với thông tin đầy đủ
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'V' AND name = 'vw_ChuyenXeChiTiet')
-    DROP VIEW vw_ChuyenXeChiTiet;
-GO
-CREATE VIEW vw_ChuyenXeChiTiet AS
-SELECT 
-    cx.maChuyenXe,
-    td.diemDi,
-    td.diemDen,
-    td.loaiDichVu,
-    cx.thoiGianDi,
-    cx.thoiGianDen,
-    cx.giaCoBan,
-    cx.soGheConTrong,
-    cx.soLuongGheDat,
-    pt.tongSoGhe,
-    pt.loaiXe,
-    cx.diemDanhGia,
-    cx.soLuotDanhGia,
-    cx.trangThaiChuyen
+-- Seed thêm một số ghế đã đặt mẫu để kiểm tra sơ đồ ghế của chuyến đầu tiên
+DECLARE @maChuyenXe INT;
+SELECT TOP 1 @maChuyenXe = maChuyenXe 
 FROM ChuyenXe cx
 INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien;
-GO
+WHERE td.diemDi = N'Đà Nẵng' 
+  AND td.diemDen = N'Hà Nội' 
+  AND CAST(cx.thoiGianDi AS DATE) = '2024-01-15'
+  AND CAST(cx.thoiGianDi AS TIME) = '05:00:00';
 
--- 29. View: Danh sách vé với thông tin chi tiết
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'V' AND name = 'vw_VeDienTuChiTiet')
-    DROP VIEW vw_VeDienTuChiTiet;
-GO
-CREATE VIEW vw_VeDienTuChiTiet AS
-SELECT 
-    vdt.maVe,
-    vdt.hoTenHanhKhach,
-    vdt.emailHanhKhach,
-    vdt.soDienThoaiHanhKhach,
-    vdt.diemDon,
-    vdt.diemTra,
-    td.diemDi,
-    td.diemDen,
-    cx.thoiGianDi,
-    cx.thoiGianDen,
-    vdt.giaVe,
-    vdt.giaHangHoa,
-    vdt.giaThanhToan,
-    vdt.trangThaiVe,
-    vdt.ngayDatVe
-FROM VeDienTu vdt
-INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
-INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong;
-GO
-
--- ============================================================================
--- PHẦN 10: STORED PROCEDURES
--- ============================================================================
-
--- 30. Procedure: Tìm chuyến xe theo tuyến đường và ngày
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_TimChuyenXe')
-    DROP PROCEDURE sp_TimChuyenXe;
-GO
-CREATE PROCEDURE sp_TimChuyenXe
-    @diemDi NVARCHAR(100),
-    @diemDen NVARCHAR(100),
-    @ngayDi DATE
-AS
+IF @maChuyenXe IS NOT NULL
 BEGIN
-    SELECT 
-        cx.maChuyenXe,
-        cx.thoiGianDi,
-        cx.thoiGianDen,
-        cx.giaCoBan,
-        cx.soGheConTrong,
-        cx.soLuongGheDat,
-        pt.tongSoGhe,
-        pt.loaiXe,
-        cx.diemDanhGia,
-        cx.tienIchChiTiet
-    FROM ChuyenXe cx
-    INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-    INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien
-    WHERE td.diemDi = @diemDi 
-    AND td.diemDen = @diemDen
-    AND CAST(cx.thoiGianDi AS DATE) = @ngayDi
-    AND cx.trangThaiChuyen = 'da_len_lich'
-    ORDER BY cx.thoiGianDi;
-END;
-GO
+    -- Chèn ghế đã đặt
+    INSERT INTO GheNgoi (maChuyenXe, soGhe, loaiGhe, viTriGhe, giaSoGhe, trangThaiGhe)
+    VALUES
+    (@maChuyenXe, '1', 'standard', 'front', 0, 'da_dat'),
+    (@maChuyenXe, '3', 'standard', 'front', 0, 'da_dat'),
+    (@maChuyenXe, '5', 'standard', 'middle', 0, 'da_dat'),
+    (@maChuyenXe, '10', 'standard', 'middle', 0, 'da_dat'),
+    (@maChuyenXe, '15', 'standard', 'middle', 0, 'da_dat'),
+    (@maChuyenXe, '20', 'standard', 'back', 0, 'da_dat'),
+    (@maChuyenXe, '25', 'standard', 'back', 0, 'da_dat');
 
--- 31. Procedure: Lấy thông tin vé chi tiết
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_LayThongTinVe')
-    DROP PROCEDURE sp_LayThongTinVe;
-GO
-CREATE PROCEDURE sp_LayThongTinVe
-    @maVe INT
-AS
-BEGIN
-    SELECT 
-        vdt.maVe,
-        vdt.hoTenHanhKhach,
-        vdt.emailHanhKhach,
-        vdt.soDienThoaiHanhKhach,
-        vdt.diemDon,
-        vdt.diemTra,
-        vdt.maQR,
-        td.diemDi,
-        td.diemDen,
-        cx.thoiGianDi,
-        cx.thoiGianDen,
-        gh.soGhe,
-        vdt.giaVe,
-        vdt.giaHangHoa,
-        vdt.giaThanhToan,
-        vdt.trangThaiVe,
-        vdt.ngayDatVe
-    FROM VeDienTu vdt
-    INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
-    INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-    LEFT JOIN GheNgoi gh ON vdt.maGhe = gh.maGhe
-    WHERE vdt.maVe = @maVe;
+    -- Cập nhật số ghế trống tự động
+    UPDATE ChuyenXe
+    SET soGheConTrong = (SELECT COUNT(*) FROM GheNgoi WHERE maChuyenXe = ChuyenXe.maChuyenXe AND trangThaiGhe = 'trong')
+    WHERE maChuyenXe = @maChuyenXe;
 END;
 GO

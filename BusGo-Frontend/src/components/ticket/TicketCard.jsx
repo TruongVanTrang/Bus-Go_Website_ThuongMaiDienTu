@@ -31,15 +31,15 @@ export default function TicketCard({ bookingId, ticketData }) {
           <div className="route-info">
             <div className="route-item">
               <div className="stop-name">{ticketData.trip.from}</div>
-              <div className="stop-time">08:00</div>
+              <div className="stop-time">{ticketData.trip.departureTime || '08:00'}</div>
             </div>
             <div className="route-divider">
               <div className="route-line"></div>
-              <div className="route-duration">9h 30m</div>
+              <div className="route-duration">{ticketData.trip.duration || '9h 30m'}</div>
             </div>
             <div className="route-item">
               <div className="stop-name">{ticketData.trip.to}</div>
-              <div className="stop-time">17:30</div>
+              <div className="stop-time">{ticketData.trip.arrivalTime || '17:30'}</div>
             </div>
           </div>
 

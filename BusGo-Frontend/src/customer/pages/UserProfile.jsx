@@ -11,61 +11,39 @@ import {
   FiAward,
   FiCreditCard,
   FiCalendar,
-  FiMapPin
+  FiMapPin,
+  FiAlertTriangle
 } from 'react-icons/fi'
-import { StorageUtil } from '../utils/helpers'
+import { StorageUtil } from '../../utils/helpers'
+import { getProfileAPI, updateProfileAPI } from '../../services/authService'
+import { getMyTicketsAPI } from '../../services/bookingService'
 import './UserProfile.css'
 
 export default function UserProfile() {
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [successMsg, setSuccessMsg] = useState(null)
+  
   const [userInfo, setUserInfo] = useState({
-    name: 'Nguyễn Văn A',
-    email: 'user@example.com',
-    phone: '0987654321',
-    membershipLevel: 'silver', // bronze, silver, gold
-    diemTichLuy: 2450,
-    totalSpent: 8750000,
-    joinedDate: '2023-05-15',
+    name: '',
+    email: '',
+    phone: '',
+    membershipLevel: 'bronze', // bronze, silver, gold
+    diemTichLuy: 0,
+    totalSpent: 0,
+    joinedDate: new Date().toISOString(),
     avatar: '👤'
   })
 
-  const [recentTransactions, setRecentTransactions] = useState([
-    {
-      id: 1,
-      route: 'TP. Hồ Chí Minh → Cần Thơ',
-      date: '2024-04-10',
-      amount: 95000,
-      points: 95,
-      status: 'completed'
-    },
-    {
-      id: 2,
-      route: 'TP. Hồ Chí Minh → Nha Trang',
-      date: '2024-04-08',
-      amount: 165000,
-      points: 165,
-      status: 'completed'
-    },
-    {
-      id: 3,
-      route: 'TP. Hồ Chí Minh → Đà Lạt',
-      date: '2024-04-05',
-      amount: 185000,
-      points: 185,
-      status: 'completed'
-    },
-    {
-      id: 4,
-      route: 'Hà Nội → TP. Hồ Chí Minh',
-      date: '2024-03-28',
-      amount: 385000,
-      points: 385,
-      status: 'completed'
-    }
-  ])
+  const [recentTransactions, setRecentTransactions] = useState([])
 
   const [editMode, setEditMode] = useState(false)
-  const [editData, setEditData] = useState(userInfo)
+  const [editData, setEditData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  })
 
   const membershipLevels = {
     bronze: {
@@ -97,6 +75,65 @@ export default function UserProfile() {
     }
   }
 
+  useEffect(() => {
+    const token = StorageUtil.getToken()
+    if (!token) {
+      navigate('/login')
+      return
+    }
+
+    const loadProfileData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // 1. Fetch profile info
+        const profile = await getProfileAPI(token)
+        
+        // 2. Fetch booking history for recent transactions
+        let tickets = []
+        try {
+          tickets = await getMyTicketsAPI(token)
+        } catch (err) {
+          console.error('Failed to load tickets:', err)
+        }
+
+        const dbLevel = (profile.capDoThanhVien || 'bronze').toLowerCase()
+        const mappedLevel = ['bronze', 'silver', 'gold'].includes(dbLevel) ? dbLevel : 'bronze'
+
+        setUserInfo({
+          name: profile.name || '',
+          email: profile.email || '',
+          phone: profile.phone || '',
+          membershipLevel: mappedLevel,
+          diemTichLuy: profile.diemTichLuy || 0,
+          totalSpent: Number(profile.tongTienDaChiTra || 0),
+          joinedDate: profile.ngayTaoTaiKhoan || new Date().toISOString(),
+          avatar: '👤'
+        })
+
+        // Map recent transactions (limit to 4 items)
+        const mappedTransactions = tickets.slice(0, 4).map(ticket => ({
+          id: ticket.id,
+          route: `${ticket.from} → ${ticket.to}`,
+          date: ticket.date,
+          amount: ticket.price,
+          points: Math.round(ticket.price / 10000), // 1 point per 10k VND
+          status: ticket.status === 'Da thanh toan' ? 'completed' : (ticket.status === 'Da huy' ? 'cancelled' : 'pending')
+        }))
+
+        setRecentTransactions(mappedTransactions)
+      } catch (err) {
+        console.error('Lỗi tải thông tin cá nhân:', err)
+        setError(err.message || 'Lỗi khi tải thông tin hồ sơ')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProfileData()
+  }, [navigate])
+
   const currentMembership = membershipLevels[userInfo.membershipLevel]
   const nextLevelKey = userInfo.membershipLevel === 'bronze' ? 'silver' : userInfo.membershipLevel === 'silver' ? 'gold' : 'gold'
   const nextMembership = membershipLevels[nextLevelKey]
@@ -105,16 +142,82 @@ export default function UserProfile() {
 
   const handleEditClick = () => {
     setEditMode(true)
-    setEditData(userInfo)
+    setEditData({
+      name: userInfo.name,
+      email: userInfo.email,
+      phone: userInfo.phone
+    })
   }
 
-  const handleSave = () => {
-    setUserInfo(editData)
-    setEditMode(false)
+  const handleSave = async () => {
+    const token = StorageUtil.getToken()
+    if (!token) return
+
+    // Validation
+    if (!editData.name.trim()) {
+      setError('Họ tên không được để trống')
+      return
+    }
+    if (!editData.email.trim()) {
+      setError('Email không được để trống')
+      return
+    }
+    if (!editData.phone.trim()) {
+      setError('Số điện thoại không được để trống')
+      return
+    }
+
+    try {
+      setError(null)
+      setSuccessMsg(null)
+      const res = await updateProfileAPI(token, {
+        name: editData.name,
+        email: editData.email,
+        phone: editData.phone
+      })
+
+      // Update state
+      setUserInfo(prev => ({
+        ...prev,
+        name: editData.name,
+        email: editData.email,
+        phone: editData.phone
+      }))
+
+      // Update LocalStorage to keep Header in sync
+      const currentUser = StorageUtil.getUser() || {}
+      StorageUtil.setUser({
+        ...currentUser,
+        name: editData.name,
+        email: editData.email,
+        phone: editData.phone
+      })
+
+      // Update old format key for compatibility
+      const oldUserInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      localStorage.setItem('userInfo', JSON.stringify({
+        ...oldUserInfo,
+        fullName: editData.name,
+        email: editData.email,
+        phone: editData.phone
+      }))
+
+      setSuccessMsg(res.message || 'Cập nhật thông tin thành công!')
+      setEditMode(false)
+
+      setTimeout(() => {
+        setSuccessMsg(null)
+      }, 3000)
+
+    } catch (err) {
+      console.error('Lỗi khi lưu thông tin:', err)
+      setError(err.message || 'Lỗi khi cập nhật hồ sơ')
+    }
   }
 
   const handleCancel = () => {
     setEditMode(false)
+    setError(null)
   }
 
   const handleLogout = () => {
@@ -136,8 +239,40 @@ export default function UserProfile() {
     })
   }
 
+  if (loading) {
+    return (
+      <div className="profile-loading">
+        <div className="spinner"></div>
+        <p>Đang tải thông tin tài khoản...</p>
+      </div>
+    )
+  }
+
+  if (error && !editMode && userInfo.name === '') {
+    return (
+      <div className="profile-error">
+        <FiAlertTriangle className="profile-error-icon" />
+        <h3>Đã xảy ra lỗi</h3>
+        <p>{error}</p>
+        <button className="btn-retry" onClick={() => window.location.reload()}>Thử lại</button>
+      </div>
+    )
+  }
+
   return (
     <div className="user-profile">
+      {/* Alert Messages */}
+      {successMsg && (
+        <div className="alert alert-success mx-auto" style={{ maxWidth: '1200px', width: '90%', marginTop: '20px' }}>
+          {successMsg}
+        </div>
+      )}
+      {error && (
+        <div className="alert alert-danger mx-auto" style={{ maxWidth: '1200px', width: '90%', marginTop: '20px' }}>
+          {error}
+        </div>
+      )}
+
       {/* Profile Header */}
       <div className="profile-header">
         <div className="header-background" style={{

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import SeatMap from '../components/booking/SeatMap'
-import PassengerQuantity from '../components/booking/PassengerQuantity'
-import CargoSelector from '../components/booking/CargoSelector'
-import Stepper from '../components/common/Stepper'
-import BackButton from '../components/common/BackButton'
-import { useCargoPrice } from '../hooks/useCargoPrice'
+import SeatMap from '../../components/booking/SeatMap'
+import PassengerQuantity from '../../components/booking/PassengerQuantity'
+import CargoSelector from '../../components/booking/CargoSelector'
+import Stepper from '../../components/common/Stepper'
+import BackButton from '../../components/common/BackButton'
+import { useCargoPrice } from '../../hooks/useCargoPrice'
 import './BookingPage.css'
 
 export default function BookingPage() {

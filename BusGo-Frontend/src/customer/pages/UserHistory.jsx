@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
-import { FiHeart, FiTrash2, FiMapPin, FiClock, FiDollarSign, FiX, FiDownload, FiBell, FiCheckCircle, FiLoader, FiStar, FiPackage, FiTruck, FiCheckSquare } from 'react-icons/fi'
+import { FiHeart, FiTrash2, FiMapPin, FiClock, FiDollarSign, FiX, FiDownload, FiBell, FiCheckCircle, FiLoader, FiStar, FiPackage, FiTruck, FiCheckSquare, FiAlertTriangle } from 'react-icons/fi'
+import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode.react'
+import { StorageUtil } from '../../utils/helpers'
+import { getMyTicketsAPI, cancelBookingAPI, submitFeedbackAPI } from '../../services/bookingService'
 import './UserHistory.css'
 
 export default function UserHistory() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('history')
   const [statusFilter, setStatusFilter] = useState('all') // all, upcoming, completed, cancelled
   const [selectedBooking, setSelectedBooking] = useState(null)
@@ -19,124 +23,36 @@ export default function UserHistory() {
   const [showConsignmentDetailModal, setShowConsignmentDetailModal] = useState(false)
   const [cargoStatusFilter, setCargoStatusFilter] = useState('all') // all, pending, confirmed, in_transit, delivered
 
-  const [bookings, setBookings] = useState([
-    {
-      id: 'BK2024001',
-      from: 'Hà Nội',
-      to: 'Sài Gòn',
-      date: '2026-04-15',
-      departureTime: '08:00',
-      seats: ['A1'],
-      price: 250000,
-      status: 'Da thanh toan',
-      operator: 'BusGo Express',
-      bookingDate: '2026-04-01',
-      passengerName: 'Nguyễn Văn A',
-      email: 'nguyenvana@email.com',
-      phone: '0912345678',
-      cargoInfo: {
-        type: 'light',
-        description: 'Hàng nhẹ/Tài liệu (<10kg)',
-        weight: 5,
-        price: 40000
-      },
-      trackingStatus: 'delivered',
-      trackingInfo: {
-        accepted: { time: '08:30', location: 'Bến xe Giáp Bát, Hà Nội' },
-        in_transit: { time: '10:45', location: 'Trạm Phú Thọ' },
-        delivered: { time: '18:20', location: 'Bến xe Miền Đông, TP.HCM' }
-      },
-      notifications: [
-        { type: 'info', message: 'Hàng đã được nhà xe giao nhận lúc 08:30', time: '08:30' },
-        { type: 'info', message: 'Hàng đang trong quá trình vận chuyển, dự kiến về đích 18:00', time: '10:45' }
-      ]
-    },
-    {
-      id: 'BK2024002',
-      from: 'Hà Nội',
-      to: 'Hải Phòng',
-      date: '2026-04-20',
-      departureTime: '10:00',
-      seats: ['B5'],
-      price: 180000,
-      status: 'Da thanh toan',
-      operator: 'Hải Phòng Express',
-      bookingDate: '2026-04-10',
-      passengerName: 'Trần Thị B',
-      email: 'tranthib@email.com',
-      phone: '0987654321',
-      cargoInfo: {
-        type: 'motorcycle',
-        description: 'Gửi xe máy thông thường',
-        weight: null,
-        price: 300000
-      },
-      trackingStatus: 'in_transit',
-      trackingInfo: {
-        accepted: { time: '10:30', location: 'Bến xe Giáp Bát, Hà Nội' },
-        in_transit: { time: '12:00', location: 'Đang vận chuyển...' }
-      },
-      notifications: [
-        { type: 'warning', message: 'Xe máy của bạn sắp tới điểm đích', time: '12:00' }
-      ]
-    },
-    {
-      id: 'BK2024003',
-      from: 'Sài Gòn',
-      to: 'Đà Nẵng',
-      date: '2024-02-28',
-      departureTime: '14:00',
-      seats: ['C2', 'C3'],
-      price: 400000,
-      status: 'Da thanh toan',
-      operator: 'Premium Transport',
-      bookingDate: '2024-02-15',
-      passengerName: 'Lê Văn C',
-      email: 'levanc@email.com',
-      phone: '0922333444',
-      cargoInfo: {
-        type: 'none',
-        description: 'Không có',
-        weight: null,
-        price: 0
-      },
-      trackingStatus: 'completed',
-      notifications: [
-        { type: 'success', message: 'Chuyến xe đã hoàn tất, cảm ơn đã sử dụng dịch vụ của BusGo', time: '20:45' }
-      ]
-    },
-    {
-      id: 'BK2024004',
-      from: 'Đà Nẵng',
-      to: 'Hà Nội',
-      date: '2026-04-25',
-      departureTime: '06:00',
-      seats: ['D1', 'D2'],
-      price: 350000,
-      status: 'Da huy',
-      operator: 'BusGo Express',
-      bookingDate: '2026-04-15',
-      passengerName: 'Phạm Minh D',
-      email: 'phamminihd@email.com',
-      phone: '0933444555',
-      cargoInfo: {
-        type: 'none',
-        description: 'Không có',
-        weight: null,
-        price: 0
-      },
-      refundAmount: 175000,
-      notifications: [
-        { type: 'info', message: 'Yêu cầu hủy vé đã được phê duyệt', time: '16:30' },
-        { type: 'info', message: 'Tiền hoàn lại: 175.000đ sẽ chuyển về tài khoản trong 2-3 ngày', time: '16:31' }
-      ]
-    }
-  ])
-
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [watchlist, setWatchlist] = useState([])
 
-  // Load watchlist from localStorage on mount
+  // Load bookings and watchlist on mount
   useEffect(() => {
+    const token = StorageUtil.getToken()
+    if (!token) {
+      navigate('/login')
+      return
+    }
+
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const tickets = await getMyTicketsAPI(token)
+        setBookings(tickets)
+      } catch (err) {
+        console.error('Lỗi khi tải lịch sử vé:', err)
+        setError(err.message || 'Lỗi khi tải lịch sử vé')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+
+    // Load watchlist from localStorage on mount
     const savedFavorites = localStorage.getItem('busgo_favorites')
     if (savedFavorites) {
       try {
@@ -150,7 +66,7 @@ export default function UserHistory() {
     } else {
       // Load default watchlist data from mockData if no saved favorites
       try {
-        const { mockWatchlistTrips } = require('../utils/mockData')
+        const { mockWatchlistTrips } = require('../../utils/mockData')
         setWatchlist(mockWatchlistTrips)
       } catch (e) {
         console.error('Error loading mock watchlist:', e)
@@ -184,7 +100,7 @@ export default function UserHistory() {
         console.error('Error loading consignments:', e)
       }
     }
-  }, [])
+  }, [navigate])
 
   // Get trip status (upcoming, completed, cancelled)
   const getTripStatus = (booking) => {
@@ -249,18 +165,29 @@ export default function UserHistory() {
     setShowCancelModal(true)
   }
 
-  const confirmCancel = () => {
+  const confirmCancel = async () => {
     if (cancelRequest) {
-      const refundAmount = calculateRefund(cancelRequest)
-      setBookings(prev =>
-        prev.map(b =>
-          b.id === cancelRequest.id
-            ? { ...b, status: 'Da huy', refundAmount }
-            : b
+      try {
+        const token = StorageUtil.getToken()
+        if (!token) {
+          navigate('/login')
+          return
+        }
+        await cancelBookingAPI(token, cancelRequest.id)
+        const refundAmount = calculateRefund(cancelRequest)
+        setBookings(prev =>
+          prev.map(b =>
+            b.id === cancelRequest.id
+              ? { ...b, status: 'Da huy', refundAmount }
+              : b
+          )
         )
-      )
-      setShowCancelModal(false)
-      setCancelRequest(null)
+        setShowCancelModal(false)
+        setCancelRequest(null)
+      } catch (err) {
+        console.error('Lỗi khi hủy đặt vé:', err)
+        alert(err.message || 'Lỗi khi hủy đặt vé. Vui lòng thử lại.')
+      }
     }
   }
 
@@ -284,21 +211,33 @@ export default function UserHistory() {
     setShowRatingModal(true)
   }
 
-  const submitRating = () => {
+  const submitRating = async () => {
     if (selectedBooking && ratingValue > 0) {
-      const updatedRatings = {
-        ...bookingRatings,
-        [selectedBooking.id]: {
-          rating: ratingValue,
-          comment: ratingComment,
-          date: new Date().toISOString()
+      try {
+        const token = StorageUtil.getToken()
+        if (!token) {
+          navigate('/login')
+          return
         }
+        await submitFeedbackAPI(token, selectedBooking.id, ratingValue, ratingComment)
+        
+        const updatedRatings = {
+          ...bookingRatings,
+          [selectedBooking.id]: {
+            rating: ratingValue,
+            comment: ratingComment,
+            date: new Date().toISOString()
+          }
+        }
+        setBookingRatings(updatedRatings)
+        localStorage.setItem('busgo_trip_ratings', JSON.stringify(updatedRatings))
+        setShowRatingModal(false)
+        setRatingValue(0)
+        setRatingComment('')
+      } catch (err) {
+        console.error('Lỗi khi gửi đánh giá:', err)
+        alert(err.message || 'Lỗi khi gửi đánh giá. Vui lòng thử lại.')
       }
-      setBookingRatings(updatedRatings)
-      localStorage.setItem('busgo_trip_ratings', JSON.stringify(updatedRatings))
-      setShowRatingModal(false)
-      setRatingValue(0)
-      setRatingComment('')
     }
   }
 
@@ -352,6 +291,34 @@ export default function UserHistory() {
     }
     
     return { ...baseStyle, backgroundColor: '#10b981', text: 'Đã hoàn thành' }
+  }
+
+  if (loading) {
+    return (
+      <div className="user-history-page">
+        <div className="container px-md-5 px-3 py-5">
+          <div className="history-loading">
+            <div className="spinner"></div>
+            <p className="text-muted mt-3">Đang tải lịch sử hoạt động...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && bookings.length === 0) {
+    return (
+      <div className="user-history-page">
+        <div className="container px-md-5 px-3 py-5">
+          <div className="history-error">
+            <FiAlertTriangle className="history-error-icon" />
+            <h3 className="fw-bold text-neutral-900 mt-3">Đã xảy ra lỗi</h3>
+            <p className="text-muted">{error}</p>
+            <button className="btn-retry" onClick={() => window.location.reload()}>Thử lại</button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

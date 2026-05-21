@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import TripCard from '../components/search/TripCard'
-import SearchFilters from '../components/search/SearchFilters'
-import { BUS_TYPES } from '../utils/constants'
-import { mockTrips } from '../utils/mockData'
+import TripCard from '../../components/search/TripCard'
+import SearchFilters from '../../components/search/SearchFilters'
+import { BUS_TYPES } from '../../utils/constants'
+import { mockTrips } from '../../utils/mockData'
 import './SearchResultsPage.css'
 
 export default function SearchResultsPage() {

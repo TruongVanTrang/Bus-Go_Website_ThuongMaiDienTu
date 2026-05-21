@@ -96,7 +96,7 @@ export default function TripCard({ trip, onSelect }) {
               <div className="d-flex align-items-center gap-2 mt-2">
                 <FiStar size={16} style={{ color: 'var(--color-secondary-500)' }} />
                 <span className="fw-600">{trip.rating}</span>
-                <span className="text-muted small">({Math.floor(Math.random() * 500) + 100} reviews)</span>
+                <span className="text-muted small">({trip.reviewCount || 0} reviews)</span>
               </div>
             </div>
 
@@ -128,7 +128,9 @@ export default function TripCard({ trip, onSelect }) {
             <div className="mt-4">
               <div className="small fw-600 text-neutral-700 mb-2">Loại xe</div>
               <div className="small text-neutral-600 text-capitalize">
-                {trip.busType === 'bus' ? 'Xe Bus' : 'Xe 4-35 chỗ'}
+                {trip.busType === '16-seater' ? 'Xe 16 chỗ'
+                  : trip.busType === '35-seater' ? 'Xe 35 chỗ'
+                  : trip.busType || 'Xe khách'}
               </div>
             </div>
 

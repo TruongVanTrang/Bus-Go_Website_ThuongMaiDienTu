@@ -1,10 +1,19 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BUS_TYPES, BUS_CATEGORIES, CITY_STOPS, INTERCITY_ROUTES, DEPARTURE_TIMES } from '../../utils/constants'
 import './SearchFilters.css'
 
 export default function SearchFilters({ filters, setFilters }) {
+  const getPriceConfig = () => {
+    if (filters?.category === 'city') {
+      return { maxLimit: 100000, step: 5000, defaultMax: 100000 }
+    }
+    return { maxLimit: 1000000, step: 50000, defaultMax: 1000000 }
+  }
+
+  const { maxLimit, step, defaultMax } = getPriceConfig()
+
   const [priceMin, setPriceMin] = useState(filters?.priceRange?.[0] || 0)
-  const [priceMax, setPriceMax] = useState(filters?.priceRange?.[1] || 50000)
+  const [priceMax, setPriceMax] = useState(filters?.priceRange?.[1] || defaultMax)
   const [expandedSections, setExpandedSections] = useState({
     busType: true,
     price: true,
@@ -12,6 +21,14 @@ export default function SearchFilters({ filters, setFilters }) {
     location: true,
     amenities: true
   })
+
+  // Synchronize state if parent filter updates (like when category changes)
+  useEffect(() => {
+    if (filters?.priceRange) {
+      setPriceMin(filters.priceRange[0])
+      setPriceMax(filters.priceRange[1])
+    }
+  }, [filters?.priceRange])
 
   const amenitiesOptions = [
     { id: 'AC', label: 'AC (Điều hòa)' },
@@ -49,26 +66,24 @@ export default function SearchFilters({ filters, setFilters }) {
     : Object.entries(BUS_TYPES)
 
   return (
-    // 1. KHUNG BAO NGOÀI: Khóa cứng chiều cao bằng màn hình và cho phép trượt (Sticky)
     <div 
       className="search-filters bg-white shadow-sm" 
       style={{ 
         position: 'sticky', 
-        top: '80px', // Khoảng cách so với menu trên cùng (bạn có thể tăng/giảm nếu bị lẹm header)
-        height: 'calc(100vh - 100px)', // Giới hạn chiều cao bằng màn hình trừ đi khoảng trống
+        top: '80px', 
+        height: 'calc(100vh - 100px)', 
         display: 'flex', 
         flexDirection: 'column',
         borderRadius: '0.75rem',
-        overflow: 'hidden' // Giữ cho các góc bo tròn không bị tràn
+        overflow: 'hidden' 
       }}
     >
-      
-      {/* 2. TIÊU ĐỀ (Cố định ở trên) */}
+      {/* Title Header */}
       <div className="p-3 border-bottom bg-white" style={{ zIndex: 10 }}>
         <h5 className="fw-bold mb-0">🔍 Bộ lọc tìm kiếm</h5>
       </div>
 
-      {/* 3. PHẦN BỘ LỌC (Cho phép cuộn nội dung bên trong) */}
+      {/* Scrollable body content */}
       <div 
         className="filters-scroll-container p-3 custom-scrollbar" 
         style={{ 
@@ -76,8 +91,7 @@ export default function SearchFilters({ filters, setFilters }) {
           overflowY: 'auto' 
         }}
       >
-        
-        {/* -- Loại Dịch Vụ -- */}
+        {/* Service Type Selection */}
         {!filters?.category && (
           <div className="filter-section mb-4">
             <div 
@@ -124,7 +138,7 @@ export default function SearchFilters({ filters, setFilters }) {
           </div>
         )}
 
-        {/* -- Loại Xe -- */}
+        {/* Vehicle Types */}
         <div className="filter-section mb-4 border-top pt-4">
           <div 
             className="filter-header d-flex justify-content-between align-items-center"
@@ -165,7 +179,7 @@ export default function SearchFilters({ filters, setFilters }) {
           )}
         </div>
 
-        {/* -- Ngày xuất phát -- */}
+        {/* Departure Date */}
         <div className="filter-section mb-4 border-top pt-4">
           <div className="filter-header d-flex justify-content-between align-items-center" onClick={() => toggleSection('date')} style={{ cursor: 'pointer' }}>
             <h6 className="fw-600 mb-0">📅 Ngày xuất phát</h6>
@@ -178,7 +192,7 @@ export default function SearchFilters({ filters, setFilters }) {
           )}
         </div>
 
-        {/* -- Điểm đi/đến -- */}
+        {/* Departure/Arrival Stop Points */}
         <div className="filter-section mb-4 border-top pt-4">
           <div className="filter-header d-flex justify-content-between align-items-center" onClick={() => toggleSection('location')} style={{ cursor: 'pointer' }}>
             <h6 className="fw-600 mb-0">🗺️ Điểm đi/đến</h6>
@@ -204,7 +218,7 @@ export default function SearchFilters({ filters, setFilters }) {
           )}
         </div>
 
-        {/* -- Giá vé -- */}
+        {/* Price Ranges - Configured dynamically based on category */}
         <div className="filter-section mb-4 border-top pt-4">
           <div className="filter-header d-flex justify-content-between align-items-center" onClick={() => toggleSection('price')} style={{ cursor: 'pointer' }}>
             <h6 className="fw-600 mb-0">💰 Giá vé</h6>
@@ -215,24 +229,43 @@ export default function SearchFilters({ filters, setFilters }) {
               <div className="row g-2">
                 <div className="col-6 mb-2">
                   <label className="small text-muted mb-1 d-block" style={{ fontSize: '0.8rem' }}>Từ</label>
-                  <input type="number" className="form-control form-input" value={priceMin} onChange={(e) => setPriceMin(Number(e.target.value))} min="0" max="50000" step="5000" />
+                  <input 
+                    type="number" 
+                    className="form-control form-input" 
+                    value={priceMin} 
+                    onChange={(e) => setPriceMin(Number(e.target.value))} 
+                    min="0" 
+                    max={maxLimit} 
+                    step={step} 
+                  />
                 </div>
                 <div className="col-6 mb-2">
                   <label className="small text-muted mb-1 d-block" style={{ fontSize: '0.8rem' }}>Đến</label>
-                  <input type="number" className="form-control form-input" value={priceMax} onChange={(e) => { const val = Number(e.target.value); setPriceMax(val > 50000 ? 50000 : val); }} min="0" max="50000" step="5000" />
+                  <input 
+                    type="number" 
+                    className="form-control form-input" 
+                    value={priceMax} 
+                    onChange={(e) => { 
+                      const val = Number(e.target.value); 
+                      setPriceMax(val > maxLimit ? maxLimit : val); 
+                    }} 
+                    min="0" 
+                    max={maxLimit} 
+                    step={step} 
+                  />
                 </div>
               </div>
               <button onClick={handlePriceChange} className="btn btn-sm w-100 mt-1" style={{ backgroundColor: 'var(--color-primary-600)', color: 'white', border: 'none' }}>Áp dụng</button>
               <div className="price-range-display mt-2">
                 <small className="text-muted d-block text-center">
-                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(filters?.priceRange?.[0] || 0)} - {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(filters?.priceRange?.[1] || 50000)}
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(filters?.priceRange?.[0] || 0)} - {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(filters?.priceRange?.[1] || defaultMax)}
                 </small>
               </div>
             </div>
           )}
         </div>
 
-        {/* -- Giờ khởi hành -- */}
+        {/* Departure Time Slots */}
         <div className="filter-section mb-4 border-top pt-4">
           <div className="filter-header d-flex justify-content-between align-items-center" onClick={() => toggleSection('timeSlot')} style={{ cursor: 'pointer' }}>
             <h6 className="fw-600 mb-0">⏰ Giờ khởi hành</h6>
@@ -260,7 +293,7 @@ export default function SearchFilters({ filters, setFilters }) {
           )}
         </div>
 
-        {/* -- Tiện nghi -- */}
+        {/* Amenities */}
         <div className="filter-section border-top pt-4">
           <div className="filter-header d-flex justify-content-between align-items-center" onClick={() => toggleSection('amenities')} style={{ cursor: 'pointer' }}>
             <h6 className="fw-600 mb-0">✨ Tiện nghi</h6>
@@ -278,7 +311,7 @@ export default function SearchFilters({ filters, setFilters }) {
           )}
         </div>
 
-        {/* Ghi chú */}
+        {/* Information Notes */}
         <div className="alert alert-info mt-4 mb-2" role="alert">
           <small>
             <strong>ℹ️ Lưu ý:</strong> BusGo là một công ty vận tải độc lập cung cấp các dịch vụ xe nội thành và ngoại thành tại Đà Nẵng.
@@ -286,20 +319,29 @@ export default function SearchFilters({ filters, setFilters }) {
         </div>
       </div> 
 
-      {/* 4. NÚT ĐẶT LẠI (CỐ ĐỊNH Ở ĐÁY, KHÔNG BAO GIỜ BỊ CUỘN MẤT) */}
+      {/* Bottom Sticky Reset Button */}
       <div 
         className="p-3 bg-white border-top" 
         style={{ 
-          marginTop: 'auto', // Đẩy thẻ này xuống dưới cùng
-          zIndex: 10 // Đảm bảo luôn nằm trên các nội dung cuộn
+          marginTop: 'auto', 
+          zIndex: 10 
         }}
       >
         <button
           onClick={() => {
+            const config = getPriceConfig()
             setFilters({
-              priceRange: [0, 50000], amenities: [], busType: '', departureTime: '', category: '', from: '', to: '', departureDate: ''
+              priceRange: [0, config.defaultMax], 
+              amenities: [], 
+              busType: '', 
+              departureTime: '', 
+              category: filters?.category || '', 
+              from: filters?.from || '', 
+              to: filters?.to || '', 
+              departureDate: filters?.departureDate || ''
             })
-            setPriceMin(0); setPriceMax(50000)
+            setPriceMin(0)
+            setPriceMax(config.defaultMax)
           }}
           className="btn w-100 fw-medium shadow-sm"
           style={{ backgroundColor: 'var(--color-primary-600)', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '0.5rem' }}
@@ -307,7 +349,6 @@ export default function SearchFilters({ filters, setFilters }) {
           ↺ Đặt lại tất cả bộ lọc
         </button>
       </div>
-
     </div>
   )
 }

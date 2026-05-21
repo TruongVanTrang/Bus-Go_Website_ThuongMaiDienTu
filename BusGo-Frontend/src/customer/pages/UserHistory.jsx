@@ -52,28 +52,22 @@ export default function UserHistory() {
 
     loadData()
 
-    // Load watchlist from localStorage on mount
+    // Tải danh sách yêu thích từ localStorage (UX state cục bộ)
     const savedFavorites = localStorage.getItem('busgo_favorites')
     if (savedFavorites) {
       try {
         const favorites = JSON.parse(savedFavorites)
-        // Filter for trips (not routes) and set as watchlist
         const tripFavorites = favorites.filter(fav => fav.type === 'trip' || fav.busType)
         setWatchlist(tripFavorites)
       } catch (e) {
         console.error('Error loading favorites:', e)
+        setWatchlist([])
       }
     } else {
-      // Load default watchlist data from mockData if no saved favorites
-      try {
-        const { mockWatchlistTrips } = require('../../utils/mockData')
-        setWatchlist(mockWatchlistTrips)
-      } catch (e) {
-        console.error('Error loading mock watchlist:', e)
-      }
+      setWatchlist([]) // Không dùng dữ liệu mầu
     }
 
-    // Load ratings from localStorage
+    // Tải ratings từ localStorage (UX state cục bộ)
     const savedRatings = localStorage.getItem('busgo_trip_ratings')
     if (savedRatings) {
       try {
@@ -84,22 +78,8 @@ export default function UserHistory() {
       }
     }
 
-    // Load consignments from localStorage
-    const savedConsignments = localStorage.getItem('busgo_consignments')
-    if (savedConsignments) {
-      try {
-        const parsedConsignments = JSON.parse(savedConsignments)
-        // Add default status if not present
-        const consignmentsWithStatus = parsedConsignments.map(c => ({
-          ...c,
-          cargoStatus: c.cargoStatus || 'pending',
-          createdAt: c.timestamp || new Date().toISOString()
-        }))
-        setConsignments(consignmentsWithStatus)
-      } catch (e) {
-        console.error('Error loading consignments:', e)
-      }
-    }
+    // Dữ liệu ký gửi hàng sẽ được lấy từ backend khi API sẵn sàng
+    setConsignments([])
   }, [navigate])
 
   // Get trip status (upcoming, completed, cancelled)

@@ -4,8 +4,18 @@ import { FiCheckCircle, FiClock, FiLock } from 'react-icons/fi'
 import QRCode from 'qrcode.react'
 import Stepper from '../../components/common/Stepper'
 import BackButton from '../../components/common/BackButton'
-import { mockPaymentMethods } from '../../utils/mockData'
 import './PaymentPage.css'
+
+// Cấu hình phương thức thanh toán
+const PAYMENT_METHODS = {
+  visa: { name: 'Visa', category: 'Thẻ quốc tế', logo: '💳', description: 'Thanh toán qua thẻ Visa quốc tế' },
+  mastercard: { name: 'Mastercard', category: 'Thẻ quốc tế', logo: '💳', description: 'Thanh toán qua thẻ Mastercard quốc tế' },
+  jcb: { name: 'JCB', category: 'Thẻ quốc tế', logo: '💳', description: 'Thanh toán qua thẻ JCB quốc tế' },
+  atm_napas: { name: 'ATM Napas', category: 'Thẻ nội địa', logo: '🏦', description: 'Thanh toán qua thẻ ATM nội địa qua cổng Napas' },
+  momo: { name: 'Momo', category: 'Ví điện tử', logo: '📱', description: 'Thanh toán qua ví điện tử Momo' },
+  zalopay: { name: 'ZaloPay', category: 'Ví điện tử', logo: '📱', description: 'Thanh toán qua ví điện tử ZaloPay' },
+  vnpay: { name: 'VNPay', category: 'Ví điện tử', logo: '📱', description: 'Thanh toán qua ví điện tử VNPay' }
+}
 
 export default function PaymentPage() {
   const location = useLocation()
@@ -43,8 +53,8 @@ export default function PaymentPage() {
     (bookingData.selectedSeats.length * (bookingData.totalPrice || 250000)) + (bookingData.cargoInfo?.estimatedPrice || 0) : 
     250000 + (bookingData.cargoInfo?.estimatedPrice || 0)
 
-  // Payment methods configuration - Imported from mockData
-  const paymentMethods = mockPaymentMethods
+  // Cấu hình phương thức thanh toán
+  const paymentMethods = PAYMENT_METHODS
 
   // Generate QR code based on payment method
   const generatePaymentQR = (method) => {
@@ -100,25 +110,6 @@ export default function PaymentPage() {
     setTimeout(() => {
       setConfirmLoading(false)
       setIsConfirmed(true)
-      
-      // Mock: Send email with ticket (in real app, call backend API)
-      const emailData = {
-        to: bookingData.passengerInfo?.email || 'customer@example.com',
-        subject: `Vé xe BusGo - Mã đặt chỗ ${bookingId}`,
-        body: `Vé điện tử của bạn đã sẵn sàng. Mã QR và thông tin chi tiết được gửi kèm.`,
-        bookingId,
-        qrCode: JSON.stringify({
-          bookingId,
-          amount: totalAmount,
-          merchant: 'BusGo',
-          method: selectedPaymentMethod
-        })
-      }
-      
-      // Store in localStorage (mock email sending)
-      const sentEmails = JSON.parse(localStorage.getItem('busgo_emails') || '[]')
-      sentEmails.push({ ...emailData, timestamp: new Date().toISOString() })
-      localStorage.setItem('busgo_emails', JSON.stringify(sentEmails))
 
       // Redirect to ticket page after 2 seconds
       setTimeout(() => {

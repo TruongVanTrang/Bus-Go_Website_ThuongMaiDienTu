@@ -1,10 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FiX, FiClock, FiMapPin, FiEdit2, FiWifi } from 'react-icons/fi'
 import { MdDirectionsBus } from 'react-icons/md'
 import './TripDetailsModal.css'
 
 export default function TripDetailsModal({ trip, onClose, onBook }) {
   const [selectedSeats, setSelectedSeats] = useState([])
+
+  // Khóa scroll body khi modal mở
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
 
   if (!trip) return null
 
@@ -53,7 +61,11 @@ export default function TripDetailsModal({ trip, onClose, onBook }) {
                     </div>
                     <div className="col-6 col-md-4">
                       <div className="small text-muted mb-1">Loại xe</div>
-                      <div className="fw-600">{trip.busType === 'bus' ? 'Xe Bus' : 'Xe Minibus'}</div>
+                      <div className="fw-600">
+                        {trip.busType === '16-seater' ? 'Xe 16 chỗ'
+                          : trip.busType === '35-seater' ? 'Xe 35 chỗ'
+                          : trip.busType || 'Xe khách'}
+                      </div>
                     </div>
                     <div className="col-6 col-md-4">
                       <div className="small text-muted mb-1">Ghế trống</div>
@@ -73,7 +85,7 @@ export default function TripDetailsModal({ trip, onClose, onBook }) {
                       <div className="small text-muted mb-1">Đánh giá</div>
                       <div className="fw-600">
                         ⭐ {trip.rating}
-                        <span className="text-muted small ms-1">({Math.floor(Math.random() * 500) + 100} reviews)</span>
+                        <span className="text-muted small ms-1">({trip.reviewCount || 0} reviews)</span>
                       </div>
                     </div>
                   </div>

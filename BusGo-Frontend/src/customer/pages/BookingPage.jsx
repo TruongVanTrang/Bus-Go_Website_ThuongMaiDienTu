@@ -6,6 +6,7 @@ import CargoSelector from '../../components/booking/CargoSelector'
 import Stepper from '../../components/common/Stepper'
 import BackButton from '../../components/common/BackButton'
 import { useCargoPrice } from '../../hooks/useCargoPrice'
+import { getTripById } from '../../services/tripService'
 import './BookingPage.css'
 
 export default function BookingPage() {
@@ -30,28 +31,41 @@ export default function BookingPage() {
     estimatedPrice: 0
   })
 
-  // Fetch trip data from service (mock or API)
+  // Fetch trip data from API on mount
   useEffect(() => {
-    // If trip data is passed from SearchResultsPage, use it
-    if (location.state?.trip) {
-      setTrip(location.state.trip)
-    } else {
-      // Use fallback mock data with tripId
-      setTrip({
-        id: parseInt(tripId) || 1,
-        from: 'Hà Nội',
-        to: 'Sài Gòn',
-        departureTime: '08:00',
-        date: '2024-01-15',
-        category: 'interCity',
-        busType: 'bus',
-        seats: 35,
-        price: 250000,
-        amenities: ['AC', 'Wifi', 'Phone Charger'],
-        rating: 4.5,
-        occupiedSeats: [1, 3, 5, 10, 15, 20, 25]
-      })
+    const fetchTrip = async () => {
+      try {
+        const data = await getTripById(tripId)
+        if (data) {
+          setTrip(data)
+        } else if (location.state?.trip) {
+          setTrip(location.state.trip)
+        }
+      } catch (err) {
+        console.error('Error fetching trip details:', err)
+        if (location.state?.trip) {
+          setTrip(location.state.trip)
+        } else {
+          // Fallback static structure (safety)
+          setTrip({
+            id: parseInt(tripId) || 1,
+            from: 'Hà Nội',
+            to: 'Sài Gòn',
+            departureTime: '08:00',
+            date: '2024-01-15',
+            category: 'interCity',
+            busType: '35-seater',
+            seats: 35,
+            price: 250000,
+            amenities: ['AC', 'Wifi', 'Phone Charger'],
+            rating: 4.5,
+            occupiedSeats: [1, 3, 5, 10, 15, 20, 25]
+          })
+        }
+      }
     }
+
+    fetchTrip()
   }, [tripId, location.state])
 
   const handleSeatSelect = (seatNumber) => {

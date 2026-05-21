@@ -3,16 +3,19 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import TripCard from '../../components/search/TripCard'
 import SearchFilters from '../../components/search/SearchFilters'
 import { BUS_TYPES } from '../../utils/constants'
-import { mockTrips } from '../../utils/mockData'
+import { searchTrips } from '../../services/tripService'
 import './SearchResultsPage.css'
 
 export default function SearchResultsPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const [trips, setTrips] = useState([])
   const [filteredTrips, setFilteredTrips] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
   const [filters, setFilters] = useState({
-    priceRange: [0, 500000],
+    priceRange: [0, 1000000],
     amenities: [],
     busType: '',
     departureTime: '',
@@ -22,18 +25,88 @@ export default function SearchResultsPage() {
     departureDate: searchParams.get('date') || ''
   })
 
-  // Load trips directly from mockData
+  // Sync state filters when URL query parameters change
   useEffect(() => {
-    console.log('Loading trips from mockData...')
-    console.log('Total trips:', mockTrips.length)
-    setTrips(mockTrips)
-    setFilteredTrips(mockTrips)
-  }, [])
+    const from = searchParams.get('from') || ''
+    const to = searchParams.get('to') || ''
+    const date = searchParams.get('date') || ''
+    const category = searchParams.get('category') || ''
+    
+    setFilters(prev => ({
+      ...prev,
+      from,
+      to,
+      departureDate: date,
+      category
+    }))
+  }, [searchParams])
 
-  // Apply filters
+  // Sync core filters state back to URL query parameters
+  useEffect(() => {
+    const from = searchParams.get('from') || ''
+    const to = searchParams.get('to') || ''
+    const date = searchParams.get('date') || ''
+    const category = searchParams.get('category') || ''
+
+    if (
+      filters.from !== from ||
+      filters.to !== to ||
+      filters.departureDate !== date ||
+      filters.category !== category
+    ) {
+      const newParams = {}
+      if (filters.from) newParams.from = filters.from
+      if (filters.to) newParams.to = filters.to
+      if (filters.departureDate) newParams.date = filters.departureDate
+      if (filters.category) newParams.category = filters.category
+      
+      setSearchParams(newParams)
+    }
+  }, [filters.from, filters.to, filters.departureDate, filters.category, searchParams, setSearchParams])
+
+  // Fetch matching trips from backend API when core filters change
+  useEffect(() => {
+    const fetchTrips = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const from = filters.from || ''
+        const to = filters.to || ''
+        const date = filters.departureDate || ''
+        const category = filters.category || ''
+
+        const data = await searchTrips(from, to, date, category)
+        setTrips(data)
+      } catch (err) {
+        console.error('Error fetching trips:', err)
+        setError(err.message || 'Lỗi kết nối máy chủ khi tìm kiếm chuyến xe')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTrips()
+  }, [filters.from, filters.to, filters.departureDate, filters.category])
+
+  // Dynamically adjust price limit based on category
+  useEffect(() => {
+    if (filters.category === 'city') {
+      setFilters(prev => ({
+        ...prev,
+        priceRange: prev.priceRange[1] > 100000 ? [0, 100000] : prev.priceRange
+      }))
+    } else {
+      setFilters(prev => ({
+        ...prev,
+        priceRange: prev.priceRange[1] <= 100000 ? [0, 1000000] : prev.priceRange
+      }))
+    }
+  }, [filters.category])
+
+  // Client-side filtration for price, amenities, vehicle types, and departure times
   useEffect(() => {
     let filtered = trips.filter(trip => {
-      // Filter by exact route (from, to)
+      // Core route verification (safeguard)
       if (filters.from && trip.from !== filters.from) {
         return false
       }
@@ -46,12 +119,14 @@ export default function SearchResultsPage() {
         return false
       }
 
-      // Bus type filter - Map từ busType ID sang trip.busType
+      // Bus type filter - Map from busType ID to trip.busType
       if (filters.busType && filters.busType !== '') {
-        // Get bus type info từ BUS_TYPES
         const selectedBusType = Object.values(BUS_TYPES).find(bt => bt.id === filters.busType)
-        if (selectedBusType && trip.busType !== selectedBusType.busType) {
-          return false
+        if (selectedBusType && trip.busType !== selectedBusType.loaiXe && trip.busType !== selectedBusType.name) {
+          // Compare against loaiXe (e.g. '16-seater', '35-seater')
+          if (trip.busType !== selectedBusType.id) {
+            return false
+          }
         }
       }
 
@@ -65,10 +140,9 @@ export default function SearchResultsPage() {
         }
       }
 
-      // Departure time filter - Chi tiết theo mốc thời gian
+      // Departure time filter - Categorized slots
       if (filters.departureTime && filters.departureTime !== '') {
         const hour = parseInt(trip.departureTime.split(':')[0])
-        const minute = parseInt(trip.departureTime.split(':')[1])
         
         const timeRanges = {
           early: { start: 4, end: 6 },
@@ -122,11 +196,23 @@ export default function SearchResultsPage() {
                 Kết quả tìm kiếm
               </h2>
               <p className="text-muted">
-                {filteredTrips.length} chuyến xe được tìm thấy
+                {loading ? 'Đang tải dữ liệu...' : `${filteredTrips.length} chuyến xe được tìm thấy`}
               </p>
             </div>
 
-            {filteredTrips.length > 0 ? (
+            {loading ? (
+              <div className="d-flex flex-column align-items-center justify-content-center py-5">
+                <div className="spinner-border mb-3" role="status" style={{ width: '3rem', height: '3rem', color: 'var(--color-primary-600)' }}>
+                  <span className="visually-hidden">Đang tải...</span>
+                </div>
+                <h5 className="text-muted">Đang tìm kiếm chuyến xe tốt nhất cho bạn...</h5>
+              </div>
+            ) : error ? (
+              <div className="alert alert-danger text-center py-5">
+                <h5 className="mb-3">⚠️ Đã xảy ra lỗi</h5>
+                <p className="text-muted">{error}</p>
+              </div>
+            ) : filteredTrips.length > 0 ? (
               <div className="d-flex flex-column gap-3">
                 {filteredTrips.map(trip => (
                   <TripCard
@@ -143,19 +229,19 @@ export default function SearchResultsPage() {
                   Không tìm thấy chuyến xe phù hợp
                 </h5>
                 <p className="text-muted mb-4">
-                  Hãy thử thay đổi các bộ lọc hoặc tiêu chí tìm kiếm
+                  Hãy thử thay đổi các bộ lọc hoặc tiêu chí tìm kiếm khác
                 </p>
                 <button
                   onClick={() => {
                     setFilters({
-                      priceRange: [0, 500000],
+                      priceRange: filters.category === 'city' ? [0, 100000] : [0, 1000000],
                       amenities: [],
                       busType: '',
                       departureTime: '',
-                      category: '',
-                      from: '',
-                      to: '',
-                      departureDate: ''
+                      category: filters.category,
+                      from: filters.from,
+                      to: filters.to,
+                      departureDate: filters.departureDate
                     })
                   }}
                   className="btn"

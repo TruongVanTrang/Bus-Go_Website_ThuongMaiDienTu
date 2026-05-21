@@ -9,12 +9,12 @@ const calculateDuration = (startTime, endTime) => {
   return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 };
 
-// Helper function to format Date to YYYY-MM-DD
+// Helper function to format Date to YYYY-MM-DD (dùng UTC tránh lệch múi giờ)
 const formatDate = (dateObj) => {
   const d = new Date(dateObj);
-  let month = '' + (d.getMonth() + 1);
-  let day = '' + d.getDate();
-  const year = d.getFullYear();
+  let month = '' + (d.getUTCMonth() + 1);
+  let day = '' + d.getUTCDate();
+  const year = d.getUTCFullYear();
 
   if (month.length < 2) month = '0' + month;
   if (day.length < 2) day = '0' + day;
@@ -22,11 +22,11 @@ const formatDate = (dateObj) => {
   return [year, month, day].join('-');
 };
 
-// Helper function to format Time to HH:mm
+// Helper function to format Time to HH:mm (dùng UTC tránh lệch múi giờ)
 const formatTime = (dateObj) => {
   const d = new Date(dateObj);
-  let hours = '' + d.getHours();
-  let minutes = '' + d.getMinutes();
+  let hours = '' + d.getUTCHours();
+  let minutes = '' + d.getUTCMinutes();
 
   if (hours.length < 2) hours = '0' + hours;
   if (minutes.length < 2) minutes = '0' + minutes;
@@ -118,9 +118,8 @@ const searchTrips = async (req, res) => {
     let queryStr = `
       SELECT cx.*, td.danhSachTramDung, pt.tienIch as vehicleAmenities
       FROM vw_ChuyenXeChiTiet cx
-      INNER JOIN TuyenDuong td ON cx.maChuyenXe = cx.maChuyenXe -- Join through view
       LEFT JOIN ChuyenXe realCx ON cx.maChuyenXe = realCx.maChuyenXe
-      LEFT JOIN TuyenDuong realTd ON realCx.maTuyenDuong = realTd.maTuyenDuong
+      LEFT JOIN TuyenDuong td ON realCx.maTuyenDuong = td.maTuyenDuong
       LEFT JOIN PhuongTien pt ON realCx.maPhuongTien = pt.maPhuongTien
     `;
 
@@ -207,6 +206,7 @@ const searchTrips = async (req, res) => {
         operator: 'BusGo',
         amenities,
         rating: row.diemDanhGia || 4.5,
+        reviewCount: row.soLuotDanhGia || 0,
         description: `Chuyến xe tuyến đường ${row.diemDi} - ${row.diemDen} với dịch vụ chất lượng cao.`,
         occupiedSeats,
         stops
@@ -295,6 +295,7 @@ const getTripById = async (req, res) => {
       operator: 'BusGo',
       amenities,
       rating: row.diemDanhGia || 4.5,
+      reviewCount: row.soLuotDanhGia || 0,
       description: `Chuyến xe tuyến đường ${row.diemDi} - ${row.diemDen} với dịch vụ chất lượng cao.`,
       occupiedSeats,
       stops

@@ -7,7 +7,6 @@ import './Header.css'
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [serviceType, setServiceType] = useState('booking') // 'booking' or 'cargo'
-  const [vehicleType, setVehicleType] = useState('all') // 'all', '16', '35'
   const [user, setUser] = useState(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const navigate = useNavigate()
@@ -18,6 +17,15 @@ export default function Header() {
     const userData = StorageUtil.getUser()
     setUser(userData)
     setProfileMenuOpen(false)
+  }, [location.pathname])
+
+  // Sync serviceType with the current URL path
+  useEffect(() => {
+    if (location.pathname.startsWith('/cargo-consignment')) {
+      setServiceType('cargo')
+    } else {
+      setServiceType('booking')
+    }
   }, [location.pathname])
 
   // Close profile menu when clicking outside
@@ -73,7 +81,7 @@ export default function Header() {
           )}
 
           {/* Logo */}
-          <Link to="/" className="navbar-brand fw-bold fs-4">
+          <Link to="/" className="navbar-brand fw-bold fs-4 d-flex align-items-center me-0">
             <span className="text-primary" style={{ color: 'var(--color-primary-600)' }}>
               Bus
             </span>
@@ -81,6 +89,31 @@ export default function Header() {
               Go
             </span>
           </Link>
+
+          {/* Service Switcher */}
+          <div className="service-switcher d-flex align-items-center gap-1 ms-2 ms-md-4">
+            <button
+              onClick={() => {
+                setServiceType('booking')
+                navigate('/')
+              }}
+              className={`btn service-btn d-flex align-items-center gap-1 ${serviceType === 'booking' ? 'active' : ''}`}
+            >
+              <span>🛫</span>
+              <span className="d-none d-sm-inline">Đặt vé xe</span>
+              <span className="d-inline d-sm-none">Đặt vé</span>
+            </button>
+            <button
+              onClick={() => {
+                setServiceType('cargo')
+                navigate('/cargo-consignment')
+              }}
+              className={`btn service-btn d-flex align-items-center gap-1 ${serviceType === 'cargo' ? 'active' : ''}`}
+            >
+              <span>📦</span>
+              <span>Gửi hàng</span>
+            </button>
+          </div>
 
           {/* Mobile Toggle */}
           <button
@@ -327,111 +360,6 @@ export default function Header() {
           </div>
         </div>
       </nav>
-
-      {/* Service & Vehicle Type Tabs - Only on home/search pages */}
-      {!hideServiceTabs && (
-        <div className="header-tabs-container border-top" style={{ backgroundColor: '#f9fafb' }}>
-          <div className="container-fluid px-md-5 px-3">
-            <div className="row align-items-center py-3 gx-3">
-              {/* Service Type Tabs */}
-              <div className="col-12 col-md-6 mb-3 mb-md-0">
-                <div className="d-flex gap-3 align-items-center">
-                  <span className="fw-600 text-neutral-700" style={{ whiteSpace: 'nowrap' }}>
-                    Loại Dịch Vụ:
-                  </span>
-                  <div className="d-flex gap-2">
-                    <button
-                      onClick={() => {
-                        setServiceType('booking')
-                        navigate('/')
-                      }}
-                      className={`btn btn-sm px-4 rounded-pill fw-500 transition-all`}
-                      style={{
-                        backgroundColor: serviceType === 'booking' ? 'var(--color-primary-600)' : '#e5e7eb',
-                        color: serviceType === 'booking' ? 'white' : '#1a1a1a',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                      }}
-                    >
-                      🛫 Đặt vé xe
-                    </button>
-                    <button
-                      onClick={() => {
-                        setServiceType('cargo')
-                        navigate('/cargo-consignment')
-                      }}
-                      className={`btn btn-sm px-4 rounded-pill fw-500`}
-                      style={{
-                        backgroundColor: serviceType === 'cargo' ? 'var(--color-primary-600)' : '#e5e7eb',
-                        color: serviceType === 'cargo' ? 'white' : '#1a1a1a',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                      }}
-                    >
-                      📦 Gửi Hàng
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Vehicle Type Tabs */}
-              <div className="col-12 col-md-6">
-                <div className="d-flex gap-3 align-items-center flex-wrap">
-                  <span className="fw-600 text-neutral-700" style={{ whiteSpace: 'nowrap' }}>
-                    Loại Xe:
-                  </span>
-                  <div className="d-flex gap-2 flex-wrap">
-                    <button
-                      onClick={() => setVehicleType('all')}
-                      className={`btn btn-sm px-3 rounded-pill fw-500`}
-                      style={{
-                        backgroundColor: vehicleType === 'all' ? 'var(--color-primary-600)' : '#e5e7eb',
-                        color: vehicleType === 'all' ? 'white' : '#1a1a1a',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      Tất Cả
-                    </button>
-                    <button
-                      onClick={() => setVehicleType('16')}
-                      className={`btn btn-sm px-3 rounded-pill fw-500`}
-                      style={{
-                        backgroundColor: vehicleType === '16' ? 'var(--color-primary-600)' : '#e5e7eb',
-                        color: vehicleType === '16' ? 'white' : '#1a1a1a',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      🚐 16 Chỗ
-                    </button>
-                    <button
-                      onClick={() => setVehicleType('35')}
-                      className={`btn btn-sm px-3 rounded-pill fw-500`}
-                      style={{
-                        backgroundColor: vehicleType === '35' ? 'var(--color-primary-600)' : '#e5e7eb',
-                        color: vehicleType === '35' ? 'white' : '#1a1a1a',
-                        border: 'none',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      🚌 35 Chỗ
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   )
 }

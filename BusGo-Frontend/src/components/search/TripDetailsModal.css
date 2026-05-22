@@ -4,12 +4,14 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1050; /* Cao hơn header sticky-top (z-index: 1030) */
   padding: 1rem;
+  padding-top: 80px; /* Đẩy xuống dưới header */
+  overflow-y: auto;
 }
 
 .trip-details-modal {
@@ -17,11 +19,12 @@
   border-radius: 12px;
   max-width: 900px;
   width: 100%;
-  max-height: 90vh;
+  max-height: calc(100vh - 100px); /* Trừ đi chiều cao header + padding */
   display: flex;
   flex-direction: column;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   animation: slideIn 0.3s ease;
+  margin: auto;
 }
 
 @keyframes slideIn {
@@ -249,8 +252,14 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .trip-details-modal-overlay {
+    padding: 0.5rem;
+    padding-top: 70px;
+    align-items: flex-start;
+  }
+
   .trip-details-modal {
-    max-height: 95vh;
+    max-height: calc(100vh - 80px);
   }
 
   .modal-header,

@@ -44,8 +44,7 @@ CREATE TABLE NguoiDung (
     matKhau VARCHAR(255) NOT NULL,
     trangThaiTaiKhoan NVARCHAR(20) DEFAULT 'active',
     daXacThucEmail BIT DEFAULT 0,
-    daXacThucPhone BIT DEFAULT 0, -- THÊM MỚI: Xác thực SMS
-    lastLoginDate DATETIME NULL, -- THÊM MỚI: Lần đăng nhập cuối cùng
+    lastLoginDate DATETIME NULL, 
     ngayTaoTaiKhoan DATETIME DEFAULT GETDATE(),
     ngayCapNhatCuoi DATETIME DEFAULT GETDATE(),
     CONSTRAINT CK_Email_Format CHECK (email LIKE '%@%.%')
@@ -383,21 +382,40 @@ VALUES
     (N'VNPay', N'cong-thanh-toan', '🏦', N'Cổng thanh toán VNPay');
 GO
 
--- 25. Thêm người dùng mẫu
-INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail, daXacThucPhone)
+-- 25. Thêm người dùng mẫu và các tài khoản vai trò
+INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail)
 VALUES 
-    (N'Admin Hệ Thống', 'admin@busgo.vn', '0905123456', 'secure_hash', 1, 1),
-    (N'Khách hàng mẫu', 'customer@busgo.vn', '0912345678', 'secure_hash', 1, 1);
+    (N'Admin Hệ Thống', 'admin@busgo.vn', '0905123456', '$2b$10$kVDCzxke2YOep.aywavS1.Y5TTdYttAdQuot.pH21jG9hwZjF/eji', 1), -- pwd: admin123
+    (N'Khách hàng mẫu', 'customer@busgo.vn', '0912345670', '$2b$10$duKmIUD9PYTkniBNZw23i.NkbZu5ah5Lgm7JSSFiAaXd6yOOOCBzm', 1), -- pwd: customer123
+    (N'Trương Trạng', 'vantrang04042005@gmail.com', '0372575316', '$2b$10$OhPLwF/l2qHGmlrzbIdImOaghj15H/bD0gT45AzhFoh1HPDzRZw0O', 1),
+    (N'Admin BusGo', 'admin@busgo.com', '0987654321', '$2b$10$CYQA0YG1D0eNOs0PbCwF0ufWNHcn4tqx2BnzlCBBJ90pU7gsLMo3a', 1), -- pwd: admin123
+    (N'Tài xế Nguyễn Văn A', 'driver@busgo.com', '0912345678', '$2b$10$zbDMul9Z/FsZAUY/wKQb7u/lKSZCbkZh8arB46d.ZvyeznWNsppdK', 1), -- pwd: staff123
+    (N'Nhân viên soát vé Trần Thị B', 'ticket@busgo.com', '0911111111', '$2b$10$MU2cEqbeEUVLZ3SI4yUS4OmfF8GJZJI5tgUKdGRjwP6.kaUqnNojS', 1), -- pwd: staff123
+    (N'Nhân viên hỗ trợ Lê Văn C', 'support@busgo.com', '0922222222', '$2b$10$C8XiBgVsyFWKgYjHsqb9vu5F/lV3cxrP3mnb0WrZMNRU5oqJJukvm', 1), -- pwd: staff123
+    (N'Khách hàng', 'user@gmail.com', '0998765432', '$2b$10$Z7WYlaUauSEg7vlq7KYa5eT2gGWHIlyxMwDknxdbQR5FBhUFhHUky', 1); -- pwd: user123
 GO
 
 -- 26. Thêm Admin
 INSERT INTO Admin (maAdmin, phanQuyen) 
-VALUES (1, N'Full Access');
+VALUES 
+    (1, N'Full Access'),
+    (4, N'Full Access');
 GO
 
--- 27. Thêm Khách hàng
+-- 27. Thêm Nhân viên
+INSERT INTO NhanVien (maNhanVien, vaiTro, lichLamViec)
+VALUES
+    (5, N'DRIVER', N'Hành chính'),
+    (6, N'TICKET_STAFF', N'Hành chính'),
+    (7, N'SUPPORT_STAFF', N'Hành chính');
+GO
+
+-- 27.5 Thêm Khách hàng
 INSERT INTO KhachHang (maKhachHang, diemTichLuy, capDoThanhVien)
-VALUES (2, 0, 'bronze');
+VALUES 
+    (2, 0, 'bronze'),
+    (3, 0, 'bronze'),
+    (8, 0, 'bronze');
 GO
 
 -- 28. Thêm Tuyến đường (Nội thành)
@@ -406,32 +424,42 @@ VALUES
     (N'Bến xe trung tâm', N'Sân bay Quốc tế Đà Nẵng', 'city', 5),
     (N'Bến xe trung tâm', N'Bãi biển Mỹ Khê', 'city', 3),
     (N'Cầu Rồng', N'Phố cổ Hội An', 'city', 30),
-    (N'Sân bay Quốc tế Đà Nẵng', N'Bãi biển Non Nước', 'city', 25);
+    (N'Sân bay Quốc tế Đà Nẵng', N'Bãi biển Non Nước', 'city', 25),
+    (N'Đại học Duy Tân', N'Trung tâm thành phố', 'city', 8),
+    (N'Khu công nghiệp Hòa Cầm', N'Bến xe trung tâm', 'city', 12);
 GO
 
--- 29. Thêm Tuyến đường (Ngoại thành)
+-- 29. Thêm Tuyến đường (Ngoại thành - Chỉ miền Trung & Bắc Trung Bộ)
 INSERT INTO TuyenDuong (diemDi, diemDen, loaiDichVu, khoangCach)
 VALUES 
-    (N'Đà Nẵng', N'Hà Nội', 'interCity', 1000),
-    (N'Đà Nẵng', N'Sài Gòn', 'interCity', 950),
-    (N'Đà Nẵng', N'Huế', 'interCity', 100),
-    (N'Đà Nẵng', N'Quảng Nam', 'interCity', 40);
+    (N'Đà Nẵng', N'Huế',       'interCity', 108),
+    (N'Đà Nẵng', N'Quảng Nam', 'interCity',  40),
+    (N'Đà Nẵng', N'Quảng Ngãi','interCity', 130),
+    (N'Đà Nẵng', N'Quảng Trị', 'interCity', 190),
+    (N'Đà Nẵng', N'Quảng Bình','interCity', 320),
+    (N'Đà Nẵng', N'Hà Tĩnh',   'interCity', 430),
+    (N'Đà Nẵng', N'Nghệ An',   'interCity', 540),
+    (N'Đà Nẵng', N'Thanh Hóa', 'interCity', 680);
 GO
 
 -- 30. Thêm Phương tiện (16 chỗ - Nội thành)
 INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, trangThaiXe, tienIch)
 VALUES 
-    (N'29A-12345', N'Hyundai', N'Trắng', 2022, 16, '16-seater', 'san_sang', '["AC", "Wifi"]'),
-    (N'29A-12346', N'Hyundai', N'Xanh', 2022, 16, '16-seater', 'san_sang', '["AC", "Wifi"]'),
-    (N'29A-12347', N'Hyundai', N'Trắng', 2023, 16, '16-seater', 'san_sang', '["AC", "Wifi", "Phone Charger"]');
+    (N'29A-12345', N'Hyundai',      N'Trắng', 2022, 16, 'mini_16', 'san_sang', N'["AC", "Wifi"]'),
+    (N'29A-12346', N'Samco',        N'Xanh',  2022, 20, 'city_small', 'san_sang', N'["AC", "Wifi"]'),
+    (N'29A-12347', N'Ford Transit', N'Trắng', 2023, 9, 'mini_9', 'san_sang', N'["AC", "Wifi", "Phone Charger"]'),
+    (N'43A-22221', N'Hyundai',      N'Trắng', 2021, 16, 'mini_16', 'san_sang', N'["AC", "Wifi", "Phone Charger"]'),
+    (N'43A-22222', N'Toyota Inno',  N'Vàng',  2022, 7, 'mini_7', 'san_sang', N'["AC"]');
 GO
 
 -- 31. Thêm Phương tiện (35 chỗ - Ngoại thành)
 INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, trangThaiXe, tienIch)
 VALUES 
-    (N'29A-54321', N'Toyota', N'Trắng', 2021, 35, '35-seater', 'san_sang', '["AC", "Wifi", "Phone Charger", "Toilet"]'),
-    (N'29A-54322', N'Toyota', N'Bạc', 2021, 35, '35-seater', 'san_sang', '["AC", "Wifi", "Phone Charger"]'),
-    (N'29A-54323', N'Hyundai', N'Trắng', 2022, 35, '35-seater', 'san_sang', '["AC", "Wifi", "Pillow & Blanket"]');
+    (N'29A-54321', N'Toyota',          N'Trắng', 2021, 35, 'coach_29_35', 'san_sang', N'["AC", "Wifi", "Phone Charger", "Toilet"]'),
+    (N'29A-54322', N'Thaco Mobihome',  N'Bạc',   2021, 45, 'coach_suburb', 'san_sang', N'["AC", "Wifi", "Phone Charger"]'),
+    (N'29A-54323', N'Hyundai',         N'Trắng', 2022, 35, 'coach_29_35', 'san_sang', N'["AC", "Wifi", "Pillow & Blanket"]'),
+    (N'43A-11111', N'Ford Transit',    N'Trắng', 2022, 16, 'coach_16', 'san_sang', N'["AC", "Wifi", "Phone Charger", "Pillow & Blanket"]'),
+    (N'43A-11112', N'Thaco TB120S',    N'Bạc',   2023, 35, 'coach_29_35', 'san_sang', N'["AC", "Wifi"]');
 GO
 
 -- ============================================================================
@@ -629,505 +657,216 @@ END;
 GO
 
 -- ============================================================================
--- PHẦN 11: TÓMLÝ NHỮNG THAY ĐỔI (v2.0)
--- ============================================================================
--- BẢNG CẬP NHẬT:
--- 1. NguoiDung: +daXacThucPhone, +lastLoginDate
--- 2. KhachHang: +lastBookingDate
--- 3. VeDienTu: +firstName, +lastName, +maPhuongThuc
--- 4. HangHoa: +tenNguoiGui, +soDienThoaiNguoiGui, +tenNguoiNhan, +soDienThoaiNguoiNhan, 
---            +giaTrucDeclare, +giaBAO_HIEM, +trangThaiVanChuyen
--- 5. Feedback: +diemPhucVu, +diemGiaoThiep
---
--- BẢNG MỚI:
--- 1. KyGuiHang: Cho CargoConsignmentPage
--- 2. DanhGiaChiTiet: Cho chi tiết đánh giá
--- 3. ThongBaoTheoDoiHang: Cho theo dõi hàng hóa
---
--- TRIGGER MỚI:
--- 1. TRG_UpdateLastBookingDate: Cập nhật lần đặt vé cuối cùng
---
--- VIEW MỚI:
--- 1. vw_HangHoaChiTiet: Xem hàng hóa chi tiết
---
--- PROCEDURE MỚI:
--- 1. sp_LayLichSuVeKhachHang: Lịch sử đặt vé
--- 2. sp_TimKyGuiHang: Tìm ký gửi hàng
---
--- ============================================================================
--- ============================================================================
--- BusGo Database - Cập nhật phù hợp với giao diện FE hiện tại
+-- PHẦN 11: SEED DỮ LIỆU CHUYẾN XE (7 ngày tiếp theo kể từ ngày chạy script)
 -- ============================================================================
 
--- 1. Khởi tạo Database
-USE master;
-GO
-IF EXISTS (SELECT * FROM sys.databases WHERE name = 'BusGoDBs')
+DECLARE @i INT = 0;
+DECLARE @Ngay DATE;
+
+WHILE @i < 7
 BEGIN
-    ALTER DATABASE BusGoDBs SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-    DROP DATABASE BusGoDBs;
-END
-GO
-WAITFOR DELAY '00:00:02';
-GO
-CREATE DATABASE BusGoDBs;
-GO
-USE BusGoDBs;
-GO
+    SET @Ngay = DATEADD(DAY, @i, CAST(GETDATE() AS DATE));
 
--- ============================================================================
--- PHẦN 1: BẢNG CƠ BẢN
--- ============================================================================
+    DECLARE @maXe35_1 INT, @maXe35_2 INT, @maXe35_3 INT, @maXe35_4 INT, @maXe35_5 INT;
+    SELECT @maXe35_1 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'29A-54321';
+    SELECT @maXe35_2 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'29A-54322';
+    SELECT @maXe35_3 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'29A-54323';
+    SELECT @maXe35_4 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'43A-11111';
+    SELECT @maXe35_5 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'43A-11112';
 
--- 2. Bảng Phương thức thanh toán
-CREATE TABLE PhuongThucThanhToan (
-    maPhuongThuc INT IDENTITY(1,1) PRIMARY KEY,
-    tenPhuongThuc NVARCHAR(50) NOT NULL UNIQUE,
-    loaiPhuongThuc NVARCHAR(50),
-    bieuTuong NVARCHAR(5),
-    moTa NVARCHAR(255),
-    daKichHoat BIT DEFAULT 1,
-    phiBanToiThieu DECIMAL(18, 2) DEFAULT 0,
-    tyLePhi DECIMAL(5, 2) DEFAULT 0
-);
+    DECLARE @maXe16_1 INT, @maXe16_2 INT, @maXe16_3 INT, @maXe16_4 INT, @maXe16_5 INT;
+    SELECT @maXe16_1 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'29A-12345';
+    SELECT @maXe16_2 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'29A-12346';
+    SELECT @maXe16_3 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'29A-12347';
+    SELECT @maXe16_4 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'43A-22221';
+    SELECT @maXe16_5 = maPhuongTien FROM PhuongTien WHERE bienSoXe = N'43A-22222';
 
--- 3. Bảng Người dùng (Lớp cha)
-CREATE TABLE NguoiDung (
-    maNguoiDung INT IDENTITY(1,1) PRIMARY KEY,
-    tenNguoiDung NVARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE,
-    soDienThoai VARCHAR(15),
-    matKhau VARCHAR(255) NOT NULL,
-    trangThaiTaiKhoan NVARCHAR(20) DEFAULT 'active',
-    daXacThucEmail BIT DEFAULT 0,
-    ngayTaoTaiKhoan DATETIME DEFAULT GETDATE(),
-    ngayCapNhatCuoi DATETIME DEFAULT GETDATE(),
-    CONSTRAINT CK_Email_Format CHECK (email LIKE '%@%.%')
-);
+    -- ── Đà Nẵng → Huế ──────────────────────────────────────────────────────
+    DECLARE @maTuyen_Hue INT;
+    SELECT @maTuyen_Hue = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Huế';
+    IF @maTuyen_Hue IS NOT NULL
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_Hue AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='06:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_Hue,@maXe35_1,DATEADD(HOUR,6,CAST(@Ngay AS DATETIME)),DATEADD(HOUR,8,CAST(@Ngay AS DATETIME)),120000,35,0,'da_len_lich',N'["AC","Wifi","Phone Charger"]',4.8,45);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_Hue AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='09:30:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_Hue,@maXe35_2,DATEADD(MINUTE,9*60+30,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,11*60+30,CAST(@Ngay AS DATETIME)),120000,35,0,'da_len_lich',N'["AC","Wifi"]',4.5,28);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_Hue AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='13:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_Hue,@maXe35_3,DATEADD(HOUR,13,CAST(@Ngay AS DATETIME)),DATEADD(HOUR,15,CAST(@Ngay AS DATETIME)),120000,35,0,'da_len_lich',N'["AC","Wifi","Pillow & Blanket"]',4.9,62);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_Hue AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='16:30:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_Hue,@maXe35_4,DATEADD(MINUTE,16*60+30,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,18*60+30,CAST(@Ngay AS DATETIME)),130000,35,0,'da_len_lich',N'["AC","Wifi","Phone Charger","Pillow & Blanket"]',4.7,33);
+    END
 
--- 4. Bảng Admin
-CREATE TABLE Admin (
-    maAdmin INT PRIMARY KEY,
-    phanQuyen NVARCHAR(50),
-    CONSTRAINT FK_Admin_NguoiDung FOREIGN KEY (maAdmin) REFERENCES NguoiDung(maNguoiDung)
-);
+    -- ── Đà Nẵng → Quảng Nam ────────────────────────────────────────────────
+    DECLARE @maTuyen_QNam INT;
+    SELECT @maTuyen_QNam = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Quảng Nam';
+    IF @maTuyen_QNam IS NOT NULL
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_QNam AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='07:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_QNam,@maXe35_2,DATEADD(HOUR,7,CAST(@Ngay AS DATETIME)),DATEADD(HOUR,8,CAST(@Ngay AS DATETIME)),80000,35,0,'da_len_lich',N'["AC","Wifi"]',4.3,19);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_QNam AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='11:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_QNam,@maXe35_3,DATEADD(HOUR,11,CAST(@Ngay AS DATETIME)),DATEADD(HOUR,12,CAST(@Ngay AS DATETIME)),80000,35,0,'da_len_lich',N'["AC"]',4.1,8);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_QNam AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='15:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_QNam,@maXe35_5,DATEADD(HOUR,15,CAST(@Ngay AS DATETIME)),DATEADD(HOUR,16,CAST(@Ngay AS DATETIME)),80000,35,0,'da_len_lich',N'["AC","Wifi"]',4.4,14);
+    END
 
--- 5. Bảng Nhân viên
-CREATE TABLE NhanVien (
-    maNhanVien INT PRIMARY KEY,
-    vaiTro NVARCHAR(100),
-    lichLamViec NVARCHAR(MAX),
-    CONSTRAINT FK_NhanVien_NguoiDung FOREIGN KEY (maNhanVien) REFERENCES NguoiDung(maNguoiDung)
-);
+    -- ── Đà Nẵng → Quảng Ngãi ───────────────────────────────────────────────
+    DECLARE @maTuyen_QNgai INT;
+    SELECT @maTuyen_QNgai = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Quảng Ngãi';
+    IF @maTuyen_QNgai IS NOT NULL
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_QNgai AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='07:30:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_QNgai,@maXe35_3,DATEADD(MINUTE,7*60+30,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,9*60+30,CAST(@Ngay AS DATETIME)),150000,35,0,'da_len_lich',N'["AC","Wifi","Phone Charger"]',4.6,37);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_QNgai AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='12:30:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_QNgai,@maXe35_4,DATEADD(MINUTE,12*60+30,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,14*60+30,CAST(@Ngay AS DATETIME)),150000,35,0,'da_len_lich',N'["AC","Wifi"]',4.2,22);
+    END
 
--- 6. Bảng Khách hàng
-CREATE TABLE KhachHang (
-    maKhachHang INT PRIMARY KEY,
-    diemTichLuy INT DEFAULT 0,
-    congTichLuy INT DEFAULT 0,
-    tongTienDaChiTra DECIMAL(18, 2) DEFAULT 0,
-    capDoThanhVien NVARCHAR(50) DEFAULT 'bronze',
-    CONSTRAINT FK_KhachHang_NguoiDung FOREIGN KEY (maKhachHang) REFERENCES NguoiDung(maNguoiDung)
-);
+    -- ── Đà Nẵng → Quảng Trị ────────────────────────────────────────────────
+    DECLARE @maTuyen_QTri INT;
+    SELECT @maTuyen_QTri = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Quảng Trị';
+    IF @maTuyen_QTri IS NOT NULL
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_QTri AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='06:30:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_QTri,@maXe35_4,DATEADD(MINUTE,6*60+30,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,9*60+30,CAST(@Ngay AS DATETIME)),180000,35,0,'da_len_lich',N'["AC","Wifi","Phone Charger","Pillow & Blanket"]',4.7,41);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_QTri AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='14:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_QTri,@maXe35_5,DATEADD(HOUR,14,CAST(@Ngay AS DATETIME)),DATEADD(HOUR,17,CAST(@Ngay AS DATETIME)),180000,35,0,'da_len_lich',N'["AC","Wifi"]',4.4,18);
+    END
 
--- ============================================================================
--- PHẦN 2: BẢNG TUYẾN ĐƯỜNG VÀ PHƯƠNG TIỆN
--- ============================================================================
+    -- ── Đà Nẵng → Quảng Bình ───────────────────────────────────────────────
+    DECLARE @maTuyen_QBinh INT;
+    SELECT @maTuyen_QBinh = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Quảng Bình';
+    IF @maTuyen_QBinh IS NOT NULL
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_QBinh AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='05:30:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_QBinh,@maXe35_1,DATEADD(MINUTE,5*60+30,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,11*60+30,CAST(@Ngay AS DATETIME)),280000,35,0,'da_len_lich',N'["AC","Wifi","Phone Charger","Pillow & Blanket"]',4.6,29);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_QBinh AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='20:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_QBinh,@maXe35_3,DATEADD(HOUR,20,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,26*60,CAST(@Ngay AS DATETIME)),280000,35,0,'da_len_lich',N'["AC","Wifi","Pillow & Blanket"]',4.8,52);
+    END
 
--- 7. Bảng Tuyến đường (Nội thành + Ngoại thành)
-CREATE TABLE TuyenDuong (
-    maTuyenDuong INT IDENTITY(1,1) PRIMARY KEY,
-    diemDi NVARCHAR(100) NOT NULL,
-    diemDen NVARCHAR(100) NOT NULL,
-    loaiDichVu NVARCHAR(20) NOT NULL, -- 'city' (nội thành) hoặc 'interCity' (ngoại thành)
-    khoangCach FLOAT,
-    danhSachTramDung NVARCHAR(MAX),
-    ngayTao DATETIME DEFAULT GETDATE()
-);
+    -- ── Đà Nẵng → Hà Tĩnh ─────────────────────────────────────────────────
+    DECLARE @maTuyen_HTinh INT;
+    SELECT @maTuyen_HTinh = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Hà Tĩnh';
+    IF @maTuyen_HTinh IS NOT NULL
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_HTinh AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='19:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_HTinh,@maXe35_1,DATEADD(HOUR,19,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,26*60+30,CAST(@Ngay AS DATETIME)),380000,35,0,'da_len_lich',N'["AC","Wifi","Phone Charger","Pillow & Blanket"]',4.7,23);
 
--- 8. Bảng Phương tiện (16 chỗ hoặc 35 chỗ)
-CREATE TABLE PhuongTien (
-    maPhuongTien INT IDENTITY(1,1) PRIMARY KEY,
-    bienSoXe VARCHAR(20) UNIQUE NOT NULL,
-    nhanHieu NVARCHAR(50),
-    mauSac NVARCHAR(30),
-    namSanXuat INT,
-    tongSoGhe INT NOT NULL, -- 16 hoặc 35
-    loaiXe NVARCHAR(50), -- '16-seater' hoặc '35-seater'
-    trangThaiXe NVARCHAR(50) DEFAULT 'san_sang', -- san_sang, bao_tri, ngoai_hoat_dong
-    tienIch NVARCHAR(MAX), -- JSON: ['AC', 'Wifi', 'Phone Charger']
-    ngayMuaVao DATE,
-    ngayBaoTriLanSau DATE,
-    maTaiXeChinh INT FOREIGN KEY REFERENCES NhanVien(maNhanVien)
-);
+    -- ── Đà Nẵng → Nghệ An ─────────────────────────────────────────────────
+    DECLARE @maTuyen_NAn INT;
+    SELECT @maTuyen_NAn = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Nghệ An';
+    IF @maTuyen_NAn IS NOT NULL
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_NAn AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='18:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_NAn,@maXe35_4,DATEADD(HOUR,18,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,27*60,CAST(@Ngay AS DATETIME)),420000,35,0,'da_len_lich',N'["AC","Wifi","Phone Charger","Pillow & Blanket"]',4.8,35);
 
--- ============================================================================
--- PHẦN 3: BẢNG CHUYẾN XE VÀ GHẾ NGỒI
--- ============================================================================
+    -- ── Đà Nẵng → Thanh Hóa ──────────────────────────────────────────────
+    DECLARE @maTuyen_THoa INT;
+    SELECT @maTuyen_THoa = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Thanh Hóa';
+    IF @maTuyen_THoa IS NOT NULL
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_THoa AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='17:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_THoa,@maXe35_5,DATEADD(HOUR,17,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,29*60,CAST(@Ngay AS DATETIME)),520000,35,0,'da_len_lich',N'["AC","Wifi","Pillow & Blanket"]',4.5,17);
 
--- 9. Bảng Chuyến xe
-CREATE TABLE ChuyenXe (
-    maChuyenXe INT IDENTITY(1,1) PRIMARY KEY,
-    maTuyenDuong INT NOT NULL FOREIGN KEY REFERENCES TuyenDuong(maTuyenDuong),
-    maPhuongTien INT NOT NULL FOREIGN KEY REFERENCES PhuongTien(maPhuongTien),
-    maNhanVien INT FOREIGN KEY REFERENCES NhanVien(maNhanVien),
-    thoiGianDi DATETIME NOT NULL,
-    thoiGianDen DATETIME NOT NULL,
-    giaCoBan DECIMAL(18, 2) NOT NULL,
-    soGheConTrong INT,
-    soLuongGheDat INT DEFAULT 0, -- Số lượng ghế đã đặt
-    trangThaiChuyen NVARCHAR(50) DEFAULT 'da_len_lich', -- da_len_lich, dang_khoi_hanh, da_hoan_thanh
-    tienIchChiTiet NVARCHAR(MAX), -- JSON chi tiết tiện ích
-    diemDanhGia DECIMAL(3, 2) DEFAULT 4.0,
-    soLuotDanhGia INT DEFAULT 0,
-    ngayTao DATETIME DEFAULT GETDATE(),
-    CONSTRAINT CK_ChuyenXe_Rating CHECK (diemDanhGia >= 1 AND diemDanhGia <= 5),
-    CONSTRAINT CK_ChuyenXe_Times CHECK (thoiGianDi < thoiGianDen)
-);
+    -- ── Nội thành: Bến xe → Sân bay (mỗi 2h từ 5h-21h) ──────────────────
+    DECLARE @maTuyen_BxSb INT;
+    SELECT @maTuyen_BxSb = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Bến xe trung tâm' AND diemDen = N'Sân bay Quốc tế Đà Nẵng';
+    IF @maTuyen_BxSb IS NOT NULL
+    BEGIN
+        DECLARE @h INT = 5;
+        WHILE @h <= 21
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_BxSb AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)=CAST(RIGHT('0'+CAST(@h AS VARCHAR),2)+':00:00' AS TIME))
+                INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+                VALUES(@maTuyen_BxSb,CASE WHEN @h%2=0 THEN @maXe16_1 ELSE @maXe16_2 END,
+                    DATEADD(HOUR,@h,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,@h*60+30,CAST(@Ngay AS DATETIME)),
+                    50000,16,0,'da_len_lich',N'["AC"]',4.3,5+@h);
+            SET @h = @h + 2;
+        END
+    END
 
--- 10. Bảng Ghế ngồi (Sơ đồ động cho ngoại thành, số lượng cho nội thành)
-CREATE TABLE GheNgoi (
-    maGhe INT IDENTITY(1,1) PRIMARY KEY,
-    maChuyenXe INT NOT NULL FOREIGN KEY REFERENCES ChuyenXe(maChuyenXe),
-    soGhe VARCHAR(10) NOT NULL, -- Số ghế (A1, A2, B1, etc.) hoặc số thứ tự
-    loaiGhe NVARCHAR(20) DEFAULT 'standard', -- standard, vip
-    viTriGhe NVARCHAR(20), -- front, middle, back (chỉ dùng cho ngoại thành)
-    giaSoGhe DECIMAL(18, 2) DEFAULT 0,
-    trangThaiGhe NVARCHAR(50) DEFAULT 'trong', -- trong, da_dat, giu_tam_thoi
-    CONSTRAINT UQ_GheNgoi UNIQUE (maChuyenXe, soGhe)
-);
+    -- ── Nội thành: Cầu Rồng → Phố cổ Hội An (mỗi 2h từ 6h-20h) ─────────
+    DECLARE @maTuyen_CauRong INT;
+    SELECT @maTuyen_CauRong = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Cầu Rồng' AND diemDen = N'Phố cổ Hội An';
+    IF @maTuyen_CauRong IS NOT NULL
+    BEGIN
+        DECLARE @ch INT = 6;
+        WHILE @ch <= 20
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_CauRong AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)=CAST(RIGHT('0'+CAST(@ch AS VARCHAR),2)+':00:00' AS TIME))
+                INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+                VALUES(@maTuyen_CauRong,CASE WHEN @ch%3=0 THEN @maXe16_3 WHEN @ch%3=1 THEN @maXe16_4 ELSE @maXe16_5 END,
+                    DATEADD(HOUR,@ch,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,@ch*60+45,CAST(@Ngay AS DATETIME)),
+                    60000,16,0,'da_len_lich',
+                    CASE WHEN @ch%2=0 THEN N'["AC","Wifi"]' ELSE N'["AC","Wifi","Phone Charger"]' END,
+                    CAST(4.3+(@ch%3)*0.2 AS DECIMAL(3,1)),10+@ch);
+            SET @ch = @ch + 2;
+        END
+    END
 
--- ============================================================================
--- PHẦN 4: BẢNG VÉ ĐIỆN TỬ VÀ HÀNG HÓA
--- ============================================================================
+    -- ── Nội thành: Sân bay → Bãi biển Non Nước ───────────────────────────
+    DECLARE @maTuyen_SbNuoc INT;
+    SELECT @maTuyen_SbNuoc = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Sân bay Quốc tế Đà Nẵng' AND diemDen = N'Bãi biển Non Nước';
+    IF @maTuyen_SbNuoc IS NOT NULL
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_SbNuoc AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='07:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_SbNuoc,@maXe16_4,DATEADD(HOUR,7,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,7*60+40,CAST(@Ngay AS DATETIME)),45000,16,0,'da_len_lich',N'["AC","Wifi","Phone Charger"]',4.6,22);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_SbNuoc AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='13:00:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_SbNuoc,@maXe16_5,DATEADD(HOUR,13,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,13*60+40,CAST(@Ngay AS DATETIME)),45000,16,0,'da_len_lich',N'["AC"]',4.4,14);
+    END
 
--- 11. Bảng Vé điện tử
-CREATE TABLE VeDienTu (
-    maVe INT IDENTITY(1,1) PRIMARY KEY,
-    maKhachHang INT FOREIGN KEY REFERENCES KhachHang(maKhachHang),
-    maChuyenXe INT NOT NULL FOREIGN KEY REFERENCES ChuyenXe(maChuyenXe),
-    maGhe INT FOREIGN KEY REFERENCES GheNgoi(maGhe),
-    hoTenHanhKhach NVARCHAR(100) NOT NULL,
-    emailHanhKhach VARCHAR(100),
-    soDienThoaiHanhKhach VARCHAR(15),
-    diemDon NVARCHAR(255), -- Điểm đón khách
-    diemTra NVARCHAR(255), -- Điểm trả khách
-    maQR VARCHAR(255) UNIQUE,
-    ngayDatVe DATETIME DEFAULT GETDATE(),
-    giaVe DECIMAL(18, 2) NOT NULL,
-    giaHangHoa DECIMAL(18, 2) DEFAULT 0,
-    giaThanhToan DECIMAL(18, 2) NOT NULL, -- giaVe + giaHangHoa
-    trangThaiVe NVARCHAR(50) DEFAULT 'cho_thanh_toan', -- cho_thanh_toan, da_thanh_toan, da_su_dung, da_huy
-    ghiChu NVARCHAR(MAX),
-    ngayCapNhat DATETIME DEFAULT GETDATE(),
-    CONSTRAINT CK_VeDienTu_Price CHECK (giaThanhToan >= 0)
-);
+    -- ── Nội thành: KCN Hòa Cầm → Bến xe trung tâm ───────────────────────
+    DECLARE @maTuyen_KCN INT;
+    SELECT @maTuyen_KCN = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Khu công nghiệp Hòa Cầm' AND diemDen = N'Bến xe trung tâm';
+    IF @maTuyen_KCN IS NOT NULL
+    BEGIN
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_KCN AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='05:30:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_KCN,@maXe16_1,DATEADD(MINUTE,5*60+30,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,6*60+10,CAST(@Ngay AS DATETIME)),40000,16,0,'da_len_lich',N'["AC"]',4.2,9);
+        IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_KCN AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)='16:30:00')
+            INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+            VALUES(@maTuyen_KCN,@maXe16_2,DATEADD(MINUTE,16*60+30,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,17*60+10,CAST(@Ngay AS DATETIME)),40000,16,0,'da_len_lich',N'["AC"]',4.1,11);
+    END
 
--- 12. Bảng Hàng hóa (Ký gửi hàng kèm vé)
-CREATE TABLE HangHoa (
-    maHangHoa INT IDENTITY(1,1) PRIMARY KEY,
-    maVe INT NOT NULL FOREIGN KEY REFERENCES VeDienTu(maVe),
-    loaiHangHoa NVARCHAR(50) NOT NULL, -- none, light, heavy, scooter, maxi_scooter, motorcycle
-    moTa NVARCHAR(255),
-    trongLuong FLOAT, -- Cân nặng (kg) - cho hàng nặng
-    giaHangHoa DECIMAL(18, 2) NOT NULL,
-    ngayTao DATETIME DEFAULT GETDATE(),
-    ghiChu NVARCHAR(MAX)
-);
+    -- ── Nội thành: Đại học Duy Tân → Trung tâm (mỗi 3h từ 6h-18h) ───────
+    DECLARE @maTuyen_DHDT INT;
+    SELECT @maTuyen_DHDT = maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đại học Duy Tân' AND diemDen = N'Trung tâm thành phố';
+    IF @maTuyen_DHDT IS NOT NULL
+    BEGIN
+        DECLARE @dhh INT = 6;
+        WHILE @dhh <= 18
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM ChuyenXe WHERE maTuyenDuong=@maTuyen_DHDT AND CAST(thoiGianDi AS DATE)=@Ngay AND CAST(thoiGianDi AS TIME)=CAST(RIGHT('0'+CAST(@dhh AS VARCHAR),2)+':00:00' AS TIME))
+                INSERT INTO ChuyenXe(maTuyenDuong,maPhuongTien,thoiGianDi,thoiGianDen,giaCoBan,soGheConTrong,soLuongGheDat,trangThaiChuyen,tienIchChiTiet,diemDanhGia,soLuotDanhGia)
+                VALUES(@maTuyen_DHDT,CASE WHEN @dhh%2=0 THEN @maXe16_2 ELSE @maXe16_4 END,
+                    DATEADD(HOUR,@dhh,CAST(@Ngay AS DATETIME)),DATEADD(MINUTE,@dhh*60+25,CAST(@Ngay AS DATETIME)),
+                    30000,16,0,'da_len_lich',N'["AC"]',4.0,3+@dhh);
+            SET @dhh = @dhh + 3;
+        END
+    END
 
--- ============================================================================
--- PHẦN 5: BẢNG THANH TOÁN VÀ HÓA ĐƠN
--- ============================================================================
-
--- 13. Bảng Hóa đơn
-CREATE TABLE HoaDon (
-    maHoaDon INT IDENTITY(1,1) PRIMARY KEY,
-    maVe INT NOT NULL FOREIGN KEY REFERENCES VeDienTu(maVe),
-    soHoaDonTam VARCHAR(50) UNIQUE,
-    soTien DECIMAL(18, 2) NOT NULL,
-    maPhuongThuc INT FOREIGN KEY REFERENCES PhuongThucThanhToan(maPhuongThuc),
-    trangThaiThanhToan NVARCHAR(50) DEFAULT 'pending', -- pending, completed, failed
-    maChuyenDich VARCHAR(100),
-    ngayThanhToan DATETIME,
-    ngayTao DATETIME DEFAULT GETDATE()
-);
-
--- ============================================================================
--- PHẦN 6: BẢNG FEEDBACK VÀ THÔNG BÁO
--- ============================================================================
-
--- 14. Bảng Feedback (Đánh giá trải nghiệm)
-CREATE TABLE Feedback (
-    maFeedback INT IDENTITY(1,1) PRIMARY KEY,
-    maVe INT NOT NULL FOREIGN KEY REFERENCES VeDienTu(maVe),
-    maKhachHang INT NOT NULL FOREIGN KEY REFERENCES KhachHang(maKhachHang),
-    diemDanhGia INT NOT NULL, -- 1-5 sao
-    nhanXet NVARCHAR(MAX),
-    ngayTao DATETIME DEFAULT GETDATE(),
-    CONSTRAINT CK_Feedback_Rating CHECK (diemDanhGia >= 1 AND diemDanhGia <= 5)
-);
-
--- 15. Bảng Yêu thích (Tuyến yêu thích)
-CREATE TABLE YeuThich (
-    maYeuThich INT IDENTITY(1,1) PRIMARY KEY,
-    maKhachHang INT NOT NULL FOREIGN KEY REFERENCES KhachHang(maKhachHang),
-    maTuyenDuong INT NOT NULL FOREIGN KEY REFERENCES TuyenDuong(maTuyenDuong),
-    ngayTao DATETIME DEFAULT GETDATE(),
-    UNIQUE (maKhachHang, maTuyenDuong)
-);
-
--- 16. Bảng Thông báo
-CREATE TABLE ThongBao (
-    maThongBao INT IDENTITY(1,1) PRIMARY KEY,
-    maKhachHang INT NOT NULL FOREIGN KEY REFERENCES KhachHang(maKhachHang),
-    tieuDe NVARCHAR(255) NOT NULL,
-    noiDung NVARCHAR(MAX),
-    daDoc BIT DEFAULT 0,
-    thoiGianTao DATETIME DEFAULT GETDATE()
-);
-
--- ============================================================================
--- PHẦN 7: INDEX VÀ TRIGGER
--- ============================================================================
-
--- 17. Tạo Index để tối ưu tìm kiếm
-CREATE NONCLUSTERED INDEX IDX_ChuyenXe_Search ON ChuyenXe(maTuyenDuong, thoiGianDi);
-CREATE NONCLUSTERED INDEX IDX_ChuyenXe_Status ON ChuyenXe(trangThaiChuyen);
-CREATE NONCLUSTERED INDEX IDX_VeDienTu_QR ON VeDienTu(maQR);
-CREATE NONCLUSTERED INDEX IDX_VeDienTu_Status ON VeDienTu(trangThaiVe);
-CREATE NONCLUSTERED INDEX IDX_GheNgoi_Status ON GheNgoi(maChuyenXe, trangThaiGhe);
-CREATE NONCLUSTERED INDEX IDX_TuyenDuong_LoaiDichVu ON TuyenDuong(loaiDichVu);
-GO
-
--- 18. Trigger: Tự động cập nhật số ghế trống
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'TR' AND name = 'TRG_UpdateSoGheConTrong')
-    DROP TRIGGER TRG_UpdateSoGheConTrong;
-GO
-CREATE TRIGGER TRG_UpdateSoGheConTrong
-ON GheNgoi
-AFTER UPDATE, INSERT, DELETE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE ChuyenXe
-    SET soGheConTrong = (
-        SELECT COUNT(*) 
-        FROM GheNgoi 
-        WHERE maChuyenXe = ChuyenXe.maChuyenXe 
-        AND trangThaiGhe = 'trong'
-    )
-    WHERE maChuyenXe IN (
-        SELECT DISTINCT maChuyenXe FROM inserted 
-        UNION 
-        SELECT DISTINCT maChuyenXe FROM deleted
-    );
+    SET @i = @i + 1;
 END;
 GO
 
--- 19. Trigger: Tự động cập nhật giá thanh toán khi có hàng hóa
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'TR' AND name = 'TRG_UpdateGiaThanhToan')
-    DROP TRIGGER TRG_UpdateGiaThanhToan;
-GO
-CREATE TRIGGER TRG_UpdateGiaThanhToan
-ON HangHoa
-AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE VeDienTu
-    SET giaThanhToan = giaVe + ISNULL((
-        SELECT SUM(giaHangHoa) 
-        FROM HangHoa 
-        WHERE maVe = VeDienTu.maVe
-    ), 0)
-    WHERE maVe IN (SELECT DISTINCT maVe FROM inserted);
-END;
-GO
-
--- ============================================================================
--- PHẦN 8: DỮ LIỆU MẪU
--- ============================================================================
-
--- 20. Thêm phương thức thanh toán
-INSERT INTO PhuongThucThanhToan (tenPhuongThuc, loaiPhuongThuc, bieuTuong, moTa)
-VALUES 
-    (N'Visa', N'the-quoc-te', '💳', N'Thẻ Visa quốc tế'),
-    (N'Momo', N'vi-dien-tu', '📱', N'Ví điện tử Momo'),
-    (N'ATM Nội địa', N'the-noi-dia', '🏦', N'Thẻ ATM nội địa');
-GO
-
--- 21. Thêm người dùng mẫu
-INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau)
-VALUES 
-    (N'Admin Hệ Thống', 'admin@busgo.vn', '0905123456', 'secure_hash'),
-    (N'Khách hàng mẫu', 'customer@busgo.vn', '0912345678', 'secure_hash');
-GO
-
--- 22. Thêm Admin
-INSERT INTO Admin (maAdmin, phanQuyen) 
-VALUES (1, N'Full Access');
-GO
-
--- 23. Thêm Khách hàng
-INSERT INTO KhachHang (maKhachHang, diemTichLuy, capDoThanhVien)
-VALUES (2, 0, 'bronze');
-GO
-
--- 24. Thêm Tuyến đường (Nội thành)
-INSERT INTO TuyenDuong (diemDi, diemDen, loaiDichVu, khoangCach)
-VALUES 
-    (N'Bến xe trung tâm', N'Sân bay Quốc tế Đà Nẵng', 'city', 5),
-    (N'Bến xe trung tâm', N'Bãi biển Mỹ Khê', 'city', 3),
-    (N'Cầu Rồng', N'Phố cổ Hội An', 'city', 30),
-    (N'Sân bay Quốc tế Đà Nẵng', N'Bãi biển Non Nước', 'city', 25);
-GO
-
--- 25. Thêm Tuyến đường (Ngoại thành)
-INSERT INTO TuyenDuong (diemDi, diemDen, loaiDichVu, khoangCach)
-VALUES 
-    (N'Đà Nẵng', N'Hà Nội', 'interCity', 1000),
-    (N'Đà Nẵng', N'Sài Gòn', 'interCity', 950),
-    (N'Đà Nẵng', N'Huế', 'interCity', 100),
-    (N'Đà Nẵng', N'Quảng Nam', 'interCity', 40);
-GO
-
--- 26. Thêm Phương tiện (16 chỗ - Nội thành)
-INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, trangThaiXe, tienIch)
-VALUES 
-    (N'29A-12345', N'Hyundai', N'Trắng', 2022, 16, '16-seater', 'san_sang', '["AC", "Wifi"]'),
-    (N'29A-12346', N'Hyundai', N'Xanh', 2022, 16, '16-seater', 'san_sang', '["AC", "Wifi"]'),
-    (N'29A-12347', N'Hyundai', N'Trắng', 2023, 16, '16-seater', 'san_sang', '["AC", "Wifi", "Phone Charger"]');
-GO
-
--- 27. Thêm Phương tiện (35 chỗ - Ngoại thành)
-INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, trangThaiXe, tienIch)
-VALUES 
-    (N'29A-54321', N'Toyota', N'Trắng', 2021, 35, '35-seater', 'san_sang', '["AC", "Wifi", "Phone Charger", "Toilet"]'),
-    (N'29A-54322', N'Toyota', N'Bạc', 2021, 35, '35-seater', 'san_sang', '["AC", "Wifi", "Phone Charger"]'),
-    (N'29A-54323', N'Hyundai', N'Trắng', 2022, 35, '35-seater', 'san_sang', '["AC", "Wifi", "Pillow & Blanket"]');
-GO
-
--- ============================================================================
--- PHẦN 9: VIEW HỖ TRỢ
--- ============================================================================
-
--- 28. View: Danh sách chuyến xe với thông tin đầy đủ
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'V' AND name = 'vw_ChuyenXeChiTiet')
-    DROP VIEW vw_ChuyenXeChiTiet;
-GO
-CREATE VIEW vw_ChuyenXeChiTiet AS
-SELECT 
-    cx.maChuyenXe,
-    td.diemDi,
-    td.diemDen,
-    td.loaiDichVu,
-    cx.thoiGianDi,
-    cx.thoiGianDen,
-    cx.giaCoBan,
-    cx.soGheConTrong,
-    cx.soLuongGheDat,
-    pt.tongSoGhe,
-    pt.loaiXe,
-    cx.diemDanhGia,
-    cx.soLuotDanhGia,
-    cx.trangThaiChuyen
+-- Đồng bộ lại số ghế trống của chuyến xe khớp với số ghế thực tế của Phương tiện sau khi insert hardcode
+UPDATE cx
+SET cx.soGheConTrong = pt.tongSoGhe
 FROM ChuyenXe cx
-INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien;
+INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien
+WHERE cx.soLuongGheDat = 0;
 GO
 
--- 29. View: Danh sách vé với thông tin chi tiết
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'V' AND name = 'vw_VeDienTuChiTiet')
-    DROP VIEW vw_VeDienTuChiTiet;
-GO
-CREATE VIEW vw_VeDienTuChiTiet AS
-SELECT 
-    vdt.maVe,
-    vdt.hoTenHanhKhach,
-    vdt.emailHanhKhach,
-    vdt.soDienThoaiHanhKhach,
-    vdt.diemDon,
-    vdt.diemTra,
-    td.diemDi,
-    td.diemDen,
-    cx.thoiGianDi,
-    cx.thoiGianDen,
-    vdt.giaVe,
-    vdt.giaHangHoa,
-    vdt.giaThanhToan,
-    vdt.trangThaiVe,
-    vdt.ngayDatVe
-FROM VeDienTu vdt
-INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
-INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong;
-GO
-
--- ============================================================================
--- PHẦN 10: STORED PROCEDURES
--- ============================================================================
-
--- 30. Procedure: Tìm chuyến xe theo tuyến đường và ngày
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_TimChuyenXe')
-    DROP PROCEDURE sp_TimChuyenXe;
-GO
-CREATE PROCEDURE sp_TimChuyenXe
-    @diemDi NVARCHAR(100),
-    @diemDen NVARCHAR(100),
-    @ngayDi DATE
-AS
-BEGIN
-    SELECT 
-        cx.maChuyenXe,
-        cx.thoiGianDi,
-        cx.thoiGianDen,
-        cx.giaCoBan,
-        cx.soGheConTrong,
-        cx.soLuongGheDat,
-        pt.tongSoGhe,
-        pt.loaiXe,
-        cx.diemDanhGia,
-        cx.tienIchChiTiet
-    FROM ChuyenXe cx
-    INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-    INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien
-    WHERE td.diemDi = @diemDi 
-    AND td.diemDen = @diemDen
-    AND CAST(cx.thoiGianDi AS DATE) = @ngayDi
-    AND cx.trangThaiChuyen = 'da_len_lich'
-    ORDER BY cx.thoiGianDi;
-END;
-GO
-
--- 31. Procedure: Lấy thông tin vé chi tiết
-IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_LayThongTinVe')
-    DROP PROCEDURE sp_LayThongTinVe;
-GO
-CREATE PROCEDURE sp_LayThongTinVe
-    @maVe INT
-AS
-BEGIN
-    SELECT 
-        vdt.maVe,
-        vdt.hoTenHanhKhach,
-        vdt.emailHanhKhach,
-        vdt.soDienThoaiHanhKhach,
-        vdt.diemDon,
-        vdt.diemTra,
-        vdt.maQR,
-        td.diemDi,
-        td.diemDen,
-        cx.thoiGianDi,
-        cx.thoiGianDen,
-        gh.soGhe,
-        vdt.giaVe,
-        vdt.giaHangHoa,
-        vdt.giaThanhToan,
-        vdt.trangThaiVe,
-        vdt.ngayDatVe
-    FROM VeDienTu vdt
-    INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
-    INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-    LEFT JOIN GheNgoi gh ON vdt.maGhe = gh.maGhe
-    WHERE vdt.maVe = @maVe;
-END;
-GO

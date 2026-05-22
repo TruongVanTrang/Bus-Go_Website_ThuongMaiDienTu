@@ -6,9 +6,9 @@ import { useLocation, useParams, useNavigate } from "react-router-dom"
 
 // 3. Các thư viện icon và component, CSS giữ nguyên
 import { FiDownload, FiPrinter, FiShare2, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
-import TicketCard from '../components/ticket/TicketCard'
-import Stepper from '../components/common/Stepper'
-import FeedbackForm from '../components/feedback/FeedbackForm'
+import TicketCard from '../../components/ticket/TicketCard'
+import Stepper from '../../components/common/Stepper'
+import FeedbackForm from '../../components/feedback/FeedbackForm'
 import './ETicketPage.css'
 
 export default function ETicketPage() {

@@ -901,3 +901,157 @@
     padding: 4px 10px;
   }
 }
+
+/* ========== KHỞI HÀNH TRONG 24H ========== */
+.upcoming-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.upcoming-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.upcoming-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 10px 24px rgba(102, 126, 234, 0.15);
+  transform: translateY(-5px);
+}
+
+.upcoming-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upcoming-date-badge {
+  font-size: 12px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.upcoming-seats {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.upcoming-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  color: #1a1a1a;
+}
+
+.upcoming-city { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upcoming-arrow { color: #667eea; flex-shrink: 0; }
+
+.upcoming-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.upcoming-price {
+  font-weight: 700;
+  color: #667eea;
+  font-size: 15px;
+}
+
+.upcoming-btn {
+  margin-top: auto;
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+}
+
+.upcoming-btn:hover {
+  background: linear-gradient(135deg, #d97706, #b45309) !important;
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.35) !important;
+}
+
+/* ========== TÌM KIẾM THEO CÁCH BẠN MUỐN ========== */
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.shortcut-card {
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+
+.shortcut-card:hover {
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102,126,234,0.04) 0%, rgba(118,75,162,0.04) 100%);
+  box-shadow: 0 8px 20px rgba(102,126,234,0.14);
+  transform: translateY(-4px);
+}
+
+.shortcut-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.shortcut-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.shortcut-label {
+  font-weight: 700;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.shortcut-desc {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.shortcut-arrow {
+  color: #667eea;
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+}
+
+.shortcut-card:hover .shortcut-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+@media (max-width: 768px) {
+  .upcoming-grid,
+  .shortcuts-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}

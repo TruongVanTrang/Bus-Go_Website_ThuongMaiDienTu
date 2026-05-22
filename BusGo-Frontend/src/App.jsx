@@ -1,16 +1,17 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import Header from './components/layout/Header'
 import Footer from './components/layout/Footer'
 import ChatBot from './components/chat/ChatBot'
-import HomePage from './pages/HomePage'
-import SearchResultsPage from './pages/SearchResultsPage'
-import BookingPage from './pages/BookingPage'
-import PaymentPage from './pages/PaymentPage'
-import CargoConsignmentPage from './pages/CargoConsignmentPage'
-import ETicketPage from './pages/ETicketPage'
-import UserHistory from './pages/UserHistory'
-import WatchlistPage from './pages/WatchlistPage'
-import UserProfile from './pages/UserProfile'
+import HomePage from './customer/pages/HomePage'
+import SearchResultsPage from './customer/pages/SearchResultsPage'
+import BookingPage from './customer/pages/BookingPage'
+import PaymentPage from './customer/pages/PaymentPage'
+import CargoConsignmentPage from './customer/pages/CargoConsignmentPage'
+import ETicketPage from './customer/pages/ETicketPage'
+import UserHistory from './customer/pages/UserHistory'
+import WatchlistPage from './customer/pages/WatchlistPage'
+import UserProfile from './customer/pages/UserProfile'
 
 // Auth Components
 import LoginPage from './auth/LoginPage'
@@ -21,9 +22,19 @@ import { ProtectedRoute, RoleProtectedRoute, StaffProtectedRoute } from './auth/
 // Admin Components
 import Dashboard from './admin/pages/Dashboard'
 
+// Reset scroll lên đầu trang mỗi khi navigate sang route mới
+function ScrollToTop() {
+  const { pathname, search } = useLocation()
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [pathname, search])
+  return null
+}
+
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         {/* ==================== AUTH ROUTES ==================== */}
         <Route path="/login" element={<LoginPage />} />

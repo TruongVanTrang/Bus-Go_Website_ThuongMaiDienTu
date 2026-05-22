@@ -19,12 +19,11 @@ export default function SearchBar() {
 
   // Smart Suggestion Tags
   const smartTags = [
-    { id: 1, icon: '🚐', label: 'Xe 16 chỗ cao cấp', busType: '16-seater-premium' },
-    { id: 2, icon: '📡', label: 'Có WiFi & Sạc', feature: 'wifi_charger' },
-    { id: 3, icon: '🌙', label: 'Chuyến đêm', time: 'night' },
-    { id: 4, icon: '💰', label: 'Giá dưới 200k', price: 'budget' },
-    { id: 5, icon: '⭐', label: 'Xe 5 sao', rating: 5 },
-    { id: 6, icon: '🚌', label: 'Xe 35 chỗ', busType: '35-seater' }
+    { id: 1, icon: '🚐', label: 'Xe 16 chỗ cao cấp', state: { busType: 'mini_16' } },
+    { id: 2, icon: '📡', label: 'Có WiFi & Sạc', state: { amenities: ['Wifi', 'Phone Charger'] } },
+    { id: 3, icon: '🌙', label: 'Chuyến đêm', state: { departureTime: 'night' } },
+    { id: 4, icon: '💰', label: 'Giá dưới 200k', state: { priceRange: [0, 200000] } },
+    { id: 6, icon: '🚌', label: 'Xe 35 chỗ', state: { busType: 'coach_29_35' } }
   ]
 
   // Get available destinations based on category
@@ -95,7 +94,7 @@ export default function SearchBar() {
                 className="smart-tag-btn"
                 onClick={() => {
                   setShowSmartTags(false)
-                  // Handle smart tag selection
+                  navigate('/search', { state: tag.state })
                 }}
                 title={tag.label}
               >

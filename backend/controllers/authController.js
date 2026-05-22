@@ -1,6 +1,9 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sql } = require('../config/db');
+const emailService = require('../config/emailService');
+
+const otpStore = {}; // Lưu trữ OTP tạm thời: { [email]: { code, expiresAt } }
 
 // Tạo JWT Token
 const generateToken = (id, role, name, email) => {
@@ -48,9 +51,9 @@ const register = async (req, res) => {
         .input('soDienThoai', sql.VarChar, phone)
         .input('matKhau', sql.VarChar, hashedPassword)
         .query(`
-          INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail, daXacThucPhone, trangThaiTaiKhoan)
+          INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail, trangThaiTaiKhoan)
           OUTPUT INSERTED.maNguoiDung
-          VALUES (@tenNguoiDung, @email, @soDienThoai, @matKhau, 1, 1, 'active')
+          VALUES (@tenNguoiDung, @email, @soDienThoai, @matKhau, 1, 'active')
         `);
 
       const userId = insertUserResult.recordset[0].maNguoiDung;
@@ -145,7 +148,7 @@ const login = async (req, res) => {
     } else {
       const staffCheck = await pool.request().input('ma', sql.Int, user.maNguoiDung).query('SELECT * FROM NhanVien WHERE maNhanVien = @ma');
       if (staffCheck.recordset.length > 0) {
-        role = 'STAFF'; // Hoặc theo vaiTro trong bảng NhanVien
+        role = staffCheck.recordset[0].vaiTro || 'STAFF';
       }
     }
 
@@ -169,7 +172,69 @@ const login = async (req, res) => {
   }
 };
 
+// @desc    Gửi mã OTP qua email xác thực
+// @route   POST /api/auth/send-otp
+// @access  Public
+const sendOTP = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Vui lòng cung cấp email' });
+  }
+
+  try {
+    // Sinh mã OTP 6 chữ số
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Lưu vào store hết hạn sau 5 phút
+    otpStore[email] = {
+      code: otp,
+      expiresAt: Date.now() + 5 * 60 * 1000 // 5 phút
+    };
+
+    // Gửi email
+    await emailService.sendOTPEmail(email, otp);
+
+    res.json({ message: 'Mã xác thực đã được gửi đến email của bạn' });
+  } catch (error) {
+    console.error('Lỗi gửi OTP:', error);
+    res.status(500).json({ message: error.message || 'Lỗi gửi mã xác thực' });
+  }
+};
+
+// @desc    Xác minh mã OTP
+// @route   POST /api/auth/verify-otp
+// @access  Public
+const verifyOTP = async (req, res) => {
+  const { email, code } = req.body;
+
+  if (!email || !code) {
+    return res.status(400).json({ message: 'Vui lòng cung cấp email và mã xác thực' });
+  }
+
+  const record = otpStore[email];
+
+  if (!record) {
+    return res.status(400).json({ message: 'Mã xác thực không tồn tại hoặc đã hết hạn' });
+  }
+
+  if (Date.now() > record.expiresAt) {
+    delete otpStore[email];
+    return res.status(400).json({ message: 'Mã xác thực đã hết hạn' });
+  }
+
+  if (record.code !== code) {
+    return res.status(400).json({ message: 'Mã xác thực không chính xác' });
+  }
+
+  // Xác minh thành công, xóa OTP khỏi bộ nhớ
+  delete otpStore[email];
+  res.json({ message: 'Xác minh email thành công' });
+};
+
 module.exports = {
   register,
-  login
+  login,
+  sendOTP,
+  verifyOTP
 };

@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { FiCheckCircle, FiArrowRight, FiDownload, FiEdit2, FiAlertCircle } from 'react-icons/fi'
 import { MdDirectionsBus } from 'react-icons/md'
 import QRCode from 'qrcode.react'
-import Stepper from '../components/common/Stepper'
-import BackButton from '../components/common/BackButton'
-import { CITY_STOPS, INTERCITY_ROUTES } from '../utils/constants'
-import { mockPaymentMethods } from '../utils/mockData'
+import Stepper from '../../components/common/Stepper'
+import BackButton from '../../components/common/BackButton'
+import { CITY_STOPS, INTERCITY_ROUTES } from '../../utils/constants'
 import './CargoConsignmentPage.css'
 
 export default function CargoConsignmentPage() {
@@ -154,20 +153,7 @@ export default function CargoConsignmentPage() {
     setTimeout(() => {
       setConfirmLoading(false)
       setIsConfirmed(true)
-      
-      // Store consignment in localStorage
-      const consignments = JSON.parse(localStorage.getItem('busgo_consignments') || '[]')
-      consignments.push({
-        id: consignmentId,
-        ...routeData,
-        ...cargoData,
-        ...personData,
-        paymentMethod: selectedPaymentMethod,
-        status: 'pending',
-        timestamp: new Date().toISOString(),
-        totalPrice: getTotalPrice()
-      })
-      localStorage.setItem('busgo_consignments', JSON.stringify(consignments))
+      // Đơn ký gửi đã được xử lý - trong thực tế sẽ gửi lên backend API
     }, 2000)
   }
 

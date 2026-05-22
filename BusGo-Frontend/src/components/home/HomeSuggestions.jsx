@@ -1,27 +1,77 @@
 import { useState, useEffect } from 'react'
-import { FiAlertCircle, FiCheckCircle, FiClock, FiTrendingUp, FiChevronRight } from 'react-icons/fi'
+import { FiAlertCircle, FiClock, FiTrendingUp, FiChevronRight, FiStar, FiZap } from 'react-icons/fi'
+import { MdDirectionsBus, MdSearch } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
+import { StorageUtil } from '../../utils/helpers'
 import './HomeSuggestions.css'
+
+// Tuyến được đặt nhiều nhất (nội thành + ngoại thành thực tế từ DB)
+const MOST_BOOKED_ROUTES = [
+  { id: 1, from: 'Cầu Rồng', to: 'Phố cổ Hội An', bookings: 1240, avgPrice: 60000, category: 'city', label: 'Nội thành' },
+  { id: 2, from: 'Đà Nẵng', to: 'Huế', bookings: 980, avgPrice: 120000, category: 'interCity', label: 'Ngoại thành' },
+  { id: 3, from: 'Đà Nẵng', to: 'Quảng Nam', bookings: 756, avgPrice: 80000, category: 'interCity', label: 'Ngoại thành' },
+]
+
+// Chuyến xe chất lượng cao (đánh giá cao nhất, tuyến thực tế)
+const HIGH_QUALITY_TRIPS = [
+  {
+    id: 'hq-1',
+    from: 'Đà Nẵng', to: 'Huế',
+    rating: 4.9, reviews: 324,
+    amenities: ['AC', 'Wifi', 'Phone Charger'],
+    price: 120000, originalPrice: 150000, discount: 20,
+    busType: 'Xe 35 chỗ', tag: 'BEST RATED',
+    departure: '06:00', category: 'interCity'
+  },
+  {
+    id: 'hq-2',
+    from: 'Cầu Rồng', to: 'Phố cổ Hội An',
+    rating: 4.7, reviews: 287,
+    amenities: ['AC', 'Wifi'],
+    price: 60000, originalPrice: 60000, discount: 0,
+    busType: 'Xe 16 chỗ', tag: 'POPULAR',
+    departure: '08:00', category: 'city'
+  },
+  {
+    id: 'hq-3',
+    from: 'Đà Nẵng', to: 'Quảng Ngãi',
+    rating: 4.8, reviews: 156,
+    amenities: ['AC', 'Wifi', 'Pillow & Blanket'],
+    price: 150000, originalPrice: 180000, discount: 17,
+    busType: 'Xe 35 chỗ', tag: 'PREMIUM',
+    departure: '07:30', category: 'interCity'
+  }
+]
+
+// Gợi ý "Tìm kiếm theo cách bạn muốn"
+const SEARCH_SHORTCUTS = [
+  { id: 'sc-1', label: 'Nội thành Đà Nẵng', icon: '🏙️', query: { category: 'city' }, desc: 'Di chuyển nội thành' },
+  { id: 'sc-2', label: 'Đến Huế hôm nay', icon: '🏯', query: { from: 'Đà Nẵng', to: 'Huế', category: 'interCity' }, desc: 'Ngày hôm nay' },
+  { id: 'sc-3', label: 'Đến Quảng Nam', icon: '🌿', query: { from: 'Đà Nẵng', to: 'Quảng Nam', category: 'interCity' }, desc: 'Tuyến ngắn phổ biến' },
+  { id: 'sc-4', label: 'Giá rẻ nhất', icon: '💰', query: { category: 'city', sort: 'price_asc' }, desc: 'Vé dưới 60.000đ' },
+]
 
 export default function HomeSuggestions() {
   const [recentActivity, setRecentActivity] = useState([])
-  const [userInfo, setUserInfo] = useState({
-    emailVerified: false,
-    phoneVerified: false,
-    hasName: true
-  })
-  const [mostBookedRoutes, setMostBookedRoutes] = useState([])
-  const [popularTrips, setPopularTrips] = useState([])
+  const [userInfo, setUserInfo] = useState({ emailVerified: true, phoneVerified: true, hasName: true })
+  const [upcomingTrips, setUpcomingTrips] = useState([])
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Load user data from localStorage (mock)
-    const savedUserInfo = localStorage.getItem('userInfo')
-    if (savedUserInfo) {
-      setUserInfo(JSON.parse(savedUserInfo))
+    // Load user info
+    const savedUser = StorageUtil.getUser()
+    if (savedUser) {
+      const savedUserInfo = localStorage.getItem('userInfo')
+      if (savedUserInfo) {
+        setUserInfo(JSON.parse(savedUserInfo))
+      } else {
+        setUserInfo({ emailVerified: true, phoneVerified: true, hasName: !!savedUser.name })
+      }
+    } else {
+      setUserInfo({ emailVerified: true, phoneVerified: true, hasName: false })
     }
 
-    // Load recent activity from localStorage
+    // Tải lịch sử tìm kiếm gần đây
     const savedActivity = localStorage.getItem('recentSearches')
     if (savedActivity) {
       try {
@@ -31,128 +81,68 @@ export default function HomeSuggestions() {
       }
     }
 
-    // Mock data for most booked routes (in real app, fetch from API)
-    setMostBookedRoutes([
-      {
-        id: 1,
-        from: 'TP. Hồ Chí Minh',
-        to: 'Cần Thơ',
-        bookings: 2150,
-        avgPrice: 95000,
-        operators: 8
-      },
-      {
-        id: 2,
-        from: 'TP. Hồ Chí Minh',
-        to: 'Quảng Ninh',
-        bookings: 1890,
-        avgPrice: 520000,
-        operators: 5
-      },
-      {
-        id: 3,
-        from: 'TP. Hồ Chí Minh',
-        to: 'Phú Quốc',
-        bookings: 1765,
-        avgPrice: 420000,
-        operators: 6
-      }
-    ])
+    // "Khởi hành trong 24h tới" — tính ngày hôm nay và ngày mai
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]
 
-    // Mock data for popular trips (high ratings)
-    setPopularTrips([
+    setUpcomingTrips([
       {
-        id: 1,
-        from: 'Đà Nẵng',
-        to: 'Huế',
-        operator: 'Hoàng Long',
-        rating: 4.9,
-        reviews: 324,
-        amenities: ['WiFi', 'Reclining Seats'],
-        price: 120000,
-        originalPrice: 150000,
-        discount: 20,
-        busType: 'Toyota 16 chỗ Premium',
-        tag: 'BEST RATED',
-        popularity: 95,
-        departure: '14:00'
+        id: 'up-1', from: 'Đà Nẵng', to: 'Huế',
+        date: todayStr, displayDate: 'Hôm nay',
+        departure: '14:00', category: 'interCity',
+        price: 120000, seatsLeft: 8
       },
       {
-        id: 2,
-        from: 'Đà Nẵng',
-        to: 'Hội An',
-        operator: 'Thaco Tours',
-        rating: 4.7,
-        reviews: 287,
-        amenities: ['AC', 'WiFi'],
-        price: 80000,
-        originalPrice: 100000,
-        discount: 20,
-        busType: 'Thaco 35 chỗ',
-        tag: 'POPULAR ROUTE',
-        popularity: 88,
-        departure: '07:00'
+        id: 'up-2', from: 'Cầu Rồng', to: 'Phố cổ Hội An',
+        date: todayStr, displayDate: 'Hôm nay',
+        departure: '15:30', category: 'city',
+        price: 60000, seatsLeft: 12
       },
       {
-        id: 3,
-        from: 'Đà Nẵng',
-        to: 'Nha Trang',
-        operator: 'Thành Bưởi',
-        rating: 4.8,
-        reviews: 156,
-        amenities: ['Hot Water', 'Blanket'],
-        price: 250000,
-        originalPrice: 300000,
-        discount: 17,
-        busType: 'Toyota Limousine',
-        tag: 'PREMIUM CHOICE',
-        popularity: 92,
-        departure: '20:00'
-      }
+        id: 'up-3', from: 'Đà Nẵng', to: 'Quảng Nam',
+        date: tomorrowStr, displayDate: 'Ngày mai',
+        departure: '06:00', category: 'interCity',
+        price: 80000, seatsLeft: 5
+      },
     ])
   }, [])
 
-  const handleRecentActivityClick = (route) => {
-    navigate(`/search?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}`)
+  // Điều hướng đến trang tìm kiếm với params
+  const goSearch = (params = {}) => {
+    const today = new Date().toISOString().split('T')[0]
+    const urlParams = new URLSearchParams()
+    if (params.from) urlParams.set('from', params.from)
+    if (params.to) urlParams.set('to', params.to)
+    if (params.date) urlParams.set('date', params.date)
+    else if (params.needDate !== false) urlParams.set('date', today)
+    if (params.category) urlParams.set('category', params.category)
+    navigate(`/search?${urlParams.toString()}`)
   }
 
-  const handleBookNow = (trip) => {
-    navigate(`/booking/${trip.id}`)
+  const handleRecentActivityClick = (route) => {
+    goSearch({ from: route.from, to: route.to, needDate: false })
   }
 
   return (
     <div className="home-suggestions">
       {/* Information Alerts */}
-      {(!userInfo.emailVerified || !userInfo.phoneVerified) && (
+      {!userInfo.emailVerified && (
         <div className="suggestions-alerts">
-          {!userInfo.emailVerified && (
-            <div className="alert-card alert-warning">
-              <div className="alert-icon">
-                <FiAlertCircle size={20} />
-              </div>
-              <div className="alert-content">
-                <p className="alert-title">⚠️ Email chưa được xác minh</p>
-                <p className="alert-desc">Xác minh email để bảo mật tài khoản và nhận thông báo đặt vé</p>
-              </div>
-              <button className="btn-verify">Xác minh</button>
+          <div className="alert-card alert-warning">
+            <div className="alert-icon"><FiAlertCircle size={20} /></div>
+            <div className="alert-content">
+              <p className="alert-title">⚠️ Email chưa được xác minh</p>
+              <p className="alert-desc">Xác minh email để bảo mật tài khoản và nhận thông báo đặt vé</p>
             </div>
-          )}
-          {!userInfo.phoneVerified && (
-            <div className="alert-card alert-danger">
-              <div className="alert-icon">
-                <FiAlertCircle size={20} />
-              </div>
-              <div className="alert-content">
-                <p className="alert-title">⚠️ Số điện thoại chưa xác minh</p>
-                <p className="alert-desc">Cần xác minh SĐT để tài xế có thể liên lạc với bạn</p>
-              </div>
-              <button className="btn-verify">Xác minh ngay</button>
-            </div>
-          )}
+            <button className="btn-verify">Xác minh</button>
+          </div>
         </div>
       )}
 
-      {/* Recent Activity Section */}
+      {/* Lịch sử tìm kiếm gần đây */}
       {recentActivity.length > 0 && (
         <div className="suggestions-section">
           <div className="section-header">
@@ -162,14 +152,9 @@ export default function HomeSuggestions() {
             </div>
             <p className="section-subtitle">Những tuyến bạn vừa tìm kiếm</p>
           </div>
-
           <div className="activity-grid">
             {recentActivity.map((activity, idx) => (
-              <div
-                key={idx}
-                className="activity-card"
-                onClick={() => handleRecentActivityClick(activity)}
-              >
+              <div key={idx} className="activity-card" onClick={() => handleRecentActivityClick(activity)}>
                 <div className="activity-route">
                   <span className="route-city">{activity.from}</span>
                   <span className="route-arrow">↔️</span>
@@ -179,9 +164,7 @@ export default function HomeSuggestions() {
                   <span className="activity-date">
                     {new Date(activity.timestamp).toLocaleDateString('vi-VN')}
                   </span>
-                  <span className="activity-action">
-                    Xem lại <FiChevronRight size={16} />
-                  </span>
+                  <span className="activity-action">Xem lại <FiChevronRight size={16} /></span>
                 </div>
               </div>
             ))}
@@ -189,7 +172,7 @@ export default function HomeSuggestions() {
         </div>
       )}
 
-      {/* Most Booked Routes Section */}
+      {/* 🔥 Tuyến đường được đặt nhiều nhất */}
       <div className="suggestions-section">
         <div className="section-header">
           <div className="section-title-group">
@@ -198,9 +181,8 @@ export default function HomeSuggestions() {
           </div>
           <p className="section-subtitle">Những chuyến được yêu thích nhất hiện nay</p>
         </div>
-
         <div className="routes-grid">
-          {mostBookedRoutes.map((route) => (
+          {MOST_BOOKED_ROUTES.map((route) => (
             <div key={route.id} className="route-card popular">
               <div className="route-header">
                 <div className="route-info">
@@ -210,28 +192,22 @@ export default function HomeSuggestions() {
                 </div>
                 <div className="route-badge">
                   <span className="badge-fire">🔥</span>
-                  <span className="badge-text">{route.bookings} lượt</span>
+                  <span className="badge-text">{route.bookings.toLocaleString()} lượt</span>
                 </div>
               </div>
-
               <div className="route-details">
                 <div className="detail-item">
                   <span className="detail-label">Giá từ</span>
                   <span className="detail-value">{route.avgPrice.toLocaleString()}đ</span>
                 </div>
                 <div className="detail-item">
-                  <span className="detail-label">Nhà xe</span>
-                  <span className="detail-value">{route.operators} công ty</span>
+                  <span className="detail-label">Loại</span>
+                  <span className="detail-value">{route.label}</span>
                 </div>
               </div>
-
               <button
                 className="btn-search"
-                onClick={() =>
-                  navigate(
-                    `/search?from=${encodeURIComponent(route.from)}&to=${encodeURIComponent(route.to)}`
-                  )
-                }
+                onClick={() => goSearch({ from: route.from, to: route.to, category: route.category })}
               >
                 Tìm kiếm ngay
               </button>
@@ -240,7 +216,7 @@ export default function HomeSuggestions() {
         </div>
       </div>
 
-      {/* Popular Trips Section */}
+      {/* ⭐ Chuyến xe chất lượng dịch vụ cao */}
       <div className="suggestions-section popular-trips-featured">
         <div className="section-header featured-style">
           <div className="section-title-group">
@@ -249,21 +225,13 @@ export default function HomeSuggestions() {
           </div>
           <p className="section-subtitle">Những chuyến được đánh giá cao nhất</p>
         </div>
-
         <div className="featured-trips-grid">
-          {popularTrips.map((trip) => (
+          {HIGH_QUALITY_TRIPS.map((trip) => (
             <div key={trip.id} className="featured-trip-card">
-              {/* Discount Badge */}
               {trip.discount > 0 && (
-                <div className="discount-badge">
-                  -<span>{trip.discount}%</span>
-                </div>
+                <div className="discount-badge">-<span>{trip.discount}%</span></div>
               )}
-
-              {/* Featured Badge */}
               <div className="featured-badge-tag">{trip.tag}</div>
-
-              {/* Card Header with Rating */}
               <div className="card-header">
                 <div className="route-display">
                   <span className="city-from">{trip.from}</span>
@@ -271,56 +239,112 @@ export default function HomeSuggestions() {
                   <span className="city-to">{trip.to}</span>
                 </div>
               </div>
-
-              {/* Rating Box */}
               <div className="rating-section">
                 <div className="stars">
                   {[...Array(5)].map((_, i) => (
-                    <span key={i} className={i < Math.floor(trip.rating) ? 'star-filled' : 'star-empty'}>
-                      ★
-                    </span>
+                    <span key={i} className={i < Math.floor(trip.rating) ? 'star-filled' : 'star-empty'}>★</span>
                   ))}
                 </div>
                 <span className="rating-value">{trip.rating}</span>
                 <span className="review-count">({trip.reviews})</span>
               </div>
-
-              {/* Bus Type */}
               <div className="bus-badge">{trip.busType}</div>
-
-              {/* Amenities */}
               <div className="amenities-row">
                 {trip.amenities.map((amenity, idx) => (
                   <span key={idx} className="amenity-chip">
-                    {amenity === 'WiFi' && '📡 '}
-                    {amenity === 'Reclining Seats' && '🛏️ '}
+                    {amenity === 'Wifi' && '📡 '}
                     {amenity === 'AC' && '❄️ '}
-                    {amenity === 'Hot Water' && '☕ '}
-                    {amenity === 'Blanket' && '🧣 '}
+                    {amenity === 'Phone Charger' && '🔌 '}
+                    {amenity === 'Pillow & Blanket' && '🛏️ '}
                     {amenity}
                   </span>
                 ))}
               </div>
-
-              {/* Pricing Section */}
               <div className="pricing-footer">
                 <div className="price-info">
-                  {trip.originalPrice !== trip.price && (
-                    <span className="original-price">
-                      {trip.originalPrice.toLocaleString()}đ
-                    </span>
+                  {trip.discount > 0 && (
+                    <span className="original-price">{trip.originalPrice.toLocaleString()}đ</span>
                   )}
-                  <span className="current-price">
-                    {trip.price.toLocaleString()}đ
-                  </span>
+                  <span className="current-price">{trip.price.toLocaleString()}đ</span>
                 </div>
+                {/* Tìm chuyến thực tế trên trang search thay vì booking trực tiếp */}
                 <button
                   className="btn-book-featured"
-                  onClick={() => handleBookNow(trip)}
+                  onClick={() => goSearch({ from: trip.from, to: trip.to, category: trip.category })}
                 >
-                  Đặt ngay
+                  Tìm chuyến này
                 </button>
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ⚡ Khởi hành trong 24h tới */}
+      <div className="suggestions-section">
+        <div className="section-header">
+          <div className="section-title-group">
+            <span className="title-emoji">⚡</span>
+            <h3>Khởi hành trong 24h tới</h3>
+          </div>
+          <p className="section-subtitle">Đặt nhanh trước khi hết chỗ!</p>
+        </div>
+        <div className="upcoming-grid">
+          {upcomingTrips.map((trip) => (
+            <div key={trip.id} className="upcoming-card">
+              <div className="upcoming-header">
+                <span className="upcoming-date-badge">{trip.displayDate}</span>
+                <span className="upcoming-seats">
+                  {trip.seatsLeft <= 5
+                    ? <span style={{ color: '#ef4444' }}>⚠️ Còn {trip.seatsLeft} chỗ</span>
+                    : <span style={{ color: '#22c55e' }}>✓ Còn {trip.seatsLeft} chỗ</span>}
+                </span>
+              </div>
+              <div className="upcoming-route">
+                <span className="upcoming-city">{trip.from}</span>
+                <span className="upcoming-arrow">→</span>
+                <span className="upcoming-city">{trip.to}</span>
+              </div>
+              <div className="upcoming-meta">
+                <span>🕐 {trip.departure}</span>
+                <span className="upcoming-price">{trip.price.toLocaleString()}đ</span>
+              </div>
+              <button
+                className="btn-search upcoming-btn"
+                onClick={() => goSearch({ from: trip.from, to: trip.to, date: trip.date, category: trip.category })}
+              >
+                Đặt vé ngay
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 🔍 Tìm kiếm theo cách bạn muốn */}
+      <div className="suggestions-section">
+        <div className="section-header">
+          <div className="section-title-group">
+            <MdSearch size={24} className="title-icon" />
+            <h3>Tìm kiếm theo cách bạn muốn</h3>
+          </div>
+          <p className="section-subtitle">Chọn nhanh theo nhu cầu của bạn</p>
+        </div>
+        <div className="shortcuts-grid">
+          {SEARCH_SHORTCUTS.map((sc) => (
+            <div
+              key={sc.id}
+              className="shortcut-card"
+              onClick={() => goSearch(sc.query)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && goSearch(sc.query)}
+            >
+              <span className="shortcut-icon">{sc.icon}</span>
+              <div className="shortcut-content">
+                <span className="shortcut-label">{sc.label}</span>
+                <span className="shortcut-desc">{sc.desc}</span>
+              </div>
+              <FiChevronRight size={18} className="shortcut-arrow" />
             </div>
           ))}
         </div>

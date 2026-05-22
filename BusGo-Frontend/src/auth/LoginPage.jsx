@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi'
 import { StorageUtil, AuthUtil, ValidateUtil } from '@/utils/helpers'
-import { TEST_ACCOUNTS, USER_ROLES, ERROR_MESSAGES } from '@/utils/constants'
+import { USER_ROLES, ERROR_MESSAGES } from '@/utils/constants'
+import { loginAPI } from '@/services/authService'
 import './LoginPage.css'
 
 function LoginPage() {
@@ -37,15 +39,7 @@ function LoginPage() {
     return Object.keys(newErrors).length === 0
   }
 
-  /**
-   * Tìm kiếm tài khoản test theo email hoặc số điện thoại
-   */
-  const findTestAccount = (emailOrPhone) => {
-    const accounts = Object.values(TEST_ACCOUNTS)
-    return accounts.find(
-      (acc) => acc.email === emailOrPhone || acc.phone === emailOrPhone
-    )
-  }
+
 
   /**
    * Xử lý đăng nhập
@@ -62,42 +56,35 @@ function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Tìm tài khoản test
-      const account = findTestAccount(formData.emailOrPhone)
-
-      if (!account) {
-        setGeneralError(ERROR_MESSAGES.INVALID_CREDENTIALS)
-        setIsLoading(false)
-        return
-      }
-
-      // Kiểm tra mật khẩu
-      if (account.password !== formData.password) {
-        setGeneralError(ERROR_MESSAGES.INVALID_CREDENTIALS)
-        setIsLoading(false)
-        return
-      }
+      // Gọi API đăng nhập từ backend
+      const data = await loginAPI(formData.emailOrPhone, formData.password)
 
       // ✅ Đăng nhập thành công
-      // Simulate JWT token (trong production, token từ backend)
-      const mockToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IiR7YWNjb3VudC5uYW1lfSIsImVtYWlsIjoiJHthY2NvdW50LmVtYWlsfSIsInJvbGUiOiIke2FjY291bnQucm9sZX0iLCJleHAiOjk5OTk5OTk5OTl9`
-
       // Lưu token và user info vào LocalStorage
-      StorageUtil.setToken(mockToken)
+      StorageUtil.setToken(data.token)
       StorageUtil.setUser({
-        id: '1',
-        name: account.name,
-        email: account.email,
-        phone: account.phone,
-        role: account.role
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        phone: data.user.phone,
+        role: data.user.role
       })
-      StorageUtil.setRole(account.role)
+      StorageUtil.setRole(data.user.role)
+
+      // Lưu trữ định dạng cũ để tương thích với các component cũ khác
+      localStorage.setItem('userInfo', JSON.stringify({
+        fullName: data.user.name,
+        email: data.user.email,
+        phone: data.user.phone,
+        emailVerified: true,
+        phoneVerified: true,
+        membershipLevel: 'bronze',
+        points: 0,
+        registeredAt: new Date().toISOString()
+      }))
 
       // Điều hướng theo role (RBAC)
-      if (account.role === USER_ROLES.CUSTOMER) {
+      if (data.user.role === USER_ROLES.CUSTOMER) {
         navigate('/home')
       } else {
         // Admin, Driver, Ticket Staff, Support Staff → /admin/dashboard
@@ -105,7 +92,7 @@ function LoginPage() {
       }
     } catch (error) {
       console.error('Login error:', error)
-      setGeneralError(ERROR_MESSAGES.NETWORK_ERROR)
+      setGeneralError(error.message || ERROR_MESSAGES.INVALID_CREDENTIALS)
     } finally {
       setIsLoading(false)
     }
@@ -129,18 +116,7 @@ function LoginPage() {
     }
   }
 
-  /**
-   * Quick login cho test accounts
-   */
-  const handleQuickLogin = (accountType) => {
-    const account = TEST_ACCOUNTS[accountType]
-    setFormData({
-      emailOrPhone: account.email,
-      password: account.password
-    })
-    setErrors({})
-    setGeneralError('')
-  }
+
 
   return (
     <div className="login-container">
@@ -173,7 +149,7 @@ function LoginPage() {
             <label className="form-label">Email hoặc Số điện thoại</label>
             <div className="input-group">
               <span className="input-group-text">
-                <i className="fas fa-envelope" />
+                <FiMail />
               </span>
               <input
                 type="text"
@@ -192,13 +168,13 @@ function LoginPage() {
               </small>
             )}
           </div>
-
+ 
           {/* Password Field */}
           <div className="form-group">
             <label className="form-label">Mật khẩu</label>
             <div className="input-group">
               <span className="input-group-text">
-                <i className="fas fa-lock" />
+                <FiLock />
               </span>
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -215,7 +191,7 @@ function LoginPage() {
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
               >
-                <i className={`fas fa-eye${!showPassword ? '-slash' : ''}`} />
+                {showPassword ? <FiEye /> : <FiEyeOff />}
               </button>
             </div>
             {errors.password && (
@@ -264,36 +240,20 @@ function LoginPage() {
         <div className="text-center mt-4">
           <p className="text-muted">
             Bạn chưa có tài khoản?{' '}
-            <a href="#" className="sign-up-link">
+            <a
+              href="/register"
+              className="sign-up-link"
+              onClick={(e) => {
+                e.preventDefault()
+                navigate('/register')
+              }}
+            >
               Đăng ký ngay
             </a>
           </p>
         </div>
 
-        {/* Development: Test Accounts */}
-        <div className="dev-test-accounts">
-          <details className="test-accounts-collapse">
-            <summary className="test-accounts-title">
-              👤 Tài khoản test (Chỉ để phát triển)
-            </summary>
-            <div className="test-accounts-grid">
-              {Object.entries(TEST_ACCOUNTS).map(([key, account]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className="test-account-btn"
-                  onClick={() => handleQuickLogin(key)}
-                  disabled={isLoading}
-                  title={`${account.name}`}
-                >
-                  <span className="account-role">{account.role}</span>
-                  <span className="account-email">{account.email}</span>
-                  <span className="account-password">pwd: {account.password}</span>
-                </button>
-              ))}
-            </div>
-          </details>
-        </div>
+
       </div>
 
       {/* Footer */}

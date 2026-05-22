@@ -140,6 +140,11 @@ export default function SearchResultsPage() {
     setFilteredTrips(filtered)
   }, [filters, trips])
 
+  // Preserve filters in history state so they are not lost when navigating back from BookingPage
+  useEffect(() => {
+    navigate('.', { state: filters, replace: true })
+  }, [filters, navigate])
+
   return (
     <div className="search-results-page">
       <div className="container-fluid px-md-5 px-3 py-5">

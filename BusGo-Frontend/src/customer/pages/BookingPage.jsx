@@ -108,7 +108,7 @@ export default function BookingPage() {
 
   const getTotalPrice = () => {
     if (!trip) return 0
-    const seatsToBook = trip.category === 'city' ? passengerQuantity : selectedSeats.length
+    const seatsToBook = trip.seats <= 16 ? passengerQuantity : selectedSeats.length
     return trip.price * seatsToBook + cargoInfo.estimatedPrice
   }
 
@@ -118,11 +118,11 @@ export default function BookingPage() {
       return
     }
 
-    // For city trips, use passenger quantity; for intercity, use selected seats
-    const seatsToBook = trip.category === 'city' ? passengerQuantity : selectedSeats.length
+    // For small buses <= 16 seats, use passenger quantity; for large buses, use selected seats
+    const seatsToBook = trip.seats <= 16 ? passengerQuantity : selectedSeats.length
     
     if (seatsToBook === 0) {
-      alert(trip.category === 'city' ? 'Vui lòng chọn số lượng hành khách' : 'Vui lòng chọn ít nhất một ghế')
+      alert(trip.seats <= 16 ? 'Vui lòng chọn số lượng hành khách' : 'Vui lòng chọn ít nhất một ghế')
       return
     }
 
@@ -140,8 +140,8 @@ export default function BookingPage() {
     navigate('/payment', {
       state: {
         trip,
-        selectedSeats: trip.category === 'city' ? [] : selectedSeats,
-        passengerQuantity: trip.category === 'city' ? passengerQuantity : 0,
+        selectedSeats: trip.seats <= 16 ? [] : selectedSeats,
+        passengerQuantity: trip.seats <= 16 ? passengerQuantity : 0,
         passengerInfo,
         cargoInfo,
         totalPrice: getTotalPrice()
@@ -176,7 +176,7 @@ export default function BookingPage() {
 
         {/* Section 1: Seat Selection - Different based on category */}
         <div className="booking-section mb-5">
-          {trip.category === 'city' ? (
+          {trip.seats <= 16 ? (
             <PassengerQuantity
               trip={trip}
               quantity={passengerQuantity}

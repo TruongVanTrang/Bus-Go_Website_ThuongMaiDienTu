@@ -1,4 +1,4 @@
-import { FiClock, FiMapPin, FiUsers, FiStar, FiHeart, FiInfo } from 'react-icons/fi'
+import { FiClock, FiMapPin, FiUsers, FiStar, FiHeart, FiInfo, FiBookmark } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import TripDetailsModal from './TripDetailsModal'
 import './TripCard.css'
@@ -6,6 +6,7 @@ import './TripCard.css'
 export default function TripCard({ trip, onSelect }) {
   const [isFavorite, setIsFavorite] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showFavToast, setShowFavToast] = useState(false)
   const seatPercentage = (trip.totalSeats - trip.seatsAvailable) / trip.totalSeats * 100
 
   // Load favorite status from localStorage
@@ -24,11 +25,11 @@ export default function TripCard({ trip, onSelect }) {
     let favorites = savedFavorites ? JSON.parse(savedFavorites) : []
 
     if (isFavorite) {
-      // Remove from favorites
+      // Xóa khỏi yêu thích
       favorites = favorites.filter(fav => fav.tripId !== trip.id)
       setIsFavorite(false)
     } else {
-      // Add to favorites - save trip info for watchlist
+      // Thêm vào yêu thích
       const newFavorite = {
         id: `TRIP${Date.now()}`,
         tripId: trip.id,
@@ -44,6 +45,14 @@ export default function TripCard({ trip, onSelect }) {
       }
       favorites.push(newFavorite)
       setIsFavorite(true)
+
+      // Chỉ hiện toast lần đầu tiên người dùng nhấn yêu thích
+      const hintShown = localStorage.getItem('busgo_fav_hint_shown')
+      if (!hintShown) {
+        setShowFavToast(true)
+        localStorage.setItem('busgo_fav_hint_shown', '1')
+        setTimeout(() => setShowFavToast(false), 3500)
+      }
     }
 
     localStorage.setItem('busgo_favorites', JSON.stringify(favorites))
@@ -51,6 +60,14 @@ export default function TripCard({ trip, onSelect }) {
 
   return (
     <>
+      {/* Toast thông báo yêu thích - chỉ hiện lần đầu */}
+      {showFavToast && (
+        <div className="fav-toast-hint" role="status" aria-live="polite">
+          <FiBookmark size={16} style={{ flexShrink: 0 }} />
+          <span>Chuyến xe yêu thích được lưu ở <strong>Lịch sử</strong></span>
+        </div>
+      )}
+
       <div className="trip-card">
         {/* Favorite Button */}
         <button

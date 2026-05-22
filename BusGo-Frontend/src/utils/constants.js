@@ -209,14 +209,16 @@ export const CITY_STOPS = [
   'Phạm Văn Đồng'
 ]
 
-// Inter-city popular routes
+// Inter-city popular routes (chỉ miền Trung và Bắc Trung Bộ)
 export const INTERCITY_ROUTES = [
-  { from: 'Đà Nẵng', to: 'Hà Nội', distance: '1000 km', category: 'interCity' },
-  { from: 'Đà Nẵng', to: 'Sài Gòn', distance: '950 km', category: 'interCity' },
-  { from: 'Đà Nẵng', to: 'Huế', distance: '100 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Huế', distance: '108 km', category: 'interCity' },
   { from: 'Đà Nẵng', to: 'Quảng Nam', distance: '40 km', category: 'interCity' },
-  { from: 'Đà Nẵng', to: 'Quảng Ngãi', distance: '100 km', category: 'interCity' },
-  { from: 'Đà Nẵng', to: 'Kon Tum', distance: '200 km', category: 'interCity' }
+  { from: 'Đà Nẵng', to: 'Quảng Ngãi', distance: '130 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Quảng Bình', distance: '320 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Quảng Trị', distance: '190 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Hà Tĩnh', distance: '430 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Nghệ An', distance: '540 km', category: 'interCity' },
+  { from: 'Đà Nẵng', to: 'Thanh Hóa', distance: '680 km', category: 'interCity' }
 ]
 
 // City transit routes (nội thành)

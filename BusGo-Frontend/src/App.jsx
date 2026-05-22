@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import Header from './components/layout/Header'
 import Footer from './components/layout/Footer'
 import ChatBot from './components/chat/ChatBot'
@@ -21,9 +22,19 @@ import { ProtectedRoute, RoleProtectedRoute, StaffProtectedRoute } from './auth/
 // Admin Components
 import Dashboard from './admin/pages/Dashboard'
 
+// Reset scroll lên đầu trang mỗi khi navigate sang route mới
+function ScrollToTop() {
+  const { pathname, search } = useLocation()
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [pathname, search])
+  return null
+}
+
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         {/* ==================== AUTH ROUTES ==================== */}
         <Route path="/login" element={<LoginPage />} />

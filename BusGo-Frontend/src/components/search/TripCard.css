@@ -71,3 +71,61 @@
     padding: 1rem !important;
   }
 }
+
+/* ====== Toast thông báo yêu thích (chỉ hiện lần đầu) ====== */
+@keyframes favToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes favToastOut {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(10px) scale(0.95); }
+}
+
+.fav-toast-hint {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #1e293b;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.75rem 1.25rem;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  animation:
+    favToastIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+    favToastOut 0.4s ease 3.1s forwards;
+}
+
+.fav-toast-hint svg {
+  color: #f87171;
+}
+
+.fav-toast-hint strong {
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+@media (max-width: 576px) {
+  .fav-toast-hint {
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+    justify-content: center;
+    border-radius: 12px;
+  }
+}

@@ -113,7 +113,9 @@ const searchTrips = async (req, res) => {
     const pool = await sql.connect();
 
     if (from && to && date) {
-      await ensureTripsExist(pool, from, to, date);
+      // NOTE: Auto-generate trips logic is temporarily disabled because BusGo_DB_Updated.sql 
+      // now automatically seeds 7-days of trips dynamically for all routes.
+      // await ensureTripsExist(pool, from, to, date);
     }
     let queryStr = `
       SELECT cx.*, td.danhSachTramDung, pt.tienIch as vehicleAmenities

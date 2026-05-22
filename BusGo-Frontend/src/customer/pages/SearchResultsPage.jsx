@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import TripCard from '../../components/search/TripCard'
 import SearchFilters from '../../components/search/SearchFilters'
 import { BUS_TYPES } from '../../utils/constants'
@@ -14,55 +14,21 @@ export default function SearchResultsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  const location = useLocation()
+
   const [filters, setFilters] = useState({
-    priceRange: [0, 1000000],
-    amenities: [],
-    busType: '',
-    departureTime: '',
-    category: searchParams.get('category') || '',
-    from: searchParams.get('from') || '',
-    to: searchParams.get('to') || '',
+    priceRange: location.state?.priceRange || [0, 1000000],
+    amenities: location.state?.amenities || [],
+    busType: location.state?.busType || '',
+    departureTime: location.state?.departureTime || '',
+    category: searchParams.get('category') || location.state?.category || '',
+    from: searchParams.get('from') || location.state?.from || '',
+    to: searchParams.get('to') || location.state?.to || '',
     departureDate: searchParams.get('date') || ''
   })
 
-  // Sync state filters when URL query parameters change
-  useEffect(() => {
-    const from = searchParams.get('from') || ''
-    const to = searchParams.get('to') || ''
-    const date = searchParams.get('date') || ''
-    const category = searchParams.get('category') || ''
-    
-    setFilters(prev => ({
-      ...prev,
-      from,
-      to,
-      departureDate: date,
-      category
-    }))
-  }, [searchParams])
-
-  // Sync core filters state back to URL query parameters
-  useEffect(() => {
-    const from = searchParams.get('from') || ''
-    const to = searchParams.get('to') || ''
-    const date = searchParams.get('date') || ''
-    const category = searchParams.get('category') || ''
-
-    if (
-      filters.from !== from ||
-      filters.to !== to ||
-      filters.departureDate !== date ||
-      filters.category !== category
-    ) {
-      const newParams = {}
-      if (filters.from) newParams.from = filters.from
-      if (filters.to) newParams.to = filters.to
-      if (filters.departureDate) newParams.date = filters.departureDate
-      if (filters.category) newParams.category = filters.category
-      
-      setSearchParams(newParams)
-    }
-  }, [filters.from, filters.to, filters.departureDate, filters.category, searchParams, setSearchParams])
+  // (Hooks removed to prevent infinite re-rendering loops)
+  // Filters state is now managed purely internally and initialized from router state/searchParams on mount.
 
   // Fetch matching trips from backend API when core filters change
   useEffect(() => {
@@ -119,14 +85,10 @@ export default function SearchResultsPage() {
         return false
       }
 
-      // Bus type filter - Map from busType ID to trip.busType
+      // Bus type filter
       if (filters.busType && filters.busType !== '') {
-        const selectedBusType = Object.values(BUS_TYPES).find(bt => bt.id === filters.busType)
-        if (selectedBusType && trip.busType !== selectedBusType.loaiXe && trip.busType !== selectedBusType.name) {
-          // Compare against loaiXe (e.g. '16-seater', '35-seater')
-          if (trip.busType !== selectedBusType.id) {
-            return false
-          }
+        if (trip.busType !== filters.busType) {
+          return false
         }
       }
 

@@ -445,21 +445,21 @@ GO
 -- 30. Thêm Phương tiện (16 chỗ - Nội thành)
 INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, trangThaiXe, tienIch)
 VALUES 
-    (N'29A-12345', N'Hyundai',      N'Trắng', 2022, 16, '16-seater', 'san_sang', N'["AC", "Wifi"]'),
-    (N'29A-12346', N'Hyundai',      N'Xanh',  2022, 16, '16-seater', 'san_sang', N'["AC", "Wifi"]'),
-    (N'29A-12347', N'Hyundai',      N'Trắng', 2023, 16, '16-seater', 'san_sang', N'["AC", "Wifi", "Phone Charger"]'),
-    (N'43A-22221', N'Hino FB',      N'Trắng', 2021, 16, '16-seater', 'san_sang', N'["AC", "Wifi", "Phone Charger"]'),
-    (N'43A-22222', N'Toyota Hiace', N'Vàng',  2022, 16, '16-seater', 'san_sang', N'["AC"]');
+    (N'29A-12345', N'Hyundai',      N'Trắng', 2022, 16, 'mini_16', 'san_sang', N'["AC", "Wifi"]'),
+    (N'29A-12346', N'Samco',        N'Xanh',  2022, 20, 'city_small', 'san_sang', N'["AC", "Wifi"]'),
+    (N'29A-12347', N'Ford Transit', N'Trắng', 2023, 9, 'mini_9', 'san_sang', N'["AC", "Wifi", "Phone Charger"]'),
+    (N'43A-22221', N'Hyundai',      N'Trắng', 2021, 16, 'mini_16', 'san_sang', N'["AC", "Wifi", "Phone Charger"]'),
+    (N'43A-22222', N'Toyota Inno',  N'Vàng',  2022, 7, 'mini_7', 'san_sang', N'["AC"]');
 GO
 
 -- 31. Thêm Phương tiện (35 chỗ - Ngoại thành)
 INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, trangThaiXe, tienIch)
 VALUES 
-    (N'29A-54321', N'Toyota',          N'Trắng', 2021, 35, '35-seater', 'san_sang', N'["AC", "Wifi", "Phone Charger", "Toilet"]'),
-    (N'29A-54322', N'Toyota',          N'Bạc',   2021, 35, '35-seater', 'san_sang', N'["AC", "Wifi", "Phone Charger"]'),
-    (N'29A-54323', N'Hyundai',         N'Trắng', 2022, 35, '35-seater', 'san_sang', N'["AC", "Wifi", "Pillow & Blanket"]'),
-    (N'43A-11111', N'Hyundai Univers', N'Trắng', 2022, 35, '35-seater', 'san_sang', N'["AC", "Wifi", "Phone Charger", "Pillow & Blanket"]'),
-    (N'43A-11112', N'Thaco TB120S',    N'Bạc',   2023, 35, '35-seater', 'san_sang', N'["AC", "Wifi"]');
+    (N'29A-54321', N'Toyota',          N'Trắng', 2021, 35, 'coach_29_35', 'san_sang', N'["AC", "Wifi", "Phone Charger", "Toilet"]'),
+    (N'29A-54322', N'Thaco Mobihome',  N'Bạc',   2021, 45, 'coach_suburb', 'san_sang', N'["AC", "Wifi", "Phone Charger"]'),
+    (N'29A-54323', N'Hyundai',         N'Trắng', 2022, 35, 'coach_29_35', 'san_sang', N'["AC", "Wifi", "Pillow & Blanket"]'),
+    (N'43A-11111', N'Ford Transit',    N'Trắng', 2022, 16, 'coach_16', 'san_sang', N'["AC", "Wifi", "Phone Charger", "Pillow & Blanket"]'),
+    (N'43A-11112', N'Thaco TB120S',    N'Bạc',   2023, 35, 'coach_29_35', 'san_sang', N'["AC", "Wifi"]');
 GO
 
 -- ============================================================================
@@ -862,5 +862,11 @@ BEGIN
 END;
 GO
 
-PRINT N'✓ BusGoDBs: Seed dữ liệu 7 ngày hoàn tất!';
+-- Đồng bộ lại số ghế trống của chuyến xe khớp với số ghế thực tế của Phương tiện sau khi insert hardcode
+UPDATE cx
+SET cx.soGheConTrong = pt.tongSoGhe
+FROM ChuyenXe cx
+INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien
+WHERE cx.soLuongGheDat = 0;
 GO
+

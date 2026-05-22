@@ -9,18 +9,18 @@ export default function MultiSearchMethods() {
 
   // Popular Routes Data
   const popularRoutes = [
-    { from: 'Đà Nẵng', to: 'Huế', popularity: 95, trips: 12 },
-    { from: 'Đà Nẵng', to: 'Hội An', popularity: 88, trips: 18 },
-    { from: 'Đà Nẵng', to: 'Quảng Ngãi', popularity: 72, trips: 8 },
-    { from: 'Đà Nẵng', to: 'Nha Trang', popularity: 85, trips: 6 }
+    { from: 'Cầu Rồng', to: 'Phố cổ Hội An', popularity: 95, trips: 16, category: 'city' },
+    { from: 'Đà Nẵng', to: 'Huế', popularity: 90, trips: 32, category: 'interCity' },
+    { from: 'Đà Nẵng', to: 'Quảng Nam', popularity: 88, trips: 32, category: 'interCity' },
+    { from: 'Đà Nẵng', to: 'Quảng Bình', popularity: 75, trips: 16, category: 'interCity' }
   ]
 
   // Vehicle Types Data
   const vehicleTypes = [
-    { type: '16 chỗ', name: 'Toyota', icon: '🚐', price: 'từ 100k', trips: 24 },
-    { type: '35 chỗ', name: 'Thaco', icon: '🚌', price: 'từ 80k', trips: 18 },
-    { type: '24 chỗ', name: 'Hyundai', icon: '🚍', price: 'từ 90k', trips: 15 },
-    { type: 'Limousine', name: 'Toyota', icon: '✨', price: 'từ 200k', trips: 8 }
+    { type: 'Xe 16 chỗ', id: 'mini_16', name: 'Cao cấp, nhỏ gọn', icon: '🚐', price: 'từ 80k', trips: 40 },
+    { type: 'Xe 35 chỗ', id: 'coach_29_35', name: 'Rộng rãi, tiện nghi', icon: '🚌', price: 'từ 100k', trips: 60 },
+    { type: 'Xe 9 chỗ', id: 'mini_9', name: 'Không gian gia đình', icon: '🚍', price: 'từ 90k', trips: 15 },
+    { type: 'Limousine', id: 'coach_suburb', name: 'Đẳng cấp thương gia', icon: '✨', price: 'từ 120k', trips: 20 }
   ]
 
   // Time Period Data
@@ -30,16 +30,16 @@ export default function MultiSearchMethods() {
     { id: 'night', label: 'Tối', time: '17:00 - 23:59', icon: '🌙', trips: 22 }
   ]
 
-  const handleRouteSearch = (from, to) => {
-    navigate(`/search?from=${from}&to=${to}&category=interCity`)
+  const handleRouteSearch = (from, to, category) => {
+    navigate('/search', { state: { from, to, category } })
   }
 
-  const handleVehicleSearch = (vehicleType) => {
-    navigate(`/search?busType=${vehicleType}&category=interCity`)
+  const handleVehicleSearch = (vehicleId) => {
+    navigate('/search', { state: { busType: vehicleId } })
   }
 
   const handleTimeSearch = (timeId) => {
-    navigate(`/search?departureTime=${timeId}&category=interCity`)
+    navigate('/search', { state: { departureTime: timeId } })
   }
 
   return (
@@ -93,7 +93,7 @@ export default function MultiSearchMethods() {
                 <div
                   key={idx}
                   className="route-method-card"
-                  onClick={() => handleRouteSearch(route.from, route.to)}
+                  onClick={() => handleRouteSearch(route.from, route.to, route.category)}
                 >
                   <div className="route-header">
                     <span className="route-from">{route.from}</span>
@@ -130,7 +130,7 @@ export default function MultiSearchMethods() {
                 <div
                   key={idx}
                   className="vehicle-method-card"
-                  onClick={() => handleVehicleSearch(vehicle.type)}
+                  onClick={() => handleVehicleSearch(vehicle.id)}
                 >
                   <div className="vehicle-icon">{vehicle.icon}</div>
                   <h4 className="vehicle-type">{vehicle.type}</h4>

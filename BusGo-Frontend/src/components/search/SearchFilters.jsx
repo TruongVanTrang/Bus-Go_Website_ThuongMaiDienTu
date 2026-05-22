@@ -164,10 +164,10 @@ export default function SearchFilters({ filters, setFilters }) {
                   <div className="col-6" key={key}>
                     <div className="form-check">
                       <input
-                        className="form-check-input" type="radio" name="busType" id={`busType_${key}`}
-                        checked={filters?.busType === key} onChange={() => setFilters(prev => ({ ...prev, busType: key }))}
+                        className="form-check-input" type="radio" name="busType" id={`busType_${busType.id}`}
+                        checked={filters?.busType === busType.id} onChange={() => setFilters(prev => ({ ...prev, busType: busType.id }))}
                       />
-                      <label className="form-check-label" htmlFor={`busType_${key}`} style={{ fontSize: '0.85rem' }}>
+                      <label className="form-check-label" htmlFor={`busType_${busType.id}`} style={{ fontSize: '0.85rem' }}>
                         <span className="d-block fw-medium">{busType.name}</span>
                         <small className="text-muted">{busType.seats} ghế {busType.standing ? `(+${busType.standing})` : ''}</small>
                       </label>
@@ -335,10 +335,10 @@ export default function SearchFilters({ filters, setFilters }) {
               amenities: [], 
               busType: '', 
               departureTime: '', 
-              category: filters?.category || '', 
-              from: filters?.from || '', 
-              to: filters?.to || '', 
-              departureDate: filters?.departureDate || ''
+              category: '', 
+              from: '', 
+              to: '', 
+              departureDate: ''
             })
             setPriceMin(0)
             setPriceMax(config.defaultMax)

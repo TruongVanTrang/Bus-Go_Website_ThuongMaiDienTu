@@ -166,16 +166,16 @@ export default function BookingPage() {
         ]}
       />
 
-      <div className="container-fluid px-md-5 px-3 py-5">
+      <div className="container-fluid px-md-5 px-3 py-4">
         {/* Back Button */}
         <div className="mb-4">
           <BackButton label="Quay lại" />
         </div>
 
-        <h2 className="mb-5 fw-bold text-neutral-900">Chọn ghế & Đặt chỗ</h2>
+        <h2 className="mb-4 fw-bold text-neutral-900">Chọn ghế & Đặt chỗ</h2>
 
         {/* Section 1: Seat Selection - Different based on category */}
-        <div className="booking-section mb-5">
+        <div className="booking-section mb-4">
           {trip.seats <= 16 ? (
             <PassengerQuantity
               trip={trip}
@@ -192,7 +192,7 @@ export default function BookingPage() {
         </div>
 
         {/* Section 2: Passenger Info */}
-        <div className="booking-section mb-5">
+        <div className="booking-section mb-4">
           <div className="card" style={{ backgroundColor: 'white', borderRadius: '0.75rem' }}>
             <div className="card-body p-4">
               <h5 className="fw-bold mb-4 text-neutral-900">Thông tin hành khách</h5>
@@ -275,27 +275,28 @@ export default function BookingPage() {
         </div>
 
         {/* Section 3: Cargo Shipping */}
-        <div className="booking-section mb-5">
+        <div className="booking-section mb-4">
           <CargoSelector
             cargoInfo={cargoInfo}
             onCargoTypeChange={handleCargoTypeChange}
             onCargoWeightChange={handleCargoWeightChange}
             cargoTypes={cargoTypes}
+            busType={trip?.busType}
           />
         </div>
 
         {/* Section 4: Booking Summary */}
-        <div className="booking-section mb-5">
+        <div className="booking-section mb-4">
           <div className="card" style={{ backgroundColor: 'white', borderRadius: '0.75rem' }}>
             <div className="card-body p-4">
-              <h5 className="fw-bold mb-4 text-neutral-900">Tóm tắt đơn hàng</h5>
+              <h5 className="fw-bold mb-4 text-neutral-900">Tóm tắt đặt vé</h5>
               
               <div className="row g-3">
                 <div className="col-12">
                   <div className="d-flex justify-content-between mb-2">
-                    <span className="text-muted">Giá vé ({trip.category === 'city' ? passengerQuantity : selectedSeats.length} {trip.category === 'city' ? 'hành khách' : 'ghế'}):</span>
+                    <span className="text-muted">Giá vé ({trip.seats <= 16 ? passengerQuantity : selectedSeats.length} {trip.seats <= 16 ? 'hành khách' : 'ghế'}):</span>
                     <span className="fw-600">
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(trip?.price * (trip.category === 'city' ? passengerQuantity : selectedSeats.length) || 0)}
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(trip?.price * (trip.seats <= 16 ? passengerQuantity : selectedSeats.length) || 0)}
                     </span>
                   </div>
                   

@@ -1,8 +1,6 @@
 .payment-page {
   background-color: #f9fafb;
   min-height: 100vh;
-  padding-top: 2rem;
-  padding-bottom: 2rem;
 }
 
 .payment-page h1 {
@@ -142,12 +140,12 @@
   cursor: pointer;
 }
 
-.list-group-item input[type="radio"]:checked + span,
-.list-group-item input[type="radio"]:checked ~ strong {
+.list-group-item input[type="radio"]:checked+span,
+.list-group-item input[type="radio"]:checked~strong {
   color: #0066cc;
 }
 
-.list-group-item input[type="radio"]:checked ~ .small {
+.list-group-item input[type="radio"]:checked~.small {
   color: #666;
 }
 
@@ -221,6 +219,7 @@
     transform: scale(0);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;

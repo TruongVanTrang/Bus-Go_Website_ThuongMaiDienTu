@@ -870,3 +870,40 @@ INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien
 WHERE cx.soLuongGheDat = 0;
 GO
 
+
+-- ============================================================================
+-- PHẦN CẬP NHẬT: XE GIƯỜNG NẰM 36 CHỖ VÀ THÊM CÁC CHUYẾN ĐI
+-- ============================================================================
+-- 1. Tìm hoặc tạo Phương Tiện Sleeper 36
+DECLARE @maPhuongTienSleeper INT;
+SELECT TOP 1 @maPhuongTienSleeper = maPhuongTien FROM PhuongTien WHERE loaiXe = 'sleeper_36';
+
+IF @maPhuongTienSleeper IS NULL
+BEGIN
+    INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, trangThaiXe, tienIch, ngayMuaVao)
+    VALUES ('43B-999.99', 'Thaco Mobihome', 'Trắng-Xanh', 2024, 36, 'sleeper_36', 'san_sang', '["AC", "Wifi", "TV"]', GETDATE());
+    SET @maPhuongTienSleeper = SCOPE_IDENTITY();
+END
+
+-- 2. Lấy Tuyến Đường ngoại thành đầu tiên
+DECLARE @maTuyenDuongSleeper INT;
+SELECT TOP 1 @maTuyenDuongSleeper = maTuyenDuong FROM TuyenDuong WHERE loaiDichVu = 'interCity';
+
+IF @maTuyenDuongSleeper IS NOT NULL
+BEGIN
+    -- 3. Insert Chuyến Xe cho ngày mai và ngày mốt
+    INSERT INTO ChuyenXe (maTuyenDuong, maPhuongTien, thoiGianDi, thoiGianDen, giaCoBan, soGheConTrong, soLuongGheDat, trangThaiChuyen)
+    VALUES 
+    (@maTuyenDuongSleeper, @maPhuongTienSleeper, DATEADD(day, 1, GETDATE()), DATEADD(day, 1, GETDATE()) + 0.1, 400000, 36, 0, 'da_len_lich'),
+    (@maTuyenDuongSleeper, @maPhuongTienSleeper, DATEADD(day, 2, GETDATE()), DATEADD(day, 2, GETDATE()) + 0.1, 400000, 31, 5, 'da_len_lich');
+
+    DECLARE @maChuyenXeSleeper INT = SCOPE_IDENTITY(); -- ID chuyến vừa tạo (chuyến 2)
+
+    -- 4. Insert Ghế Ngồi (giả sử khách đã đặt 5 giường)
+    INSERT INTO GheNgoi (maChuyenXe, soGhe, trangThaiGhe) VALUES (@maChuyenXeSleeper, '1', 'da_dat');
+    INSERT INTO GheNgoi (maChuyenXe, soGhe, trangThaiGhe) VALUES (@maChuyenXeSleeper, '2', 'da_dat');
+    INSERT INTO GheNgoi (maChuyenXe, soGhe, trangThaiGhe) VALUES (@maChuyenXeSleeper, '10', 'da_dat');
+    INSERT INTO GheNgoi (maChuyenXe, soGhe, trangThaiGhe) VALUES (@maChuyenXeSleeper, '19', 'da_dat');
+    INSERT INTO GheNgoi (maChuyenXe, soGhe, trangThaiGhe) VALUES (@maChuyenXeSleeper, '36', 'da_dat');
+END
+GO

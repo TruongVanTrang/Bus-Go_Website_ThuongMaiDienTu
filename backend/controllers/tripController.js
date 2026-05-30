@@ -218,7 +218,7 @@ const searchTrips = async (req, res) => {
     res.json(trips);
   } catch (error) {
     console.error('Lỗi khi tìm chuyến xe:', error);
-    res.status(500).json({ message: 'Lỗi server' });
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
 

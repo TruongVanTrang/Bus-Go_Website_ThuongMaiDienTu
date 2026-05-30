@@ -1,8 +1,7 @@
 .search-results-page {
   background-color: #f9fafb;
   min-height: calc(100vh - 300px);
-  padding-top: 2rem;
-  padding-bottom: 2rem;
+  padding-top: 1rem;
 }
 
 .search-results-page h2 {
@@ -22,12 +21,13 @@
 }
 
 @media (max-width: 991px) {
+
   .search-results-page .col-md-3,
   .search-results-page .col-md-9 {
     flex: 0 0 100%;
     max-width: 100%;
   }
-  
+
   .sticky-top {
     position: static !important;
     margin-bottom: 2rem;
@@ -39,7 +39,7 @@
     padding-top: 1rem;
     padding-bottom: 1rem;
   }
-  
+
   .search-results-page h2 {
     font-size: 1.5rem;
   }

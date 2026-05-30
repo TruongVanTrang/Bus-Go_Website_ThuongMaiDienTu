@@ -1,33 +1,61 @@
+import { useState } from 'react'
 import './SeatMap.css'
 
 export default function SeatMap({ trip, selectedSeats, onSeatSelect }) {
-  // Generate seat layout - 2 types: 16-seater (4 columns) or 35-seater (5 columns)
+  const [activeDeck, setActiveDeck] = useState(0) // 0: Lower, 1: Upper
+  // Generate seat layout - 4 columns of seats + 1 center aisle (5 cols total)
   const generateSeats = () => {
-    let seats = []
-    const totalSeats = trip.seats
-    
-    if (totalSeats === 35) {
-      // 35-seater: 5 columns, 7 rows
-      for (let row = 0; row < 7; row++) {
-        for (let col = 0; col < 5; col++) {
-          const seatNumber = row * 5 + col + 1
-          seats.push(seatNumber)
+    const layout = []
+    const totalSeats = trip.seats || 35
+
+    // XỬ LÝ RIÊNG CHO GIƯỜNG NẰM 36 CHỖ
+    if (totalSeats === 36) {
+      let currentSeat = activeDeck === 0 ? 1 : 19
+      const endSeat = activeDeck === 0 ? 18 : 36
+      
+      while (currentSeat <= endSeat) {
+        // 5 cột: Cột 1 (Dãy Trái), 2 (Lối đi), 3 (Dãy Giữa), 4 (Lối đi), 5 (Dãy Phải)
+        for (let i = 0; i < 5; i++) {
+          if (i === 1 || i === 3) {
+            layout.push(null)
+          } else {
+            layout.push(currentSeat++)
+          }
         }
       }
-    } else if (totalSeats === 16) {
-      // 16-seater: 4 columns, 4 rows
-      for (let row = 0; row < 4; row++) {
-        for (let col = 0; col < 4; col++) {
-          const seatNumber = row * 4 + col + 1
-          seats.push(seatNumber)
+      return layout
+    }
+
+    let currentSeat = 1
+    
+    // Yêu cầu đặc biệt cho xe 35 và 45 chỗ:
+    // Ghế đầu tiên nằm ở góc trên cùng bên phải (cạnh tài xế).
+    // Các vị trí còn lại ở hàng 1 để trống (dành cho ghế tài xế và cửa lên xuống).
+    if (totalSeats === 35 || totalSeats === 45) {
+      layout.push(null, null, null, null, currentSeat++)
+    }
+
+    while (currentSeat <= totalSeats) {
+      // Luôn duy trì lối đi ở giữa (Cột thứ 3, index 2) cho TẤT CẢ các hàng
+      // Điều này giúp sơ đồ xe luôn thẳng cột, không bị lệch ở hàng cuối
+      for (let i = 0; i < 5; i++) {
+        if (i === 2) {
+          layout.push(null) // Lối đi
+        } else {
+          if (currentSeat <= totalSeats) {
+            layout.push(currentSeat++)
+          } else {
+            layout.push(null)
+          }
         }
       }
     }
 
-    return seats
+    return layout
   }
 
   const getSeatStatus = (seatNumber) => {
+    if (!seatNumber) return 'aisle'
     if (trip.occupiedSeats.includes(seatNumber)) {
       return 'occupied'
     }
@@ -38,7 +66,6 @@ export default function SeatMap({ trip, selectedSeats, onSeatSelect }) {
   }
 
   const seats = generateSeats()
-  const seatsPerRow = trip.seats === 35 ? 5 : 4
 
   return (
     <div className="seat-map-container">
@@ -84,6 +111,24 @@ export default function SeatMap({ trip, selectedSeats, onSeatSelect }) {
             </div>
           </div>
 
+          {/* Deck Tabs for Sleeper Bus */}
+          {trip.seats === 36 && (
+            <div className="deck-tabs d-flex justify-content-center gap-3 mb-4">
+              <button 
+                className={`btn ${activeDeck === 0 ? 'btn-primary' : 'btn-outline-primary'} px-4 py-2 fw-600 rounded-pill`}
+                onClick={() => setActiveDeck(0)}
+              >
+                Tầng Dưới (1-18)
+              </button>
+              <button 
+                className={`btn ${activeDeck === 1 ? 'btn-primary' : 'btn-outline-primary'} px-4 py-2 fw-600 rounded-pill`}
+                onClick={() => setActiveDeck(1)}
+              >
+                Tầng Trên (19-36)
+              </button>
+            </div>
+          )}
+
           {/* Seat Grid */}
           <div className="seat-grid-wrapper">
             <div className="text-center mb-3 text-muted fw-600">
@@ -94,25 +139,29 @@ export default function SeatMap({ trip, selectedSeats, onSeatSelect }) {
               className="seat-grid"
               style={{
                 display: 'grid',
-                gridTemplateColumns: `repeat(${seatsPerRow}, 1fr)`,
+                gridTemplateColumns: `repeat(5, 1fr)`,
                 gap: '0.75rem',
                 justifyContent: 'center',
                 marginBottom: '2rem'
               }}
             >
-              {seats.map(seatNumber => {
+              {seats.map((seatNumber, index) => {
+                if (seatNumber === null) {
+                  return <div key={`aisle-${index}`} className="seat-aisle" style={{ pointerEvents: 'none' }}></div>
+                }
+
                 const status = getSeatStatus(seatNumber)
                 return (
                   <button
-                    key={seatNumber}
+                    key={`seat-${seatNumber}`}
                     onClick={() => {
                       if (status !== 'occupied') {
                         onSeatSelect(seatNumber)
                       }
                     }}
                     disabled={status === 'occupied'}
-                    className={`seat-button seat-${status}`}
-                    title={`Ghế ${seatNumber}`}
+                    className={`seat-button seat-${status} ${trip.seats === 36 ? 'seat-sleeper' : ''}`}
+                    title={trip.seats === 36 ? `Giường ${seatNumber}` : `Ghế ${seatNumber}`}
                   >
                     {seatNumber}
                   </button>

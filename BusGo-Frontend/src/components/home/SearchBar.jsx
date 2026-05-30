@@ -20,6 +20,7 @@ export default function SearchBar() {
   // Smart Suggestion Tags
   const smartTags = [
     { id: 1, icon: '🚐', label: 'Xe 16 chỗ cao cấp', state: { busType: 'mini_16' } },
+    { id: 5, icon: '🛏️', label: 'Xe giường nằm', state: { busType: 'sleeper_36' } },
     { id: 2, icon: '📡', label: 'Có WiFi & Sạc', state: { amenities: ['Wifi', 'Phone Charger'] } },
     { id: 3, icon: '🌙', label: 'Chuyến đêm', state: { departureTime: 'night' } },
     { id: 4, icon: '💰', label: 'Giá dưới 200k', state: { priceRange: [0, 200000] } },

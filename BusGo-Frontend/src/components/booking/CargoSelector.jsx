@@ -3,10 +3,10 @@ import { FiPackage, FiBox, FiTruck } from 'react-icons/fi'
 import { MdDirectionsBike, MdTwoWheeler } from 'react-icons/md'
 import './CargoSelector.css'
 
-export default function CargoSelector({ cargoInfo, onCargoTypeChange, onCargoWeightChange, cargoTypes }) {
+export default function CargoSelector({ cargoInfo, onCargoTypeChange, onCargoWeightChange, cargoTypes, busType }) {
   const [showDetails, setShowDetails] = useState(false)
 
-  const cargoOptions = [
+  const allCargoOptions = [
     {
       type: 'none',
       label: 'Không gửi hàng',
@@ -18,22 +18,15 @@ export default function CargoSelector({ cargoInfo, onCargoTypeChange, onCargoWei
       type: 'light',
       label: 'Hàng nhẹ',
       icon: '📦',
-      description: 'Tài liệu, quà cáp (<10kg)',
+      description: 'Tài liệu, quà cáp (<7kg)',
       color: '#ffc107'
     },
     {
       type: 'heavy',
       label: 'Hàng nặng',
       icon: '📦',
-      description: 'Thùng hàng (10kg+)',
+      description: 'Thùng hàng (>7kg)',
       color: '#ff9800'
-    },
-    {
-      type: 'scooter',
-      label: 'Xe tay ga',
-      icon: '🏍️',
-      description: 'Xe tay ga nhỏ',
-      color: '#2196f3'
     },
     {
       type: 'motorcycle',
@@ -41,25 +34,35 @@ export default function CargoSelector({ cargoInfo, onCargoTypeChange, onCargoWei
       icon: '🏍️',
       description: 'Xe máy thường',
       color: '#f44336'
+    },
+    {
+      type: 'scooter',
+      label: 'Xe tay ga',
+      icon: '🏍️',
+      description: 'Xe tay ga lớn',
+      color: '#2196f3'
     }
   ]
+
+  const isSleeper = busType && busType.startsWith('sleeper');
+  const cargoOptions = isSleeper ? allCargoOptions : allCargoOptions.slice(0, 3);
 
   const getCargoPrice = (type, weight = '') => {
     if (type === 'none' || type === 'light') return 0
 
     if (type === 'heavy' && weight) {
       const w = parseFloat(weight)
-      if (w < 10) return 0
-      const pricePerKg = 50000 // Example price per kg
+      if (w <= 7) return 0
+      const pricePerKg = 10000 // 10k/kg
       return Math.round(w * pricePerKg)
     }
 
-    if (type === 'scooter') {
-      return 450000
+    if (type === 'motorcycle') {
+      return 270000
     }
 
-    if (type === 'motorcycle') {
-      return 650000
+    if (type === 'scooter') {
+      return 320000
     }
 
     return 0
@@ -118,18 +121,18 @@ export default function CargoSelector({ cargoInfo, onCargoTypeChange, onCargoWei
                 placeholder="Ví dụ: 15"
                 value={cargoInfo.weight || ''}
                 onChange={handleWeightChange}
-                min="10"
+                min="8"
                 max="100"
               />
               <span className="weight-unit">kg</span>
             </div>
           </div>
 
-          {cargoInfo.weight && parseInt(cargoInfo.weight) >= 10 && (
+          {cargoInfo.weight && parseInt(cargoInfo.weight) > 7 && (
             <div className="weight-info">
               <div className="price-breakdown">
                 <span>Trọng lượng: {cargoInfo.weight}kg</span>
-                <span>Giá/kg: 50,000đ</span>
+                <span>Giá/kg: 10,000đ</span>
                 <span className="price-total">
                   = {getCargoPrice('heavy', cargoInfo.weight).toLocaleString()}đ
                 </span>

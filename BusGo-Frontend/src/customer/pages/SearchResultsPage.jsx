@@ -140,9 +140,14 @@ export default function SearchResultsPage() {
     setFilteredTrips(filtered)
   }, [filters, trips])
 
+  // Preserve filters in history state so they are not lost when navigating back from BookingPage
+  useEffect(() => {
+    navigate('.', { state: filters, replace: true })
+  }, [filters, navigate])
+
   return (
     <div className="search-results-page">
-      <div className="container-fluid px-md-5 px-3 py-5">
+      <div className="container-fluid px-md-5 px-3 pb-5 pt-3">
         <div className="row g-4">
           {/* Filters Sidebar - Left Column */}
           <div className="col-md-3">

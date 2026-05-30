@@ -107,3 +107,22 @@
     align-items: flex-start;
   }
 }
+
+.seat-aisle {
+  width: 40px;
+  height: 40px;
+  background: transparent;
+}
+
+.seat-sleeper {
+  height: 56px;
+  width: 46px;
+  border-radius: 0.5rem;
+}
+
+.deck-tabs .btn {
+  transition: all 0.2s ease;
+}
+.deck-tabs .btn-primary {
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+}

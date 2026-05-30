@@ -18,44 +18,7 @@ export const STORAGE_KEYS = {
   ROLE: 'userRole'
 }
 
-// Test accounts for development
-export const TEST_ACCOUNTS = {
-  [USER_ROLES.ADMIN]: {
-    email: 'admin@busgo.com',
-    phone: '0987654321',
-    password: 'admin123',
-    name: 'Admin BusGo',
-    role: USER_ROLES.ADMIN
-  },
-  [USER_ROLES.DRIVER]: {
-    email: 'driver@busgo.com',
-    phone: '0912345678',
-    password: 'staff123',
-    name: 'Tài xế Nguyễn Văn A',
-    role: USER_ROLES.DRIVER
-  },
-  [USER_ROLES.TICKET_STAFF]: {
-    email: 'ticket@busgo.com',
-    phone: '0911111111',
-    password: 'staff123',
-    name: 'Nhân viên soát vé Trần Thị B',
-    role: USER_ROLES.TICKET_STAFF
-  },
-  [USER_ROLES.SUPPORT_STAFF]: {
-    email: 'support@busgo.com',
-    phone: '0922222222',
-    password: 'staff123',
-    name: 'Nhân viên hỗ trợ Lê Văn C',
-    role: USER_ROLES.SUPPORT_STAFF
-  },
-  [USER_ROLES.CUSTOMER]: {
-    email: 'user@gmail.com',
-    phone: '0998765432',
-    password: 'user123',
-    name: 'Khách hàng',
-    role: USER_ROLES.CUSTOMER
-  }
-}
+
 
 // Bus types and pricing (BusGo only)
 export const BUS_TYPES = {
@@ -159,6 +122,14 @@ export const BUS_TYPES = {
     standing: 50,
     priceRange: [30000, 35000],
     icon: '🚌'
+  },
+  SLEEPER_36: {
+    id: 'sleeper_36',
+    name: 'Xe giường nằm',
+    category: 'interCity',
+    seats: 36,
+    priceRange: [200000, 500000],
+    icon: '🛏️'
   }
 }
 

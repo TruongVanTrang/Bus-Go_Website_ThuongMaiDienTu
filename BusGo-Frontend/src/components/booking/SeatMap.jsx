@@ -1,16 +1,37 @@
+import { useState } from 'react'
 import './SeatMap.css'
 
 export default function SeatMap({ trip, selectedSeats, onSeatSelect }) {
+  const [activeDeck, setActiveDeck] = useState(0) // 0: Lower, 1: Upper
   // Generate seat layout - 4 columns of seats + 1 center aisle (5 cols total)
   const generateSeats = () => {
     const layout = []
     const totalSeats = trip.seats || 35
+
+    // XỬ LÝ RIÊNG CHO GIƯỜNG NẰM 36 CHỖ
+    if (totalSeats === 36) {
+      let currentSeat = activeDeck === 0 ? 1 : 19
+      const endSeat = activeDeck === 0 ? 18 : 36
+      
+      while (currentSeat <= endSeat) {
+        // 5 cột: Cột 1 (Dãy Trái), 2 (Lối đi), 3 (Dãy Giữa), 4 (Lối đi), 5 (Dãy Phải)
+        for (let i = 0; i < 5; i++) {
+          if (i === 1 || i === 3) {
+            layout.push(null)
+          } else {
+            layout.push(currentSeat++)
+          }
+        }
+      }
+      return layout
+    }
+
     let currentSeat = 1
     
-    // Yêu cầu đặc biệt cho xe 35 chỗ:
+    // Yêu cầu đặc biệt cho xe 35 và 45 chỗ:
     // Ghế đầu tiên nằm ở góc trên cùng bên phải (cạnh tài xế).
     // Các vị trí còn lại ở hàng 1 để trống (dành cho ghế tài xế và cửa lên xuống).
-    if (totalSeats === 35) {
+    if (totalSeats === 35 || totalSeats === 45) {
       layout.push(null, null, null, null, currentSeat++)
     }
 
@@ -90,6 +111,24 @@ export default function SeatMap({ trip, selectedSeats, onSeatSelect }) {
             </div>
           </div>
 
+          {/* Deck Tabs for Sleeper Bus */}
+          {trip.seats === 36 && (
+            <div className="deck-tabs d-flex justify-content-center gap-3 mb-4">
+              <button 
+                className={`btn ${activeDeck === 0 ? 'btn-primary' : 'btn-outline-primary'} px-4 py-2 fw-600 rounded-pill`}
+                onClick={() => setActiveDeck(0)}
+              >
+                Tầng Dưới (1-18)
+              </button>
+              <button 
+                className={`btn ${activeDeck === 1 ? 'btn-primary' : 'btn-outline-primary'} px-4 py-2 fw-600 rounded-pill`}
+                onClick={() => setActiveDeck(1)}
+              >
+                Tầng Trên (19-36)
+              </button>
+            </div>
+          )}
+
           {/* Seat Grid */}
           <div className="seat-grid-wrapper">
             <div className="text-center mb-3 text-muted fw-600">
@@ -121,8 +160,8 @@ export default function SeatMap({ trip, selectedSeats, onSeatSelect }) {
                       }
                     }}
                     disabled={status === 'occupied'}
-                    className={`seat-button seat-${status}`}
-                    title={`Ghế ${seatNumber}`}
+                    className={`seat-button seat-${status} ${trip.seats === 36 ? 'seat-sleeper' : ''}`}
+                    title={trip.seats === 36 ? `Giường ${seatNumber}` : `Ghế ${seatNumber}`}
                   >
                     {seatNumber}
                   </button>

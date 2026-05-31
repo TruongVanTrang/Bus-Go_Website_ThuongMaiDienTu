@@ -5,6 +5,7 @@ const staffController = require('../controllers/staffController');
 const vehicleController = require('../controllers/vehicleController');
 const routeController = require('../controllers/routeController');
 const tripAdminController = require('../controllers/tripAdminController');
+const analyticsController = require('../controllers/analyticsController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 // Quản lý Users
@@ -32,5 +33,10 @@ router.delete('/routes/:id', protect, admin, routeController.deleteRoute);
 router.get('/trips', protect, admin, tripAdminController.getAllTrips);
 router.post('/trips', protect, admin, tripAdminController.createTrip);
 router.put('/trips/:id', protect, admin, tripAdminController.updateTrip);
+
+// Báo cáo Dashboard
+router.get('/analytics/revenue', protect, admin, analyticsController.getRevenue);
+router.get('/analytics/routes', protect, admin, analyticsController.getRouteAnalytics);
+router.get('/analytics/ratings', protect, admin, analyticsController.getRatings);
 
 module.exports = router;

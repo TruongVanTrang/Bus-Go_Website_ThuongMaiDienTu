@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
 const staffController = require('../controllers/staffController');
+const vehicleController = require('../controllers/vehicleController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 // Quản lý Users
@@ -12,5 +13,11 @@ router.put('/users/:id', protect, admin, adminController.updateUserStatus);
 router.get('/staff', protect, admin, staffController.getAllStaff);
 router.post('/staff', protect, admin, staffController.createStaff);
 router.put('/staff/:id', protect, admin, staffController.updateStaff);
+
+// Quản lý Phương tiện
+router.get('/vehicles', protect, admin, vehicleController.getAllVehicles);
+router.post('/vehicles', protect, admin, vehicleController.createVehicle);
+router.put('/vehicles/:id', protect, admin, vehicleController.updateVehicle);
+router.delete('/vehicles/:id', protect, admin, vehicleController.deleteVehicle);
 
 module.exports = router;

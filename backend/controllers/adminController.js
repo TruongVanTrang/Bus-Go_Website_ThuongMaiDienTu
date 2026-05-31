@@ -1,4 +1,5 @@
 const { sql } = require('../config/db');
+const bcrypt = require('bcryptjs');
 
 // @desc    Lấy danh sách tất cả người dùng
 // @route   GET /api/admin/users
@@ -69,7 +70,92 @@ const updateUserStatus = async (req, res) => {
   }
 };
 
+// @desc    Tạo tài khoản nhân sự (Driver, Ticket-Staff, Support-Staff)
+// @route   POST /api/admin/staff
+// @access  Private/Admin
+const createStaff = async (req, res) => {
+  const { fullName, email, phone, password, role, schedule } = req.body;
+
+  if (!fullName || !email || !phone || !password || !role) {
+    return res.status(400).json({ message: 'Vui lòng cung cấp đầy đủ thông tin' });
+  }
+
+  const validRoles = ['DRIVER', 'TICKET_STAFF', 'SUPPORT_STAFF'];
+  if (!validRoles.includes(role)) {
+    return res.status(400).json({ message: 'Vai trò không hợp lệ' });
+  }
+
+  try {
+    const pool = await sql.connect();
+
+    // Check if email or phone exists
+    const userExists = await pool.request()
+      .input('email', sql.VarChar, email)
+      .input('phone', sql.VarChar, phone)
+      .query('SELECT * FROM NguoiDung WHERE email = @email OR soDienThoai = @phone');
+
+    if (userExists.recordset.length > 0) {
+      return res.status(400).json({ message: 'Email hoặc Số điện thoại đã tồn tại' });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Transaction
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // 1. Insert NguoiDung
+      const insertUserResult = await transaction.request()
+        .input('tenNguoiDung', sql.NVarChar, fullName)
+        .input('email', sql.VarChar, email)
+        .input('soDienThoai', sql.VarChar, phone)
+        .input('matKhau', sql.VarChar, hashedPassword)
+        .query(`
+          INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail, trangThaiTaiKhoan)
+          OUTPUT INSERTED.maNguoiDung
+          VALUES (@tenNguoiDung, @email, @soDienThoai, @matKhau, 1, 'active')
+        `);
+
+      const userId = insertUserResult.recordset[0].maNguoiDung;
+
+      // 2. Insert NhanVien
+      await transaction.request()
+        .input('maNhanVien', sql.Int, userId)
+        .input('vaiTro', sql.NVarChar, role)
+        .input('lichLamViec', sql.NVarChar, schedule || 'Hành chính')
+        .query(`
+          INSERT INTO NhanVien (maNhanVien, vaiTro, lichLamViec)
+          VALUES (@maNhanVien, @vaiTro, @lichLamViec)
+        `);
+
+      await transaction.commit();
+
+      res.status(201).json({
+        message: 'Tạo tài khoản nhân sự thành công',
+        staff: {
+          id: userId,
+          name: fullName,
+          email,
+          phone,
+          role,
+          schedule: schedule || 'Hành chính'
+        }
+      });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (error) {
+    console.error('Lỗi khi tạo nhân sự:', error);
+    res.status(500).json({ message: 'Lỗi server khi tạo nhân sự' });
+  }
+};
+
 module.exports = {
   getAllUsers,
-  updateUserStatus
+  updateUserStatus,
+  createStaff
 };

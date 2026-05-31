@@ -6,18 +6,17 @@ import {
   FiPhone,
   FiEdit2,
   FiLogOut,
-  FiStar,
-  FiTrendingUp,
   FiAward,
-  FiCreditCard,
   FiCalendar,
   FiMapPin,
-  FiAlertTriangle
+  FiAlertTriangle,
+  FiShield,
+  FiCheck,
+  FiX
 } from 'react-icons/fi'
 import { StorageUtil } from '../../utils/helpers'
-import { getProfileAPI, updateProfileAPI } from '../../services/authService'
+import { getProfileAPI } from '../../services/authService'
 import { getMyTicketsAPI } from '../../services/bookingService'
-import './UserProfile.css'
 
 export default function UserProfile() {
   const navigate = useNavigate()
@@ -29,7 +28,7 @@ export default function UserProfile() {
     name: '',
     email: '',
     phone: '',
-    membershipLevel: 'bronze', // bronze, silver, gold
+    membershipLevel: 'bronze',
     diemTichLuy: 0,
     totalSpent: 0,
     joinedDate: new Date().toISOString(),
@@ -37,7 +36,6 @@ export default function UserProfile() {
   })
 
   const [recentTransactions, setRecentTransactions] = useState([])
-
   const [editMode, setEditMode] = useState(false)
   const [editData, setEditData] = useState({
     name: '',
@@ -45,12 +43,18 @@ export default function UserProfile() {
     phone: ''
   })
 
+  // OTP State
+  const [showOtpModal, setShowOtpModal] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpSending, setOtpSending] = useState(false)
+
   const membershipLevels = {
     bronze: {
       icon: '🥉',
       name: 'Bronze',
-      color: '#cd7f32',
-      bgColor: 'rgba(205, 127, 50, 0.1)',
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-100',
+      gradient: 'from-amber-500 to-orange-400',
       benefits: ['Tích lũy điểm mỗi lần đặt vé', 'Ưu đãi 5% cho nhóm 10+ người'],
       minPoints: 0,
       maxPoints: 5000
@@ -58,8 +62,9 @@ export default function UserProfile() {
     silver: {
       icon: '🥈',
       name: 'Silver',
-      color: '#c0c0c0',
-      bgColor: 'rgba(192, 192, 192, 0.1)',
+      color: 'text-slate-500',
+      bgColor: 'bg-slate-200',
+      gradient: 'from-slate-400 to-slate-300',
       benefits: ['Tích lũy điểm 1.2x', 'Ưu đãi 10% cho nhóm 10+ người', 'Miễn phí hóa đơn điện tử'],
       minPoints: 5000,
       maxPoints: 15000
@@ -67,8 +72,9 @@ export default function UserProfile() {
     gold: {
       icon: '🥇',
       name: 'Gold',
-      color: '#ffd700',
-      bgColor: 'rgba(255, 215, 0, 0.1)',
+      color: 'text-yellow-500',
+      bgColor: 'bg-yellow-100',
+      gradient: 'from-yellow-400 to-amber-500',
       benefits: ['Tích lũy điểm 1.5x', 'Ưu đãi 15% cho nhóm 10+ người', 'Hỗ trợ VIP 24/7', 'Ưu tiên đặt chỗ'],
       minPoints: 15000,
       maxPoints: 50000
@@ -87,10 +93,8 @@ export default function UserProfile() {
         setLoading(true)
         setError(null)
         
-        // 1. Fetch profile info
         const profile = await getProfileAPI(token)
         
-        // 2. Fetch booking history for recent transactions
         let tickets = []
         try {
           tickets = await getMyTicketsAPI(token)
@@ -112,13 +116,12 @@ export default function UserProfile() {
           avatar: '👤'
         })
 
-        // Map recent transactions (limit to 4 items)
         const mappedTransactions = tickets.slice(0, 4).map(ticket => ({
           id: ticket.id,
           route: `${ticket.from} → ${ticket.to}`,
           date: ticket.date,
           amount: ticket.price,
-          points: Math.round(ticket.price / 10000), // 1 point per 10k VND
+          points: Math.round(ticket.price / 10000),
           status: ticket.status === 'Da thanh toan' ? 'completed' : (ticket.status === 'Da huy' ? 'cancelled' : 'pending')
         }))
 
@@ -149,34 +152,82 @@ export default function UserProfile() {
     })
   }
 
-  const handleSave = async () => {
+  const handleCancel = () => {
+    setEditMode(false)
+    setError(null)
+    setShowOtpModal(false)
+    setOtpCode('')
+  }
+
+  const initiateSave = async () => {
+    // Validation
+    if (!editData.name.trim()) return setError('Họ tên không được để trống')
+    if (!editData.email.trim()) return setError('Email không được để trống')
+    if (!editData.phone.trim()) return setError('Số điện thoại không được để trống')
+
+    setError(null)
+    
+    // Kiểm tra xem có đổi email hoặc số điện thoại không
+    const isSensitiveChanged = editData.email !== userInfo.email || editData.phone !== userInfo.phone
+
+    if (isSensitiveChanged) {
+      // Yêu cầu OTP
+      setOtpSending(true)
+      try {
+        const res = await fetch('http://localhost:5000/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: userInfo.email }) // Gửi OTP về email CŨ
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message)
+        
+        setShowOtpModal(true)
+      } catch (err) {
+        setError(err.message || 'Lỗi khi gửi mã xác thực')
+      } finally {
+        setOtpSending(false)
+      }
+    } else {
+      // Chỉ đổi tên, lưu luôn
+      executeSave()
+    }
+  }
+
+  const executeSave = async (otp = null) => {
     const token = StorageUtil.getToken()
     if (!token) return
-
-    // Validation
-    if (!editData.name.trim()) {
-      setError('Họ tên không được để trống')
-      return
-    }
-    if (!editData.email.trim()) {
-      setError('Email không được để trống')
-      return
-    }
-    if (!editData.phone.trim()) {
-      setError('Số điện thoại không được để trống')
-      return
-    }
 
     try {
       setError(null)
       setSuccessMsg(null)
-      const res = await updateProfileAPI(token, {
+      
+      const payload = {
         name: editData.name,
         email: editData.email,
         phone: editData.phone
+      }
+      
+      if (otp) {
+        payload.otp = otp
+      }
+
+      // Xây dựng hàm update có custom fetch vì authService có thể chưa hỗ trợ truyền otp
+      const response = await fetch('http://localhost:5000/api/users/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
       })
 
-      // Update state
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.message || 'Lỗi khi cập nhật hồ sơ')
+      }
+
+      // Cập nhật state
       setUserInfo(prev => ({
         ...prev,
         name: editData.name,
@@ -184,40 +235,20 @@ export default function UserProfile() {
         phone: editData.phone
       }))
 
-      // Update LocalStorage to keep Header in sync
+      // Cập nhật LocalStorage
       const currentUser = StorageUtil.getUser() || {}
-      StorageUtil.setUser({
-        ...currentUser,
-        name: editData.name,
-        email: editData.email,
-        phone: editData.phone
-      })
+      StorageUtil.setUser({ ...currentUser, name: editData.name, email: editData.email, phone: editData.phone })
 
-      // Update old format key for compatibility
-      const oldUserInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      localStorage.setItem('userInfo', JSON.stringify({
-        ...oldUserInfo,
-        fullName: editData.name,
-        email: editData.email,
-        phone: editData.phone
-      }))
-
-      setSuccessMsg(res.message || 'Cập nhật thông tin thành công!')
+      setSuccessMsg('Cập nhật thông tin thành công!')
       setEditMode(false)
+      setShowOtpModal(false)
+      setOtpCode('')
 
-      setTimeout(() => {
-        setSuccessMsg(null)
-      }, 3000)
-
+      setTimeout(() => setSuccessMsg(null), 3000)
     } catch (err) {
       console.error('Lỗi khi lưu thông tin:', err)
       setError(err.message || 'Lỗi khi cập nhật hồ sơ')
     }
-  }
-
-  const handleCancel = () => {
-    setEditMode(false)
-    setError(null)
   }
 
   const handleLogout = () => {
@@ -227,292 +258,276 @@ export default function UserProfile() {
     }
   }
 
-  const formatCurrency = (amount) => {
-    return amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
-  }
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-  }
+  const formatCurrency = (amount) => amount.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })
+  const formatDate = (dateString) => new Date(dateString).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' })
 
   if (loading) {
     return (
-      <div className="profile-loading">
-        <div className="spinner"></div>
-        <p>Đang tải thông tin tài khoản...</p>
-      </div>
-    )
-  }
-
-  if (error && !editMode && userInfo.name === '') {
-    return (
-      <div className="profile-error">
-        <FiAlertTriangle className="profile-error-icon" />
-        <h3>Đã xảy ra lỗi</h3>
-        <p>{error}</p>
-        <button className="btn-retry" onClick={() => window.location.reload()}>Thử lại</button>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-medium">Đang tải thông tin tài khoản...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="user-profile">
-      {/* Alert Messages */}
-      {successMsg && (
-        <div className="alert alert-success mx-auto" style={{ maxWidth: '1200px', width: '90%', marginTop: '20px' }}>
-          {successMsg}
-        </div>
-      )}
-      {error && (
-        <div className="alert alert-danger mx-auto" style={{ maxWidth: '1200px', width: '90%', marginTop: '20px' }}>
-          {error}
-        </div>
-      )}
-
-      {/* Profile Header */}
-      <div className="profile-header">
-        <div className="header-background" style={{
-          background: `linear-gradient(135deg, ${currentMembership.color} 0%, rgba(102, 126, 234, 0.8) 100%)`
-        }}></div>
-
-        <div className="header-content">
-          <div className="profile-avatar">
-            <span className="avatar-emoji">{userInfo.avatar}</span>
-          </div>
-
-          {!editMode ? (
-            <>
-              <div className="profile-info">
-                <h1>{userInfo.name}</h1>
-                <p className="membership-badge">
-                  <span className="badge-icon">{currentMembership.icon}</span>
-                  {currentMembership.name} Member
-                </p>
-              </div>
-              <button className="btn-edit" onClick={handleEditClick}>
-                <FiEdit2 size={18} />
-                Chỉnh sửa
-              </button>
-            </>
-          ) : (
-            <div className="edit-quick-info">
-              <input
-                type="text"
-                value={editData.name}
-                onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                placeholder="Tên đầy đủ"
-                className="edit-input"
-              />
-              <div className="edit-buttons">
-                <button className="btn-save" onClick={handleSave}>Lưu</button>
-                <button className="btn-cancel" onClick={handleCancel}>Hủy</button>
-              </div>
-            </div>
-          )}
-        </div>
+    <div className="min-h-screen bg-slate-50 pb-16">
+      {/* Header Gradient Banner */}
+      <div className={`h-48 bg-gradient-to-r ${currentMembership.gradient} relative overflow-hidden`}>
+        <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]"></div>
+        {/* Decorative Circles */}
+        <div className="absolute top-[-50px] right-[-50px] w-48 h-48 bg-white/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-[-50px] left-[-50px] w-64 h-64 bg-white/10 rounded-full blur-2xl"></div>
       </div>
 
-      <div className="profile-container">
-        {/* Membership & Points Section */}
-        <section className="profile-section membership-section">
-          <h2>Cấp độ Thành viên & Điểm</h2>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24 relative z-10">
+        
+        {/* Alerts */}
+        {successMsg && (
+          <div className="mb-6 bg-green-50 text-green-700 p-4 rounded-xl border border-green-200 flex items-center gap-3 shadow-sm animate-fade-in">
+            <FiCheck className="text-xl" />
+            <span className="font-semibold">{successMsg}</span>
+          </div>
+        )}
+        {error && !editMode && (
+          <div className="mb-6 bg-red-50 text-red-700 p-4 rounded-xl border border-red-200 flex items-center gap-3 shadow-sm">
+            <FiAlertTriangle className="text-xl" />
+            <span className="font-semibold">{error}</span>
+          </div>
+        )}
 
-          <div className="membership-card">
-            <div className="membership-top">
-              <div className="membership-icon-large" style={{ backgroundColor: currentMembership.bgColor }}>
-                <span style={{ fontSize: '40px' }}>{currentMembership.icon}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Left Sidebar: Profile Card & Navigation */}
+          <div className="lg:col-span-4 space-y-6">
+            
+            {/* Main Profile Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col items-center text-center">
+              <div className="w-28 h-28 bg-slate-100 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-5xl mb-4">
+                {userInfo.avatar}
+              </div>
+              <h1 className="text-2xl font-bold text-slate-900 mb-1">{userInfo.name}</h1>
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-bold ${currentMembership.bgColor} ${currentMembership.color} mb-6`}>
+                <span>{currentMembership.icon}</span>
+                {currentMembership.name} Member
               </div>
 
-              <div className="membership-stats">
-                <div className="stat">
-                  <span className="stat-label">Điểm Tích Lũy</span>
-                  <span className="stat-value" style={{ color: currentMembership.color }}>
+              <div className="w-full space-y-3 mb-6 text-left">
+                <div className="flex items-center gap-3 text-slate-600">
+                  <FiMail className="text-slate-400" />
+                  <span className="text-sm font-medium truncate">{userInfo.email}</span>
+                </div>
+                <div className="flex items-center gap-3 text-slate-600">
+                  <FiPhone className="text-slate-400" />
+                  <span className="text-sm font-medium">{userInfo.phone}</span>
+                </div>
+                <div className="flex items-center gap-3 text-slate-600">
+                  <FiCalendar className="text-slate-400" />
+                  <span className="text-sm font-medium">Tham gia: {formatDate(userInfo.joinedDate)}</span>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleLogout}
+                className="w-full py-2.5 flex items-center justify-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl font-bold transition-colors"
+              >
+                <FiLogOut />
+                Đăng xuất
+              </button>
+            </div>
+
+          </div>
+
+          {/* Right Content Area */}
+          <div className="lg:col-span-8 space-y-8">
+            
+            {/* Membership Details */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <FiAward className="text-blue-500" />
+                Thông tin hạng thành viên
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                  <div className="text-sm font-semibold text-slate-500 mb-1">Điểm Tích Lũy</div>
+                  <div className={`text-3xl font-black ${currentMembership.color}`}>
                     {userInfo.diemTichLuy.toLocaleString()}
-                  </span>
-                </div>
-                <div className="stat">
-                  <span className="stat-label">Tổng Chi Tiêu</span>
-                  <span className="stat-value">{formatCurrency(userInfo.totalSpent)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress to Next Level */}
-            {userInfo.membershipLevel !== 'gold' && (
-              <div className="progress-section">
-                <div className="progress-header">
-                  <span className="progress-label">
-                    Tiến tới <strong>{nextMembership.name}</strong>
-                  </span>
-                  <span className="points-needed">
-                    Cần {pointsToNextLevel > 0 ? pointsToNextLevel.toLocaleString() : 0} điểm
-                  </span>
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${Math.min(progressPercentage, 100)}%` }}></div>
-                </div>
-                <div className="progress-milestones">
-                  <span>{userInfo.membershipLevel === 'bronze' ? 'Bronze' : 'Silver'}</span>
-                  <span>{nextMembership.name}</span>
-                </div>
-              </div>
-            )}
-
-            {userInfo.membershipLevel === 'gold' && (
-              <div className="max-level-badge">
-                <FiAward size={20} />
-                <span>Bạn đã đạt cấp độ cao nhất!</span>
-              </div>
-            )}
-
-            {/* Membership Benefits */}
-            <div className="benefits-list">
-              <h3>Quyền lợi {currentMembership.name}</h3>
-              <ul>
-                {currentMembership.benefits.map((benefit, idx) => (
-                  <li key={idx}>
-                    <span className="check-mark">✓</span>
-                    {benefit}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* Personal Information Section */}
-        <section className="profile-section info-section">
-          <h2>Thông tin Cá nhân</h2>
-
-          <div className="info-grid">
-            <div className="info-card">
-              <div className="info-icon">
-                <FiUser size={20} />
-              </div>
-              <div className="info-content">
-                <span className="info-label">Họ tên</span>
-                {editMode ? (
-                  <input
-                    type="text"
-                    value={editData.name}
-                    onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                    className="edit-input-inline"
-                  />
-                ) : (
-                  <span className="info-value">{userInfo.name}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="info-card">
-              <div className="info-icon">
-                <FiMail size={20} />
-              </div>
-              <div className="info-content">
-                <span className="info-label">Email</span>
-                {editMode ? (
-                  <input
-                    type="email"
-                    value={editData.email}
-                    onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-                    className="edit-input-inline"
-                  />
-                ) : (
-                  <span className="info-value">{userInfo.email}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="info-card">
-              <div className="info-icon">
-                <FiPhone size={20} />
-              </div>
-              <div className="info-content">
-                <span className="info-label">Số điện thoại</span>
-                {editMode ? (
-                  <input
-                    type="tel"
-                    value={editData.phone}
-                    onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
-                    className="edit-input-inline"
-                  />
-                ) : (
-                  <span className="info-value">{userInfo.phone}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="info-card">
-              <div className="info-icon">
-                <FiCalendar size={20} />
-              </div>
-              <div className="info-content">
-                <span className="info-label">Thành viên từ</span>
-                <span className="info-value">{formatDate(userInfo.joinedDate)}</span>
-              </div>
-            </div>
-          </div>
-
-          {editMode && (
-            <div className="edit-actions">
-              <button className="btn-save" onClick={handleSave}>Lưu thay đổi</button>
-              <button className="btn-cancel" onClick={handleCancel}>Hủy</button>
-            </div>
-          )}
-        </section>
-
-        {/* Recent Transactions Section */}
-        <section className="profile-section transactions-section">
-          <h2>Lịch sử Giao dịch</h2>
-
-          <div className="transactions-table">
-            <div className="table-header">
-              <div className="table-col col-route">Tuyến đường</div>
-              <div className="table-col col-date">Ngày</div>
-              <div className="table-col col-amount">Số tiền</div>
-              <div className="table-col col-points">Điểm</div>
-              <div className="table-col col-status">Trạng thái</div>
-            </div>
-
-            {recentTransactions.map((transaction) => (
-              <div key={transaction.id} className="table-row">
-                <div className="table-col col-route">
-                  <div className="route-info">
-                    <FiMapPin size={16} />
-                    {transaction.route}
                   </div>
                 </div>
-                <div className="table-col col-date">
-                  {formatDate(transaction.date)}
-                </div>
-                <div className="table-col col-amount">
-                  <strong>{formatCurrency(transaction.amount)}</strong>
-                </div>
-                <div className="table-col col-points">
-                  <span className="points-badge">+{transaction.points}</span>
-                </div>
-                <div className="table-col col-status">
-                  <span className={`status-badge status-${transaction.status}`}>
-                    ✓ Hoàn thành
-                  </span>
+                <div className="bg-slate-50 rounded-xl p-5 border border-slate-100">
+                  <div className="text-sm font-semibold text-slate-500 mb-1">Tổng Chi Tiêu</div>
+                  <div className="text-3xl font-black text-slate-900">
+                    {formatCurrency(userInfo.totalSpent)}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
 
-        {/* Account Actions */}
-        <section className="profile-section actions-section">
-          <button className="btn-logout" onClick={handleLogout}>
-            <FiLogOut size={18} />
-            Đăng xuất
-          </button>
-        </section>
+              {userInfo.membershipLevel !== 'gold' && (
+                <div className="mb-8">
+                  <div className="flex justify-between text-sm font-bold mb-2">
+                    <span className="text-slate-600">Tiến tới hạng {nextMembership.name}</span>
+                    <span className="text-blue-600">Cần {pointsToNextLevel > 0 ? pointsToNextLevel.toLocaleString() : 0} điểm</span>
+                  </div>
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full bg-gradient-to-r ${currentMembership.gradient} rounded-full`}
+                      style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs font-semibold text-slate-400 mt-2">
+                    <span>{currentMembership.name}</span>
+                    <span>{nextMembership.name}</span>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">Quyền lợi của bạn</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {currentMembership.benefits.map((benefit, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <FiCheck className="text-green-500 mt-0.5 shrink-0" />
+                      <span className="text-sm font-medium text-slate-600">{benefit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Edit Profile Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 relative">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                  <FiUser className="text-blue-500" />
+                  Cập nhật hồ sơ
+                </h2>
+                {!editMode && (
+                  <button onClick={handleEditClick} className="text-sm font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg">
+                    <FiEdit2 /> Chỉnh sửa
+                  </button>
+                )}
+              </div>
+
+              {error && editMode && (
+                <div className="mb-6 bg-red-50 text-red-700 p-3 rounded-lg border border-red-200 text-sm font-semibold">
+                  {error}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Họ và Tên</label>
+                  {editMode ? (
+                    <input 
+                      type="text" 
+                      value={editData.name} 
+                      onChange={e => setEditData({...editData, name: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:ring-0 text-slate-900 font-medium transition-colors"
+                    />
+                  ) : (
+                    <div className="px-4 py-2.5 bg-slate-50 rounded-xl border border-slate-100 font-medium text-slate-900">{userInfo.name}</div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
+                  {editMode ? (
+                    <input 
+                      type="email" 
+                      value={editData.email} 
+                      onChange={e => setEditData({...editData, email: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:ring-0 text-slate-900 font-medium transition-colors"
+                    />
+                  ) : (
+                    <div className="px-4 py-2.5 bg-slate-50 rounded-xl border border-slate-100 font-medium text-slate-900">{userInfo.email}</div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Số điện thoại</label>
+                  {editMode ? (
+                    <input 
+                      type="tel" 
+                      value={editData.phone} 
+                      onChange={e => setEditData({...editData, phone: e.target.value})}
+                      className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:ring-0 text-slate-900 font-medium transition-colors"
+                    />
+                  ) : (
+                    <div className="px-4 py-2.5 bg-slate-50 rounded-xl border border-slate-100 font-medium text-slate-900">{userInfo.phone}</div>
+                  )}
+                </div>
+              </div>
+
+              {editMode && (
+                <div className="mt-8 flex items-center gap-3">
+                  <button 
+                    onClick={initiateSave}
+                    disabled={otpSending}
+                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-200 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {otpSending ? 'Đang kiểm tra...' : 'Lưu thay đổi'}
+                  </button>
+                  <button 
+                    onClick={handleCancel}
+                    className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all"
+                  >
+                    Hủy bỏ
+                  </button>
+                </div>
+              )}
+
+              {editMode && (editData.email !== userInfo.email || editData.phone !== userInfo.phone) && (
+                <div className="mt-4 flex items-start gap-2 text-xs font-semibold text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-100">
+                  <FiShield className="shrink-0 text-lg" />
+                  <p>Lưu ý: Thay đổi Email hoặc Số điện thoại yêu cầu xác thực bằng mã OTP gửi về Email hiện tại của bạn.</p>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
       </div>
+
+      {/* OTP Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden animate-fade-in relative">
+            <button onClick={() => setShowOtpModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+              <FiX size={24} />
+            </button>
+            <div className="p-8">
+              <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 mx-auto mb-4">
+                <FiShield size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 text-center mb-2">Xác thực thay đổi</h3>
+              <p className="text-sm font-medium text-slate-500 text-center mb-6">
+                Một mã xác thực gồm 6 chữ số vừa được gửi đến email <strong>{userInfo.email}</strong>. Vui lòng nhập mã để hoàn tất.
+              </p>
+              
+              <input 
+                type="text" 
+                placeholder="Nhập mã OTP (6 số)"
+                value={otpCode}
+                onChange={e => setOtpCode(e.target.value)}
+                maxLength={6}
+                className="w-full text-center tracking-[0.5em] text-2xl px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 focus:ring-0 text-slate-900 font-bold transition-colors mb-6"
+              />
+
+              <button 
+                onClick={() => executeSave(otpCode)}
+                disabled={otpCode.length !== 6}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Xác nhận & Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

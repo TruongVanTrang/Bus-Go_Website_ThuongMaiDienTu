@@ -139,11 +139,6 @@ const searchTrips = async (req, res) => {
     const pool = await sql.connect();
     releaseExpiredSeats(pool).catch(e => console.error(e));
 
-    if (from && to && date) {
-      // NOTE: Auto-generate trips logic is temporarily disabled because BusGo_DB_Updated.sql 
-      // now automatically seeds 7-days of trips dynamically for all routes.
-      // await ensureTripsExist(pool, from, to, date);
-    }
     let queryStr = `
       SELECT cx.*, td.danhSachTramDung, pt.tienIch as vehicleAmenities
       FROM vw_ChuyenXeChiTiet cx
@@ -154,6 +149,11 @@ const searchTrips = async (req, res) => {
 
     const request = pool.request();
     const conditions = [];
+
+    // Tối ưu: Nếu không có tham số tìm kiếm, chỉ lấy chuyến xe từ hôm nay trở đi để giảm tải
+    if (!date) {
+        conditions.push("CAST(cx.thoiGianDi AS DATE) >= CAST(GETDATE() AS DATE)");
+    }
 
     if (from) {
       request.input('from', sql.NVarChar, from);
@@ -178,22 +178,34 @@ const searchTrips = async (req, res) => {
 
     queryStr += ' ORDER BY cx.thoiGianDi ASC';
 
-    const result = await pool.request();
-    // We run the built query using pool.request() or passing request.query
-    // Actually we can execute request.query(queryStr) which is safer because of inputs.
+    // We run the built query
     const queryResult = await request.query(queryStr);
     const trips = [];
+    
+    // Tối ưu hóa N+1: Lấy tất cả ghế đã đặt của các chuyến xe trong kết quả một lần duy nhất
+    const tripIds = queryResult.recordset.map(r => r.maChuyenXe);
+    let allOccupiedSeats = [];
+    
+    if (tripIds.length > 0) {
+      // Vì tripIds có thể dài, ta có thể dùng bảng tạm hoặc IN clause nếu số lượng vừa phải. 
+      // Ở đây dùng chuỗi join cho IN clause là an toàn nhất nếu số lượng < 2000
+      const idsString = tripIds.join(',');
+      const bulkSeatResult = await pool.request().query(`
+        SELECT maChuyenXe, soGhe 
+        FROM GheNgoi 
+        WHERE maChuyenXe IN (${idsString}) AND trangThaiGhe != 'trong'
+      `);
+      allOccupiedSeats = bulkSeatResult.recordset;
+    }
 
     for (const row of queryResult.recordset) {
-      // Lấy danh sách ghế đã đặt cho chuyến xe này
-      const seatResult = await pool.request()
-        .input('maChuyenXe', sql.Int, row.maChuyenXe)
-        .query("SELECT soGhe FROM GheNgoi WHERE maChuyenXe = @maChuyenXe AND trangThaiGhe != 'trong'");
-      
-      const occupiedSeats = seatResult.recordset.map(s => {
-        const num = parseInt(s.soGhe);
-        return isNaN(num) ? s.soGhe : num;
-      });
+      // Lấy danh sách ghế đã đặt cho chuyến xe này từ kết quả bulk
+      const occupiedSeats = allOccupiedSeats
+        .filter(s => s.maChuyenXe === row.maChuyenXe)
+        .map(s => {
+          const num = parseInt(s.soGhe);
+          return isNaN(num) ? s.soGhe : num;
+        });
 
       // Parse tiện ích
       let amenities = ['AC', 'Wifi'];

@@ -236,5 +236,6 @@ module.exports = {
   register,
   login,
   sendOTP,
-  verifyOTP
+  verifyOTP,
+  otpStore
 };

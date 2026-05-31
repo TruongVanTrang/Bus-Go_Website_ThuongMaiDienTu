@@ -67,7 +67,7 @@ const createVehicle = async (req, res) => {
       .input('namSanXuat', sql.Int, namSanXuat || null)
       .input('tongSoGhe', sql.Int, tongSoGhe)
       .input('loaiXe', sql.VarChar, loaiXe)
-      .input('trangThaiXe', sql.VarChar, 'active')
+      .input('trangThaiXe', sql.VarChar, 'san_sang')
       .input('tienIch', sql.NVarChar, tienIch ? JSON.stringify(tienIch) : '["AC", "Wifi"]')
       .input('ngayMuaVao', sql.Date, ngayMuaVao || null)
       .input('ngayBaoTriLanSau', sql.Date, ngayBaoTriLanSau || null)

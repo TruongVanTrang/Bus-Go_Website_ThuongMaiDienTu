@@ -4,6 +4,7 @@ const adminController = require('../controllers/adminController');
 const staffController = require('../controllers/staffController');
 const vehicleController = require('../controllers/vehicleController');
 const routeController = require('../controllers/routeController');
+const tripAdminController = require('../controllers/tripAdminController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
 // Quản lý Users
@@ -26,5 +27,10 @@ router.get('/routes', protect, admin, routeController.getAllRoutes);
 router.post('/routes', protect, admin, routeController.createRoute);
 router.put('/routes/:id', protect, admin, routeController.updateRoute);
 router.delete('/routes/:id', protect, admin, routeController.deleteRoute);
+
+// Quản lý Chuyến xe
+router.get('/trips', protect, admin, tripAdminController.getAllTrips);
+router.post('/trips', protect, admin, tripAdminController.createTrip);
+router.put('/trips/:id', protect, admin, tripAdminController.updateTrip);
 
 module.exports = router;

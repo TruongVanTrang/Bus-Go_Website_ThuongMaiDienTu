@@ -1,7 +1,7 @@
 const { sql } = require('../config/db');
 
 const VALID_LOAI_XE = ['16-seater', '35-seater'];
-const VALID_TRANG_THAI = ['active', 'maintenance', 'inactive'];
+const VALID_TRANG_THAI = ['active', 'san_sang', 'maintenance', 'inactive'];
 
 // @desc    Lấy danh sách phương tiện
 // @route   GET /api/admin/vehicles

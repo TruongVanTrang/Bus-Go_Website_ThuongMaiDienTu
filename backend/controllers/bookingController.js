@@ -86,7 +86,7 @@ const createBooking = async (req, res) => {
       const firstTicketIdRef = { value: null };
 
       for (let i = 0; i < selectedSeats.length; i++) {
-        const seatName = selectedSeats[i];
+        const seatName = String(selectedSeats[i]);
 
         // 3a. Kiểm tra/Chèn ghế ngồi
         let seatId;
@@ -113,8 +113,8 @@ const createBooking = async (req, res) => {
             .input('soGhe', sql.VarChar, seatName)
             .query(`
               INSERT INTO GheNgoi (maChuyenXe, soGhe, loaiGhe, viTriGhe, giaSoGhe, trangThaiGhe)
-              OUTPUT INSERTED.maGhe
-              VALUES (@maChuyenXe, @soGhe, 'standard', 'middle', 0, 'da_dat')
+              VALUES (@maChuyenXe, @soGhe, 'standard', 'middle', 0, 'da_dat');
+              SELECT SCOPE_IDENTITY() AS maGhe;
             `);
           seatId = insertSeatResult.recordset[0].maGhe;
         }
@@ -123,6 +123,8 @@ const createBooking = async (req, res) => {
         const qrCode = `${createdBookingId}-${seatName}`;
         const giaHangHoa = (i === 0 && cargoInfo && cargoInfo.type !== 'none') ? Number(cargoInfo.estimatedPrice || 0) : 0;
         const totalTicketPrice = giaCoBan + giaHangHoa;
+
+        const trangThaiVe = paymentMethod === 'vnpay' ? 'da_dat' : 'da_thanh_toan';
 
         const insertTicketResult = await transaction.request()
           .input('maKhachHang', sql.Int, maKhachHang)
@@ -140,10 +142,11 @@ const createBooking = async (req, res) => {
           .input('giaVe', sql.Decimal(18, 2), giaCoBan)
           .input('giaHangHoa', sql.Decimal(18, 2), giaHangHoa)
           .input('giaThanhToan', sql.Decimal(18, 2), totalTicketPrice)
+          .input('trangThaiVe', sql.VarChar, trangThaiVe)
           .query(`
             INSERT INTO VeDienTu (maKhachHang, maChuyenXe, maGhe, hoTenHanhKhach, firstName, lastName, emailHanhKhach, soDienThoaiHanhKhach, diemDon, diemTra, maQR, maPhuongThuc, giaVe, giaHangHoa, giaThanhToan, trangThaiVe)
-            OUTPUT INSERTED.maVe
-            VALUES (@maKhachHang, @maChuyenXe, @maGhe, @hoTenHanhKhach, @firstName, @lastName, @emailHanhKhach, @soDienThoaiHanhKhach, @diemDon, @diemTra, @maQR, @maPhuongThuc, @giaVe, @giaHangHoa, @giaThanhToan, 'da_thanh_toan')
+            VALUES (@maKhachHang, @maChuyenXe, @maGhe, @hoTenHanhKhach, @firstName, @lastName, @emailHanhKhach, @soDienThoaiHanhKhach, @diemDon, @diemTra, @maQR, @maPhuongThuc, @giaVe, @giaHangHoa, @giaThanhToan, @trangThaiVe);
+            SELECT SCOPE_IDENTITY() AS maVe;
           `);
 
         const ticketId = insertTicketResult.recordset[0].maVe;

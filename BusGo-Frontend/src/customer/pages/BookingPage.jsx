@@ -31,6 +31,52 @@ export default function BookingPage() {
     estimatedPrice: 0
   })
 
+  // Global Timer State
+  const [expireTime, setExpireTime] = useState(() => {
+    const saved = sessionStorage.getItem('seatLockExpire');
+    return saved ? parseInt(saved, 10) : null;
+  });
+  const [timeLeft, setTimeLeft] = useState(null);
+
+  // When seat is selected, start timer
+  useEffect(() => {
+    if (!trip) return;
+    const seatsToBook = trip.seats <= 16 ? passengerQuantity : selectedSeats.length;
+    if (seatsToBook > 0 && !expireTime) {
+      const newExpire = Date.now() + 3 * 60 * 1000; // 3 minutes
+      setExpireTime(newExpire);
+      sessionStorage.setItem('seatLockExpire', newExpire.toString());
+    } else if (seatsToBook === 0 && expireTime) {
+      setExpireTime(null);
+      setTimeLeft(null);
+      sessionStorage.removeItem('seatLockExpire');
+    }
+  }, [selectedSeats, passengerQuantity, expireTime, trip]);
+
+  // Countdown tick
+  useEffect(() => {
+    if (!expireTime) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(interval);
+        alert('Đã hết thời gian giữ chỗ! Vui lòng chọn lại.');
+        sessionStorage.removeItem('seatLockExpire');
+        window.location.reload();
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [expireTime]);
+
+  // Format time for UI
+  const formatTimeUI = (seconds) => {
+    if (seconds === null) return '';
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
   // Fetch trip data from API on mount
   useEffect(() => {
     const fetchTrip = async () => {
@@ -166,7 +212,17 @@ export default function BookingPage() {
         ]}
       />
 
-      <div className="container-fluid px-md-5 px-3 py-4">
+      <div className="container-fluid px-md-5 px-3 py-4 position-relative">
+        {/* Sticky Timer */}
+        {timeLeft !== null && (
+          <div className="sticky-top d-flex justify-content-center mb-4" style={{ top: '15px', zIndex: 1000 }}>
+            <div className="bg-warning text-dark fw-bold px-4 py-2 rounded-pill shadow-sm d-flex align-items-center gap-2 border border-warning" style={{ fontSize: '1.1rem' }}>
+              <span>⏱ Thời gian giữ chỗ:</span>
+              <span className="text-danger fs-5 ms-1">{formatTimeUI(timeLeft)}</span>
+            </div>
+          </div>
+        )}
+
         {/* Back Button */}
         <div className="mb-4">
           <BackButton label="Quay lại" />

@@ -4,16 +4,13 @@ import { FiCheckCircle, FiClock, FiLock } from 'react-icons/fi'
 import QRCode from 'qrcode.react'
 import Stepper from '../../components/common/Stepper'
 import BackButton from '../../components/common/BackButton'
+import { createBookingAPI, createVNPayUrlAPI, cancelBookingAPI } from '../../services/bookingService'
+import { StorageUtil } from '../../utils/helpers'
 import './PaymentPage.css'
 
 // Cấu hình phương thức thanh toán
 const PAYMENT_METHODS = {
-  visa: { name: 'Visa', category: 'Thẻ quốc tế', logo: '💳', description: 'Thanh toán qua thẻ Visa quốc tế' },
-  mastercard: { name: 'Mastercard', category: 'Thẻ quốc tế', logo: '💳', description: 'Thanh toán qua thẻ Mastercard quốc tế' },
-  jcb: { name: 'JCB', category: 'Thẻ quốc tế', logo: '💳', description: 'Thanh toán qua thẻ JCB quốc tế' },
-  atm_napas: { name: 'ATM Napas', category: 'Thẻ nội địa', logo: '🏦', description: 'Thanh toán qua thẻ ATM nội địa qua cổng Napas' },
-  momo: { name: 'Momo', category: 'Ví điện tử', logo: '📱', description: 'Thanh toán qua ví điện tử Momo' },
-  zalopay: { name: 'ZaloPay', category: 'Ví điện tử', logo: '📱', description: 'Thanh toán qua ví điện tử ZaloPay' },
+  bank_transfer: { name: 'Chuyển khoản Ngân hàng', category: 'Chuyển khoản', logo: '🏦', description: 'Quét mã VietQR để thanh toán nhanh' },
   vnpay: { name: 'VNPay', category: 'Ví điện tử', logo: '📱', description: 'Thanh toán qua ví điện tử VNPay' }
 }
 
@@ -23,8 +20,17 @@ export default function PaymentPage() {
   const { state } = location
   const [isConfirmed, setIsConfirmed] = useState(false)
   const [confirmLoading, setConfirmLoading] = useState(false)
-  const [countdownSeconds, setCountdownSeconds] = useState(120) // 2 minutes
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('none')
+  
+  // Read global timer
+  const [expireTime] = useState(() => {
+    const saved = sessionStorage.getItem('seatLockExpire');
+    return saved ? parseInt(saved, 10) : Date.now() + 180000; // default 3 mins if missing
+  });
+  const [countdownSeconds, setCountdownSeconds] = useState(() => {
+    return Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
+  });
+
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('bank_transfer')
   const [paymentQRCode, setPaymentQRCode] = useState('')
 
   // Get booking data from navigation state
@@ -48,10 +54,8 @@ export default function PaymentPage() {
     totalPrice: 250000
   }
 
-  const bookingId = 'BK' + Date.now()
-  const totalAmount = bookingData.selectedSeats?.length ? 
-    (bookingData.selectedSeats.length * (bookingData.totalPrice || 250000)) + (bookingData.cargoInfo?.estimatedPrice || 0) : 
-    250000 + (bookingData.cargoInfo?.estimatedPrice || 0)
+  const [bookingId] = useState(() => 'BK' + Date.now())
+  const totalAmount = bookingData.totalPrice || 250000
 
   // Cấu hình phương thức thanh toán
   const paymentMethods = PAYMENT_METHODS
@@ -87,16 +91,31 @@ export default function PaymentPage() {
 
   // Countdown timer for payment confirmation
   useEffect(() => {
-    if (countdownSeconds <= 0) {
-      return
-    }
+    if (countdownSeconds <= 0) return;
     
     const timer = setInterval(() => {
-      setCountdownSeconds(prev => prev - 1)
+      const remaining = Math.max(0, Math.floor((expireTime - Date.now()) / 1000));
+      setCountdownSeconds(remaining);
+      
+      if (remaining <= 0) {
+        clearInterval(timer);
+        // Hết hạn giữ chỗ -> tự động hủy vé trên backend nếu đã tạo
+        const sessionKey = `booking_${bookingData.trip?.id}_${bookingData.selectedSeats?.join('_')}`;
+        const realBookingId = sessionStorage.getItem(sessionKey);
+        if (realBookingId) {
+          const token = StorageUtil.getToken();
+          if (token) {
+            cancelBookingAPI(token, realBookingId).catch(console.error);
+          }
+        }
+        alert('Đã hết thời gian giữ chỗ! Vui lòng đặt lại vé.');
+        sessionStorage.removeItem('seatLockExpire');
+        navigate('/');
+      }
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [countdownSeconds])
+  }, [expireTime, countdownSeconds, navigate, bookingData])
 
   const handleConfirmPayment = async () => {
     if (selectedPaymentMethod === 'none') {
@@ -104,25 +123,65 @@ export default function PaymentPage() {
       return
     }
 
+    const token = StorageUtil.getToken()
+    if (!token) {
+      alert('Bạn cần đăng nhập để thực hiện đặt vé!')
+      navigate('/login')
+      return
+    }
+
     setConfirmLoading(true)
     
-    // Simulate API call to verify payment
-    setTimeout(() => {
+    try {
+      const sessionKey = `booking_${bookingData.trip?.id}_${bookingData.selectedSeats?.join('_')}`;
+      let realBookingId = sessionStorage.getItem(sessionKey);
+
+      if (!realBookingId) {
+        const payload = {
+          maChuyenXe: bookingData.trip.id,
+          selectedSeats: bookingData.selectedSeats,
+          passengerInfo: bookingData.passengerInfo,
+          cargoInfo: bookingData.cargoInfo,
+          paymentMethod: selectedPaymentMethod
+        }
+        
+        const response = await createBookingAPI(token, payload)
+        realBookingId = response.bookingId || bookingId
+        sessionStorage.setItem(sessionKey, realBookingId);
+      }
+      
+      if (selectedPaymentMethod === 'vnpay') {
+        sessionStorage.setItem('pendingVNPayBooking', JSON.stringify({
+          ...bookingData,
+          paymentMethod: selectedPaymentMethod,
+          bookingId: realBookingId
+        }));
+        
+        const vnpayRes = await createVNPayUrlAPI(totalAmount, realBookingId);
+        if (vnpayRes && vnpayRes.url) {
+            window.location.href = vnpayRes.url;
+            return;
+        }
+      }
+
       setConfirmLoading(false)
       setIsConfirmed(true)
 
       // Redirect to ticket page after 2 seconds
       setTimeout(() => {
-        navigate(`/ticket/${bookingId}`, {
+        navigate(`/ticket/${realBookingId}`, {
           state: {
             ...bookingData,
             paymentStatus: 'Da thanh toan',
             paymentMethod: selectedPaymentMethod,
-            bookingId: bookingId
+            bookingId: realBookingId
           }
         })
       }, 2000)
-    }, 1500)
+    } catch (error) {
+      setConfirmLoading(false)
+      alert(error.message || 'Có lỗi xảy ra khi đặt vé. Vui lòng thử lại.')
+    }
   }
 
   const formatMinutesSeconds = (seconds) => {
@@ -154,9 +213,8 @@ export default function PaymentPage() {
 
   // Group payment methods by category
   const groupedMethods = {
-    'Thẻ quốc tế': ['visa', 'mastercard', 'jcb'],
-    'Thẻ nội địa': ['atm_napas'],
-    'Ví điện tử': ['momo', 'zalopay', 'vnpay']
+    'Chuyển khoản': ['bank_transfer'],
+    'Ví điện tử': ['vnpay']
   }
 
   return (
@@ -172,84 +230,137 @@ export default function PaymentPage() {
         ]}
       />
 
-      <div className="container-fluid px-md-5 px-3 py-5">
-        {/* Back Button */}
-        <div className="mb-4">
-          <BackButton label="Quay lại" />
-        </div>
-
+      <div className="container-fluid px-md-4 px-3 py-3">
         {/* Header */}
-        <div className="row mb-5">
-          <div className="col-12">
-            <h1 className="fw-bold text-neutral-900 mb-2">Thanh toán</h1>
-            <p className="text-muted">Mã đơn hàng: <strong>{bookingId}</strong></p>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <div className="d-flex align-items-center gap-3">
+            <BackButton label="Quay lại" />
+            <h2 className="fw-bold text-neutral-900 mb-0 ms-2">Thanh toán</h2>
+          </div>
+          <div className="text-end">
+            <p className="text-muted mb-0 small">Mã đơn hàng</p>
+            <p className="fw-bold text-primary mb-0">{bookingId}</p>
           </div>
         </div>
 
-        {/* Main Payment Section */}
-        <div className="row g-4">
-          {/* Left: Trip Summary & Payment Methods */}
-          <div className="col-lg-6">
-            {/* Trip Summary */}
-            <div className="card shadow-sm mb-4">
-              <div className="card-body p-4">
-                <h5 className="fw-bold mb-4 text-neutral-900">Thông tin chuyến xe</h5>
+        {/* Main Content Layout */}
+        <div className="row g-3">
+          {/* Left Column: Trip Info & Payment Methods */}
+          <div className="col-lg-7">
+            {/* 1. Trip Summary */}
+            <div className="card shadow-sm mb-3">
+              <div className="card-header bg-white py-2">
+                <h6 className="fw-bold mb-0 text-neutral-900">Thông tin chuyến xe</h6>
+              </div>
+              <div className="card-body p-3">
+                <div className="row g-3">
+                  <div className="col-md-12">
+                    <div className="trip-info mb-0">
+                      <div className="row g-2">
+                        <div className="col-6">
+                          <div className="small text-muted mb-1">Điểm đi</div>
+                          <div className="fw-600">{bookingData.trip.from}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="small text-muted mb-1">Điểm đến</div>
+                          <div className="fw-600">{bookingData.trip.to}</div>
+                        </div>
+                      </div>
 
-                {/* Trip Details */}
-                <div className="trip-info mb-4">
-                  <div className="row g-3">
-                    <div className="col-6">
-                      <div className="small text-muted mb-1">Điểm đi</div>
-                      <div className="fw-600">{bookingData.trip.from}</div>
-                    </div>
-                    <div className="col-6">
-                      <div className="small text-muted mb-1">Điểm đến</div>
-                      <div className="fw-600">{bookingData.trip.to}</div>
-                    </div>
-                  </div>
+                      <hr className="my-2" />
 
-                  <hr className="my-3" />
+                      <div className="row g-2">
+                        <div className="col-6">
+                          <div className="small text-muted mb-1">Ngày khởi hành</div>
+                          <div className="fw-600">{bookingData.trip.date}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="small text-muted mb-1">Thời gian khởi hành</div>
+                          <div className="fw-600">{bookingData.trip.departureTime}</div>
+                        </div>
+                      </div>
 
-                  <div className="row g-3">
-                    <div className="col-6">
-                      <div className="small text-muted mb-1">Ngày khởi hành</div>
-                      <div className="fw-600">{bookingData.trip.date}</div>
-                    </div>
-                    <div className="col-6">
-                      <div className="small text-muted mb-1">Thời gian khởi hành</div>
-                      <div className="fw-600">{bookingData.trip.departureTime}</div>
-                    </div>
-                  </div>
+                      <hr className="my-2" />
 
-                  <hr className="my-3" />
-
-                  <div className="row g-3">
-                    <div className="col-6">
-                      <div className="small text-muted mb-1">Nhà xe</div>
-                      <div className="fw-600">{bookingData.trip.operator}</div>
-                    </div>
-                    <div className="col-6">
-                      <div className="small text-muted mb-1">Số ghế</div>
-                      <div className="fw-600">{bookingData.selectedSeats?.length || 1}</div>
+                      <div className="row g-2">
+                        <div className="col-6">
+                          <div className="small text-muted mb-1">Nhà xe</div>
+                          <div className="fw-600">{bookingData.trip.operator}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="small text-muted mb-1">Số ghế</div>
+                          <div className="fw-600">
+                            {bookingData.selectedSeats?.length > 0 
+                              ? `${bookingData.selectedSeats.length} (Vị trí: ${bookingData.selectedSeats.join(', ')})` 
+                              : (bookingData.passengerQuantity || 1)}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Pricing */}
-                <div className="pricing-summary">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span className="text-muted">Giá vé (x{bookingData.selectedSeats?.length || 1})</span>
-                    <span className="fw-600">
+            {/* 2. Payment Methods */}
+            <div className="card shadow-sm mb-3">
+              <div className="card-header bg-white py-2">
+                <h6 className="fw-bold mb-0 text-neutral-900">Chọn phương thức thanh toán</h6>
+              </div>
+              <div className="card-body p-2">
+                {Object.entries(groupedMethods).map(([category, methods]) => (
+                  <div key={category} className="mb-0">
+                    <div className="list-group list-group-flush">
+                      {methods.map(methodKey => {
+                        const method = paymentMethods[methodKey]
+                        return (
+                          <label key={methodKey} className="list-group-item px-3 py-2 cursor-pointer border-0 rounded mb-1" style={{ cursor: 'pointer', backgroundColor: selectedPaymentMethod === methodKey ? '#f0f7ff' : 'transparent' }}>
+                            <div className="d-flex align-items-center">
+                              <input
+                                type="radio"
+                                name="paymentMethod"
+                                value={methodKey}
+                                checked={selectedPaymentMethod === methodKey}
+                                onChange={() => handlePaymentMethodSelect(methodKey)}
+                                className="me-2"
+                              />
+                              <span className="fs-5 me-2">{method.logo}</span>
+                              <strong>{method.name}</strong>
+                            </div>
+                            <div className="small text-muted ms-4 ps-2">{method.description}</div>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Order Summary, QR Code & Actions */}
+          <div className="col-lg-5">
+            <div className="card shadow-sm sticky-top" style={{ top: '20px', zIndex: 1 }}>
+              <div className="card-header bg-white py-2">
+                <h6 className="fw-bold mb-0 text-neutral-900">Tổng quan thanh toán</h6>
+              </div>
+              <div className="card-body p-3 d-flex flex-column">
+                
+                {/* Pricing Summary */}
+                <div className="pricing-summary mb-3">
+                  <div className="d-flex justify-content-between mb-1">
+                    <span className="text-muted small">Giá vé (x{bookingData.selectedSeats?.length > 0 ? bookingData.selectedSeats.length : (bookingData.passengerQuantity || 1)})</span>
+                    <span className="fw-600 small">
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                        (bookingData.selectedSeats?.length || 1) * (bookingData.totalPrice || 250000)
+                        totalAmount - (bookingData.cargoInfo?.estimatedPrice || 0)
                       )}
                     </span>
                   </div>
                   
                   {bookingData.cargoInfo?.type !== 'none' && bookingData.cargoInfo?.estimatedPrice > 0 && (
-                    <div className="d-flex justify-content-between mb-2">
-                      <span className="text-muted">Tiền gửi hàng hóa</span>
-                      <span className="fw-600">
+                    <div className="d-flex justify-content-between mb-1">
+                      <span className="text-muted small">Tiền gửi hàng hóa</span>
+                      <span className="fw-600 small">
                         {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
                           bookingData.cargoInfo.estimatedPrice
                         )}
@@ -257,102 +368,49 @@ export default function PaymentPage() {
                     </div>
                   )}
                   
-                  <div className="d-flex justify-content-between mb-2">
-                    <span className="text-muted">Phí dịch vụ</span>
-                    <span className="fw-600">Miễn phí</span>
+                  <div className="d-flex justify-content-between mb-1">
+                    <span className="text-muted small">Phí dịch vụ</span>
+                    <span className="fw-600 small">Miễn phí</span>
                   </div>
-                  <hr className="my-3" />
-                  <div className="d-flex justify-content-between">
-                    <span className="fw-bold text-neutral-900">Tổng cộng</span>
-                    <span className="fw-bold fs-5" style={{ color: '#0066cc' }}>
+                  <hr className="my-2" />
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span className="fw-bold text-neutral-900">Tổng thanh toán</span>
+                    <span className="fw-bold fs-5 text-primary">
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount)}
                     </span>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Payment Methods */}
-            <div className="card shadow-sm">
-              <div className="card-body p-4">
-                <h5 className="fw-bold mb-4 text-neutral-900">Chọn phương thức thanh toán</h5>
-
-                {Object.entries(groupedMethods).map(([category, methods]) => (
-                  <div key={category} className="mb-4">
-                    <h6 className="text-muted small fw-600 mb-3">{category}</h6>
-                    <div className="list-group">
-                      {methods.map(methodKey => {
-                        const method = paymentMethods[methodKey]
-                        return (
-                          <label key={methodKey} className="list-group-item px-3 py-3 cursor-pointer" style={{ cursor: 'pointer' }}>
-                            <input
-                              type="radio"
-                              name="paymentMethod"
-                              value={methodKey}
-                              checked={selectedPaymentMethod === methodKey}
-                              onChange={() => handlePaymentMethodSelect(methodKey)}
-                              className="me-2"
-                            />
-                            <span className="fs-5 me-2">{method.logo}</span>
-                            <strong>{method.name}</strong>
-                            <div className="small text-muted ms-5">{method.description}</div>
-                          </label>
-                        )
-                      })}
-                    </div>
-                    {category !== 'Ví điện tử' && <hr className="my-4" />}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Right: QR Code Payment */}
-          <div className="col-lg-6">
-            <div className="card shadow-sm h-100">
-              <div className="card-body p-5 d-flex flex-column">
+                {/* QR Code or Placeholder */}
                 {selectedPaymentMethod !== 'none' ? (
                   <>
-                    <h5 className="fw-bold mb-4 text-neutral-900 text-center">Quét mã QR để thanh toán</h5>
-
                     {/* QR Code Container */}
-                    <div className="qr-code-container mb-4 p-4 bg-light border border-primary rounded-3 text-center flex-grow-1">
-                      <QRCode
-                        value={qrCodeContent}
-                        size={280}
-                        level="H"
-                        includeMargin={true}
-                        renderAs="svg"
-                      />
-                      <div className="small text-muted mt-3">
-                        <strong>{paymentMethods[selectedPaymentMethod].name}</strong><br />
-                        {paymentMethods[selectedPaymentMethod].description}
-                      </div>
-                    </div>
-
-                    {/* Amount */}
-                    <div className="text-center mb-4 p-3 bg-light rounded">
-                      <div className="small text-muted mb-2">Số tiền cần thanh toán</div>
-                      <div className="fs-2 fw-bold text-primary">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalAmount)}
-                      </div>
-                    </div>
-
-                    {/* Instructions */}
-                    <div className="alert alert-info mb-4">
-                      <div className="small mb-2">
-                        <strong>Hướng dẫn thanh toán</strong>
-                      </div>
-                      <div className="small">
-                        Sử dụng ứng dụng {paymentMethods[selectedPaymentMethod].name} để quét mã QR trên để chuyển khoản
+                    <div className="qr-code-container mb-3 p-2 bg-light border rounded-3 text-center d-flex flex-column align-items-center justify-content-center">
+                      {selectedPaymentMethod === 'bank_transfer' ? (
+                        <img 
+                          src={`https://img.vietqr.io/image/BIDV-5811675947-compact2.png?amount=${totalAmount}&addInfo=${bookingId}&accountName=BUSGO`}
+                          alt="VietQR"
+                          style={{ width: '180px', height: '180px', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <QRCode
+                          value={qrCodeContent}
+                          size={180}
+                          level="H"
+                          includeMargin={true}
+                          renderAs="svg"
+                        />
+                      )}
+                      <div className="small text-muted mt-2">
+                        <strong>Quét mã qua {paymentMethods[selectedPaymentMethod].name}</strong>
                       </div>
                     </div>
 
                     {/* Countdown Timer */}
-                    <div className="countdown-timer mb-4 text-center">
-                      <FiClock className="me-2" />
+                    <div className="countdown-timer mb-2 text-center">
+                      <FiClock className="me-1 text-primary" />
                       <span className="small text-muted">
-                        Còn <strong>{formatMinutesSeconds(countdownSeconds)}</strong> để hoàn tất thanh toán
+                        Thời gian giữ chỗ còn <strong>{formatMinutesSeconds(countdownSeconds)}</strong>
                       </span>
                     </div>
 
@@ -360,39 +418,38 @@ export default function PaymentPage() {
                     <button
                       onClick={handleConfirmPayment}
                       disabled={confirmLoading || countdownSeconds <= 0}
-                      className="btn btn-primary w-100 fw-600 py-3"
+                      className="btn btn-primary w-100 fw-bold py-2 shadow-sm"
                       style={{
                         backgroundColor: countdownSeconds <= 0 ? '#ccc' : '#0066cc',
-                        borderColor: countdownSeconds <= 0 ? '#ccc' : '#0066cc'
+                        borderColor: countdownSeconds <= 0 ? '#ccc' : '#0066cc',
+                        borderRadius: '8px'
                       }}
                     >
                       {confirmLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Đang xác nhận...
+                          Đang xử lý...
                         </>
                       ) : countdownSeconds <= 0 ? (
                         'Hết thời gian'
+                      ) : selectedPaymentMethod === 'vnpay' ? (
+                        'Thanh toán qua VNPay'
                       ) : (
                         'Xác nhận đã chuyển khoản'
                       )}
                     </button>
 
                     {countdownSeconds <= 0 && (
-                      <div className="alert alert-warning mt-3 w-100 small text-center mb-0">
+                      <div className="alert alert-warning mt-2 w-100 small text-center mb-0 py-1">
                         Thời gian chờ đã hết. Vui lòng quay lại trang trước để thử lại.
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="d-flex flex-column align-items-center justify-content-center h-100">
-                    <div className="text-center">
-                      <div className="display-1 mb-3">👈</div>
-                      <h5 className="fw-bold text-neutral-900 mb-2">Chọn phương thức thanh toán</h5>
-                      <p className="text-muted small">
-                        Vui lòng chọn phương thức thanh toán ở bên trái để tiếp tục
-                      </p>
-                    </div>
+                  <div className="text-center py-4">
+                    <p className="text-muted small">
+                      Vui lòng chọn phương thức thanh toán để tiếp tục
+                    </p>
                   </div>
                 )}
               </div>

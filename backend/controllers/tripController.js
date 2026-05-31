@@ -103,6 +103,32 @@ const ensureTripsExist = async (pool, diemDi, diemDen, dateStr) => {
   }
 };
 
+// Helper function to release expired seats (held > 5 mins)
+const releaseExpiredSeats = async (pool) => {
+  try {
+    await pool.request().query(`
+      DECLARE @ExpiredTickets TABLE (maVe INT, maGhe INT);
+
+      INSERT INTO @ExpiredTickets (maVe, maGhe)
+      SELECT maVe, maGhe FROM VeDienTu 
+      WHERE trangThaiVe = 'da_dat' AND DATEDIFF(minute, ngayDatVe, GETDATE()) >= 5;
+
+      IF EXISTS (SELECT 1 FROM @ExpiredTickets)
+      BEGIN
+        UPDATE VeDienTu 
+        SET trangThaiVe = 'da_huy' 
+        WHERE maVe IN (SELECT maVe FROM @ExpiredTickets);
+
+        UPDATE GheNgoi 
+        SET trangThaiGhe = 'trong' 
+        WHERE maGhe IN (SELECT maGhe FROM @ExpiredTickets WHERE maGhe IS NOT NULL);
+      END
+    `);
+  } catch (err) {
+    console.error('Error releasing expired seats:', err);
+  }
+};
+
 // @desc    Tìm kiếm chuyến xe
 // @route   GET /api/trips/search
 // @access  Public
@@ -111,6 +137,7 @@ const searchTrips = async (req, res) => {
 
   try {
     const pool = await sql.connect();
+    releaseExpiredSeats(pool).catch(e => console.error(e));
 
     if (from && to && date) {
       // NOTE: Auto-generate trips logic is temporarily disabled because BusGo_DB_Updated.sql 
@@ -201,7 +228,7 @@ const searchTrips = async (req, res) => {
         arrivalTime: formatTime(row.thoiGianDen),
         duration: calculateDuration(row.thoiGianDi, row.thoiGianDen),
         busType: row.loaiXe,
-        seatsAvailable: row.soGheConTrong,
+        seatsAvailable: row.tongSoGhe - occupiedSeats.length,
         totalSeats: row.tongSoGhe,
         seats: row.tongSoGhe,
         price: row.giaCoBan,
@@ -230,6 +257,8 @@ const getTripById = async (req, res) => {
 
   try {
     const pool = await sql.connect();
+    releaseExpiredSeats(pool).catch(e => console.error(e));
+
     const result = await pool.request()
       .input('maChuyenXe', sql.Int, id)
       .query(`
@@ -290,7 +319,7 @@ const getTripById = async (req, res) => {
       arrivalTime: formatTime(row.thoiGianDen),
       duration: calculateDuration(row.thoiGianDi, row.thoiGianDen),
       busType: row.loaiXe,
-      seatsAvailable: row.soGheConTrong,
+      seatsAvailable: row.tongSoGhe - occupiedSeats.length,
       totalSeats: row.tongSoGhe,
       seats: row.tongSoGhe,
       price: row.giaCoBan,

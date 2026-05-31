@@ -39,8 +39,8 @@ export default function ETicketPage() {
     return () => clearTimeout(timer)
   }, [state, navigate])
 
-  // Mock ticket data if not coming from payment page
-  const ticketData = state || {
+  // Mock ticket data if not coming from payment page or if state is incomplete
+  const ticketData = state?.trip ? state : {
     trip: {
       from: 'Hà Nội',
       to: 'Sài Gòn',
@@ -52,7 +52,8 @@ export default function ETicketPage() {
     passengerInfo: {
       firstName: 'Nguyễn',
       lastName: 'Văn A'
-    }
+    },
+    ...state // merge paymentStatus if it exists
   }
 
   const handleDownload = () => {

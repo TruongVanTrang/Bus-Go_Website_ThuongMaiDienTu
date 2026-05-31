@@ -25,8 +25,16 @@ const protect = async (req, res, next) => {
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Không được phép truy cập, không có token' });
+    return res.status(401).json({ message: 'Không được phép truy cập, không có token' });
   }
 };
 
-module.exports = { protect };
+const admin = (req, res, next) => {
+  if (req.user && req.user.role === 'ADMIN') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Không được phép truy cập, yêu cầu quyền quản trị viên' });
+  }
+};
+
+module.exports = { protect, admin };

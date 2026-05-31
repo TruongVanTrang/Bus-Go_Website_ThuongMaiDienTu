@@ -82,13 +82,17 @@ export default function UserHistory() {
     setConsignments([])
   }, [navigate])
 
-  // Get trip status (upcoming, completed, cancelled)
+  // Get trip status based on DB tripStatus
   const getTripStatus = (booking) => {
     if (booking.status === 'Da huy') return 'cancelled'
     
+    if (booking.tripStatus === 'da_len_lich') return 'upcoming'
+    if (booking.tripStatus === 'dang_khoi_hanh') return 'in_transit'
+    if (booking.tripStatus === 'da_hoan_thanh') return 'completed'
+    
+    // Fallback if tripStatus is missing
     const departureDate = new Date(booking.date + ' ' + booking.departureTime)
     const now = new Date()
-    
     if (departureDate > now) return 'upcoming'
     return 'completed'
   }
@@ -260,17 +264,21 @@ export default function UserHistory() {
   // Get status badge info
   const getStatusBadgeInfo = (booking) => {
     const status = getTripStatus(booking)
-    const baseStyle = { padding: '0.4rem 0.8rem', borderRadius: '0.5rem', color: 'white', fontSize: '0.75rem', fontWeight: 700 }
+    const baseStyle = { padding: '0.4rem 0.8rem', borderRadius: '0.5rem', color: 'white', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }
     
     if (booking.status === 'Da huy') {
-      return { ...baseStyle, backgroundColor: '#ef4444', text: 'Đã hủy' }
+      return { ...baseStyle, backgroundColor: '#ef4444', text: 'Đã hủy', icon: <FiX size={14} /> }
     }
     
     if (status === 'upcoming') {
-      return { ...baseStyle, backgroundColor: '#f59e0b', text: 'Sắp khởi hành' }
+      return { ...baseStyle, backgroundColor: '#f59e0b', text: 'Sắp khởi hành', icon: <FiClock size={14} /> }
     }
     
-    return { ...baseStyle, backgroundColor: '#10b981', text: 'Đã hoàn thành' }
+    if (status === 'in_transit') {
+      return { ...baseStyle, backgroundColor: '#3b82f6', text: 'Đang di chuyển', icon: <FiTruck size={14} /> }
+    }
+    
+    return { ...baseStyle, backgroundColor: '#10b981', text: 'Đã hoàn thành', icon: <FiCheckCircle size={14} /> }
   }
 
   if (loading) {
@@ -354,6 +362,12 @@ export default function UserHistory() {
                 Đã hoàn thành ({bookings.filter(b => getTripStatus(b) === 'completed').length})
               </button>
               <button
+                className={`filter-btn ${statusFilter === 'in_transit' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('in_transit')}
+              >
+                Đang di chuyển ({bookings.filter(b => getTripStatus(b) === 'in_transit').length})
+              </button>
+              <button
                 className={`filter-btn ${statusFilter === 'cancelled' ? 'active' : ''}`}
                 onClick={() => setStatusFilter('cancelled')}
               >
@@ -371,7 +385,7 @@ export default function UserHistory() {
                     <div key={booking.id} className="booking-card">
                       {/* Status Badge */}
                       <div className="status-badge" style={statusBadge}>
-                        {statusBadge.text}
+                        {statusBadge.icon} {statusBadge.text}
                       </div>
 
                       {/* Card Content */}
@@ -509,12 +523,15 @@ export default function UserHistory() {
                 {watchlist.map(trip => (
                   <div key={trip.id} className="watchlist-card">
                     <div className="watchlist-content">
-                      <div className="route-info">
+                      <div className="route-info d-flex align-items-center gap-2">
+                        <FiHeart size={24} className="text-danger" />
                         <div className="from-to">
-                          <div className="fw-bold fs-5 text-neutral-900">
-                            {trip.from} <span style={{ color: '#999' }}>→</span> {trip.to}
+                          <div className="fw-bold fs-5 text-neutral-900 d-flex align-items-center gap-2">
+                            {trip.from} <FiMapPin size={18} style={{ color: '#0066cc' }} /> {trip.to}
                           </div>
-                          <div className="text-muted small">Chuyến xe cụ thể • {trip.busType ? (trip.busType === 'bus' ? 'Xe Bus' : 'Xe Minibus') : 'Chuyên dụng'}</div>
+                          <div className="text-muted small d-flex align-items-center gap-1 mt-1">
+                            <FiTruck size={14} /> Chuyến xe cụ thể • {trip.busType ? (trip.busType === 'bus' ? 'Xe Bus' : 'Xe Minibus') : 'Chuyên dụng'}
+                          </div>
                         </div>
                       </div>
 
@@ -522,23 +539,23 @@ export default function UserHistory() {
 
                       <div className="route-stats">
                         <div className="stat">
-                          <span className="label">Thời gian:</span>
+                          <span className="label d-flex align-items-center gap-1"><FiClock size={14}/> Thời gian:</span>
                           <span className="value">{trip.departureTime} • {trip.date}</span>
                         </div>
                         <div className="stat">
-                          <span className="label">Nhà xe:</span>
+                          <span className="label d-flex align-items-center gap-1"><FiStar size={14}/> Nhà xe:</span>
                           <span className="value">{trip.operator}</span>
                         </div>
                         <div className="stat">
-                          <span className="label">Giá:</span>
+                          <span className="label d-flex align-items-center gap-1"><FiDollarSign size={14}/> Giá:</span>
                           <span className="value fw-bold" style={{ color: '#0066cc' }}>
                             {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(trip.price)}
                           </span>
                         </div>
                         {trip.averageRating && (
                           <div className="stat">
-                            <span className="label">Đánh giá:</span>
-                            <span className="value">⭐ {trip.averageRating}</span>
+                            <span className="label d-flex align-items-center gap-1"><FiStar size={14}/> Đánh giá:</span>
+                            <span className="value text-warning fw-bold">{trip.averageRating}</span>
                           </div>
                         )}
                       </div>
@@ -558,8 +575,8 @@ export default function UserHistory() {
                           <FiTrash2 size={16} />
                           Xóa khỏi yêu thích
                         </button>
-                        <a
-                          href={`/search?from=${trip.from}&to=${trip.to}`}
+                        <button
+                          onClick={() => navigate(`/search?from=${trip.from}&to=${trip.to}`)}
                           className="btn-action"
                           style={{
                             backgroundColor: '#0066cc',
@@ -569,7 +586,7 @@ export default function UserHistory() {
                           }}
                         >
                           Tìm chuyến tương tự
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -859,7 +876,7 @@ export default function UserHistory() {
                 </div>
 
                 {/* Cargo Tracking Timeline - Chỉ hiển thị khi chuyến đã hoàn thành hoặc đã hủy */}
-                {selectedBooking.cargoInfo?.type !== 'none' && getTripStatus(selectedBooking) !== 'upcoming' && (
+                {selectedBooking.cargoInfo?.type !== 'none' && getTripStatus(selectedBooking) !== 'upcoming' && selectedBooking.trackingInfo && (
                   <div className="cargo-tracking mt-4">
                     <h6 className="fw-bold mb-3">Theo dõi hàng hóa</h6>
                     <div className="timeline">

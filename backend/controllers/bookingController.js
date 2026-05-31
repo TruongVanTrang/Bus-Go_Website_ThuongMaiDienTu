@@ -49,10 +49,13 @@ const mapMethodName = (methodStr) => {
 // @route   POST /api/bookings
 // @access  Private
 const createBooking = async (req, res) => {
-  const { maChuyenXe, selectedSeats, passengerInfo, cargoInfo, paymentMethod } = req.body;
+  console.log('createBooking req.body:', req.body);
+  const { maChuyenXe, selectedSeats, passengerQuantity, passengerInfo, cargoInfo, paymentMethod } = req.body;
   const maKhachHang = req.user.id;
 
-  if (!maChuyenXe || !selectedSeats || selectedSeats.length === 0 || !passengerInfo) {
+  let finalSeats = selectedSeats || [];
+
+  if (!maChuyenXe || !passengerInfo || (finalSeats.length === 0 && (!passengerQuantity || passengerQuantity <= 0))) {
     return res.status(400).json({ message: 'Thiếu thông tin đặt vé bắt buộc' });
   }
 
@@ -82,11 +85,28 @@ const createBooking = async (req, res) => {
     await transaction.begin();
 
     try {
+      if (finalSeats.length === 0 && passengerQuantity > 0) {
+        // Tự động cấp phát ghế trống cho các tuyến xe không có sơ đồ (như xe 16 chỗ)
+        const existingResult = await transaction.request()
+          .input('maChuyenXe', sql.Int, maChuyenXe)
+          .query('SELECT soGhe FROM GheNgoi WHERE maChuyenXe = @maChuyenXe');
+        
+        const existingSeats = new Set(existingResult.recordset.map(r => r.soGhe));
+        let nextSeatNum = 1;
+        for (let k = 0; k < passengerQuantity; k++) {
+          while (existingSeats.has(String(nextSeatNum))) {
+            nextSeatNum++;
+          }
+          finalSeats.push(String(nextSeatNum));
+          existingSeats.add(String(nextSeatNum));
+        }
+      }
+
       const createdBookingId = 'BK' + Date.now();
       const firstTicketIdRef = { value: null };
 
-      for (let i = 0; i < selectedSeats.length; i++) {
-        const seatName = String(selectedSeats[i]);
+      for (let i = 0; i < finalSeats.length; i++) {
+        const seatName = String(finalSeats[i]);
 
         // 3a. Kiểm tra/Chèn ghế ngồi
         let seatId;
@@ -220,6 +240,7 @@ const getMyTickets = async (req, res) => {
           td.diemDen,
           cx.thoiGianDi,
           cx.thoiGianDen,
+          cx.trangThaiChuyen,
           gh.soGhe,
           ptt.tenPhuongThuc
         FROM VeDienTu vdt
@@ -256,6 +277,7 @@ const getMyTickets = async (req, res) => {
           seats: [t.soGhe],
           price: Number(t.giaVe),
           status: t.trangThaiVe === 'da_thanh_toan' ? 'Da thanh toan' : (t.trangThaiVe === 'da_huy' ? 'Da huy' : 'Cho thanh toan'),
+          tripStatus: t.trangThaiChuyen,
           operator: 'BusGo',
           bookingDate: formatDate(t.ngayDatVe),
           passengerName: t.hoTenHanhKhach,

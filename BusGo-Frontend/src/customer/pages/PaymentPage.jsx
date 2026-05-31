@@ -140,6 +140,7 @@ export default function PaymentPage() {
         const payload = {
           maChuyenXe: bookingData.trip.id,
           selectedSeats: bookingData.selectedSeats,
+          passengerQuantity: bookingData.passengerQuantity || 0,
           passengerInfo: bookingData.passengerInfo,
           cargoInfo: bookingData.cargoInfo,
           paymentMethod: selectedPaymentMethod

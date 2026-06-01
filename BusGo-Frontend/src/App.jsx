@@ -7,6 +7,7 @@ import HomePage from './customer/pages/HomePage'
 import SearchResultsPage from './customer/pages/SearchResultsPage'
 import BookingPage from './customer/pages/BookingPage'
 import PaymentPage from './customer/pages/PaymentPage'
+import VNPayReturnPage from './customer/pages/VNPayReturnPage'
 import CargoConsignmentPage from './customer/pages/CargoConsignmentPage'
 import ETicketPage from './customer/pages/ETicketPage'
 import UserHistory from './customer/pages/UserHistory'
@@ -111,6 +112,19 @@ function App() {
               <Header />
               <main className="flex-grow-1">
                 <PaymentPage />
+              </main>
+              <Footer />
+              <ChatBot />
+            </div>
+          }
+        />
+        <Route
+          path="/vnpay-return"
+          element={
+            <div className="d-flex flex-column min-vh-100">
+              <Header />
+              <main className="flex-grow-1">
+                <VNPayReturnPage />
               </main>
               <Footer />
               <ChatBot />

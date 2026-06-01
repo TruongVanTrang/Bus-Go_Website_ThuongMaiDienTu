@@ -1,9 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiMapPin, FiCalendar, FiChevronRight, FiZap, FiWifi, FiActivity } from 'react-icons/fi'
-import { MdDirectionsBus } from 'react-icons/md'
+import { FiMapPin, FiCalendar, FiClock } from 'react-icons/fi'
 import { BUS_CATEGORIES, BUS_TYPES, CITY_STOPS, INTERCITY_ROUTES, DEPARTURE_TIMES } from '../../utils/constants'
-import './SearchBar.css'
 
 export default function SearchBar() {
   const navigate = useNavigate()
@@ -76,215 +74,189 @@ export default function SearchBar() {
   }
 
   return (
-    <div className="search-bar-container">
-      <div className="search-bar-content">
-        <h1 className="search-bar-title mb-4" style={{ color: '#FFFFFF' }}>
+    <div 
+      className="relative w-full min-h-[600px] flex items-center justify-center bg-cover bg-center py-20 px-4"
+      style={{ backgroundImage: "url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop')" }}
+    >
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/40"></div>
+      
+      <div className="relative z-10 w-full max-w-6xl flex flex-col items-center">
+        
+        <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-4 text-center drop-shadow-md">
           Tìm và đặt vé xe thông minh dễ dàng
         </h1>
-        <p className="search-bar-subtitle mb-4" style={{ color: '#FFFFFF' }}>
+        <p className="text-lg md:text-xl text-white/95 mb-8 text-center font-medium drop-shadow">
           Khám phá các tuyến xe nội - ngoại thành Đà Nẵng của chúng tôi - BusGo
         </p>
 
         {/* Smart Suggestion Tags */}
-        <div className="smart-tags-section mb-4">
-          <p className="smart-tags-label">Tìm kiếm nhanh:</p>
-          <div className="smart-tags-container">
-            {smartTags.map(tag => (
-              <button
-                key={tag.id}
-                className="smart-tag-btn"
-                onClick={() => {
-                  setShowSmartTags(false)
-                  navigate('/search', { state: tag.state })
-                }}
-                title={tag.label}
-              >
-                <span className="tag-icon">{tag.icon}</span>
-                <span className="tag-label">{tag.label}</span>
-              </button>
-            ))}
-          </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-10 w-full max-w-4xl">
+          <span className="text-white font-bold text-sm uppercase tracking-wide drop-shadow-md hidden md:inline-block mr-2">Tìm kiếm nhanh:</span>
+          {smartTags.map(tag => (
+            <button
+              key={tag.id}
+              type="button"
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/40 rounded-full text-white text-sm font-semibold transition-all backdrop-blur-md shadow-sm"
+              onClick={() => {
+                setShowSmartTags(false)
+                navigate('/search', { state: tag.state })
+              }}
+              title={tag.label}
+            >
+              <span>{tag.icon}</span>
+              <span>{tag.label}</span>
+            </button>
+          ))}
         </div>
 
-        {/* Buttons and Search Form Wrapper */}
-        <div className="search-wrapper">
-          {/* Category Selection Buttons */}
-          <div className="route-type-buttons">
+        {/* Search Card */}
+        <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl p-6 md:p-8 animate-[fadeIn_0.5s_ease-out]">
+          {/* Category Tabs */}
+          <div className="flex justify-center md:justify-start gap-4 mb-6 border-b border-slate-100 pb-4">
             <button
               type="button"
-              className={`route-type-btn ${formData.category === 'city' ? 'active' : ''}`}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[15px] transition-all ${
+                formData.category === 'city' 
+                ? 'bg-primary-50 text-primary-600 border-2 border-primary-500 shadow-sm' 
+                : 'bg-white text-slate-500 hover:bg-slate-50 border-2 border-transparent'
+              }`}
               onClick={() => handleCategorySelect('city')}
             >
-              <span className="btn-icon">🏢</span>
-              <span className="btn-text">Nội thành</span>
+              <span className="text-xl">🏢</span>
+              Tuyến Nội thành
             </button>
             <button
               type="button"
-              className={`route-type-btn ${formData.category === 'interCity' ? 'active' : ''}`}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[15px] transition-all ${
+                formData.category === 'interCity' 
+                ? 'bg-primary-50 text-primary-600 border-2 border-primary-500 shadow-sm' 
+                : 'bg-white text-slate-500 hover:bg-slate-50 border-2 border-transparent'
+              }`}
               onClick={() => handleCategorySelect('interCity')}
             >
-              <span className="btn-icon">🗺️</span>
-              <span className="btn-text">Ngoại thành</span>
+              <span className="text-xl">🗺️</span>
+              Tuyến Ngoại thành
             </button>
           </div>
 
           {/* Search Form */}
-          <form onSubmit={handleSearch} className="search-form">
-            <div className="row g-3">
-              {/* From */}
-              <div className="col-lg-3 col-md-6">
-                <div className="search-input-group">
-                  <label className="form-label fw-600 mb-2">
-                    <FiMapPin className="me-2" />
-                    Điểm đi
-                  </label>
-                  {formData.category === 'city' ? (
-                    <select
-                      className="form-control form-input"
-                      name="from"
-                      value={formData.from}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn điểm đi --</option>
-                      {CITY_STOPS.map((stop, idx) => (
-                        <option key={idx} value={stop}>{stop}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      className="form-control form-input"
-                      name="from"
-                      value={formData.from}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn điểm đi --</option>
-                      {Array.from(new Set(INTERCITY_ROUTES.map(r => r.from))).map((city, idx) => (
-                        <option key={idx} value={city}>{city}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
+          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* From */}
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-700 text-[13px] uppercase tracking-wide flex items-center gap-2">
+                <FiMapPin className="text-primary-500 w-4 h-4" />
+                Điểm đi
+              </label>
+              <select
+                className="w-full border border-slate-300 rounded-xl px-4 py-3.5 text-[15px] text-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all cursor-pointer bg-slate-50 hover:bg-white"
+                name="from"
+                value={formData.from}
+                onChange={handleChange}
+              >
+                <option value="">-- Chọn điểm đi --</option>
+                {formData.category === 'city' ? (
+                  CITY_STOPS.map((stop, idx) => (
+                    <option key={idx} value={stop}>{stop}</option>
+                  ))
+                ) : (
+                  Array.from(new Set(INTERCITY_ROUTES.map(r => r.from))).map((city, idx) => (
+                    <option key={idx} value={city}>{city}</option>
+                  ))
+                )}
+              </select>
+            </div>
 
-              {/* To */}
-              <div className="col-lg-3 col-md-6">
-                <div className="search-input-group">
-                  <label className="form-label fw-600 mb-2">
-                    <FiMapPin className="me-2" />
-                    Điểm đến
-                  </label>
-                  {formData.category === 'city' ? (
-                    <select
-                      className="form-control form-input"
-                      name="to"
-                      value={formData.to}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn điểm đến --</option>
-                      {CITY_STOPS.map((stop, idx) => (
-                        <option key={idx} value={stop}>{stop}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      className="form-control form-input"
-                      name="to"
-                      value={formData.to}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn điểm đến --</option>
-                      {formData.from && Array.from(new Set(INTERCITY_ROUTES.filter(r => r.from === formData.from).map(r => r.to))).map((city, idx) => (
-                        <option key={idx} value={city}>{city}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
+            {/* To */}
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-700 text-[13px] uppercase tracking-wide flex items-center gap-2">
+                <FiMapPin className="text-primary-500 w-4 h-4" />
+                Điểm đến
+              </label>
+              <select
+                className="w-full border border-slate-300 rounded-xl px-4 py-3.5 text-[15px] text-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all cursor-pointer bg-slate-50 hover:bg-white"
+                name="to"
+                value={formData.to}
+                onChange={handleChange}
+              >
+                <option value="">-- Chọn điểm đến --</option>
+                {formData.category === 'city' ? (
+                  CITY_STOPS.map((stop, idx) => (
+                    <option key={idx} value={stop}>{stop}</option>
+                  ))
+                ) : (
+                  formData.from && Array.from(new Set(INTERCITY_ROUTES.filter(r => r.from === formData.from).map(r => r.to))).map((city, idx) => (
+                    <option key={idx} value={city}>{city}</option>
+                  ))
+                )}
+              </select>
+            </div>
 
-              {/* Date */}
-              <div className="col-lg-2 col-md-6">
-                <div className="search-input-group">
-                  <label className="form-label fw-600 mb-2">
-                    <FiCalendar className="me-2" />
-                    Ngày đi
-                  </label>
-                  <input
-                    type="date"
-                    className="form-control form-input"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                    min={new Date().toISOString().split('T')[0]}
-                  />
-                </div>
-              </div>
+            {/* Date */}
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-700 text-[13px] uppercase tracking-wide flex items-center gap-2">
+                <FiCalendar className="text-primary-500 w-4 h-4" />
+                Ngày đi
+              </label>
+              <input
+                type="date"
+                className="w-full border border-slate-300 rounded-xl px-4 py-3.5 text-[15px] text-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all cursor-pointer bg-slate-50 hover:bg-white"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
 
-              {/* Departure Time */}
-              <div className="col-lg-2 col-md-6">
-                <div className="search-input-group">
-                  <label className="form-label fw-600 mb-2">
-                    <FiCalendar className="me-2" />
-                    Giờ khởi hành
-                  </label>
-                  <select
-                    className="form-control form-input"
-                    name="departureTime"
-                    value={formData.departureTime}
-                    onChange={handleChange}
-                  >
-                    <option value="">-- Tất cả giờ --</option>
-                    {Object.entries(DEPARTURE_TIMES).map(([key, time]) => (
-                      <option key={key} value={key}>
-                        {time.label} ({time.start}-{time.end})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            {/* Departure Time */}
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-700 text-[13px] uppercase tracking-wide flex items-center gap-2">
+                <FiClock className="text-primary-500 w-4 h-4" />
+                Giờ khởi hành
+              </label>
+              <select
+                className="w-full border border-slate-300 rounded-xl px-4 py-3.5 text-[15px] text-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all cursor-pointer bg-slate-50 hover:bg-white"
+                name="departureTime"
+                value={formData.departureTime}
+                onChange={handleChange}
+              >
+                <option value="">-- Tất cả giờ --</option>
+                {Object.entries(DEPARTURE_TIMES).map(([key, time]) => (
+                  <option key={key} value={key}>
+                    {time.label} ({time.start}-{time.end})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              {/* Search Button */}
-              <div className="col-lg-2 col-md-12 d-flex align-items-end">
-                <button
-                  type="submit"
-                  className="btn btn-primary w-100"
-                  style={{
-                    backgroundColor: 'var(--color-primary-600)',
-                    borderColor: 'var(--color-primary-600)',
-                    padding: '0.75rem 1.5rem',
-                    fontWeight: 600,
-                    height: '48px'
-                  }}
-                >
-                  Tìm vé
-                </button>
-              </div>
+            {/* Submit Button */}
+            <div className="flex items-end">
+              <button
+                type="submit"
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 flex justify-center items-center gap-2 h-[50px] md:h-[54px]"
+              >
+                Tìm vé xe
+              </button>
             </div>
           </form>
         </div>
 
         {/* Quick Stats */}
-        <div className="row mt-5 pt-4 border-top border-white border-opacity-25 justify-content-around">
-          <div className="col-auto text-center">
-            <div className="fs-5 fw-bold text-white">
-              500+
-            </div>
-            <div className="text-white-50 small">Tuyến đường BusGo</div>
+        <div className="grid grid-cols-3 gap-4 md:gap-12 mt-12 pt-8 border-t border-white/20 w-full max-w-4xl">
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-extrabold text-white mb-1 drop-shadow-sm">500+</div>
+            <div className="text-white/90 text-sm md:text-base font-medium">Tuyến đường</div>
           </div>
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-extrabold text-white mb-1 drop-shadow-sm">10,000+</div>
+            <div className="text-white/90 text-sm md:text-base font-medium">Chuyến/ngày</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-extrabold text-white mb-1 drop-shadow-sm">100K+</div>
+            <div className="text-white/90 text-sm md:text-base font-medium">Khách hài lòng</div>
+          </div>
+        </div>
 
-          <div className="col-auto text-center">
-            <div className="fs-5 fw-bold text-white">
-              10,000+
-            </div>
-            <div className="text-white-50 small">Chuyến đi mỗi ngày</div>
-          </div>
-
-          <div className="col-auto text-center">
-            <div className="fs-5 fw-bold text-white">
-              100K+
-            </div>
-            <div className="text-white-50 small">Khách BusGo hài lòng</div>
-          </div>
-      </div>
       </div>
     </div>
   )

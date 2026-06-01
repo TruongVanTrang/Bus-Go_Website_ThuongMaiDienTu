@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { FiMapPin, FiClock, FiChevronDown } from 'react-icons/fi'
-import './BusStopTimeline.css'
 
 export default function BusStopTimeline({ stops = [] }) {
   const [expanded, setExpanded] = useState(false)
@@ -64,102 +63,108 @@ export default function BusStopTimeline({ stops = [] }) {
   const hasHiddenStops = displayStops.length > 3
 
   const calculateDuration = (startTime, endTime) => {
-    const [startH, startM] = startTime.split(':').map(Number)
-    const [endH, endM] = endTime.split(':').map(Number)
-    const startMins = startH * 60 + startM
-    const endMins = endH * 60 + endM
-    const duration = endMins - startMins
-    if (duration === 0) return 'Tại đây'
-    const hours = Math.floor(duration / 60)
-    const mins = duration % 60
-    if (hours === 0) return `${mins}p`
-    return `${hours}h ${mins}p`
+    if (!startTime || !endTime) return 'Không rõ'
+    try {
+      const [startH, startM] = startTime.split(':').map(Number)
+      const [endH, endM] = endTime.split(':').map(Number)
+      const startMins = startH * 60 + startM
+      let endMins = endH * 60 + endM
+      if (endMins < startMins) endMins += 24 * 60 // Qua ngày
+      
+      const duration = endMins - startMins
+      if (duration === 0) return 'Tại đây'
+      
+      const hours = Math.floor(duration / 60)
+      const mins = duration % 60
+      if (hours === 0) return `${mins}p`
+      return `${hours}h ${mins}p`
+    } catch {
+      return ''
+    }
   }
 
-  const totalDuration = calculateDuration(
-    displayStops[0].departureTime,
-    displayStops[displayStops.length - 1].arrivalTime
-  )
+  const totalDuration = displayStops[0]?.departureTime && displayStops[displayStops.length - 1]?.arrivalTime
+    ? calculateDuration(displayStops[0].departureTime, displayStops[displayStops.length - 1].arrivalTime)
+    : ''
 
   return (
-    <div className="bus-stop-timeline">
-      <div className="timeline-header">
-        <div className="timeline-title">
-          <FiMapPin size={20} className="title-icon" />
-          <h3>Lộ Trình Chi Tiết</h3>
+    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+      
+      {/* Header */}
+      <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FiMapPin className="text-blue-500 text-lg" />
+          <h3 className="font-bold text-slate-800 text-sm">Lộ Trình Chi Tiết</h3>
         </div>
-        <div className="timeline-stats">
-          <span className="stat-item">
-            <FiClock size={16} />
+        {totalDuration && (
+          <div className="flex items-center gap-1.5 text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md">
+            <FiClock size={14} />
             {totalDuration}
-          </span>
-        </div>
+          </div>
+        )}
       </div>
 
-      <div className="timeline-container">
-        <div className="timeline-path">
-          {visibleStops.length > 1 && (
-            <div className="timeline-connector" style={{
-              height: `calc((${visibleStops.length - 1}) * 120px + 60px)`,
-              left: '24px'
-            }}></div>
-          )}
+      {/* Timeline */}
+      <div className="p-5 relative">
+        <div className="absolute left-[29px] top-6 bottom-6 w-0.5 bg-slate-200"></div>
 
+        <div className="space-y-6">
           {visibleStops.map((stop, index) => (
-            <div key={stop.id} className="timeline-item">
+            <div key={stop.id || index} className="relative flex gap-4 items-start group">
+              
               {/* Node */}
-              <div className={`timeline-node ${stop.isFirst ? 'node-first' : ''} ${stop.isLast ? 'node-last' : ''}`}>
-                <div className="node-inner">
-                  {stop.isFirst && <span className="node-icon">🚌</span>}
-                  {stop.isLast && <span className="node-icon">🏁</span>}
-                  {!stop.isFirst && !stop.isLast && (
-                    <span className="node-circle"></span>
-                  )}
-                </div>
+              <div className="relative z-10 w-5 h-5 mt-0.5 shrink-0 flex items-center justify-center">
+                {stop.isFirst || index === 0 ? (
+                  <div className="w-5 h-5 rounded-full bg-blue-100 border-2 border-blue-500 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  </div>
+                ) : stop.isLast || index === displayStops.length - 1 ? (
+                  <div className="w-5 h-5 rounded-full bg-amber-100 border-2 border-amber-500 flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                  </div>
+                ) : (
+                  <div className="w-3 h-3 rounded-full bg-white border-2 border-slate-400 group-hover:border-blue-400 transition-colors"></div>
+                )}
               </div>
 
               {/* Content */}
-              <div className="timeline-content">
-                <div className="stop-header">
-                  <h4 className="stop-name">{stop.name}</h4>
-                  <span className={`stop-badge ${stop.isFirst ? 'badge-start' : stop.isLast ? 'badge-end' : 'badge-middle'}`}>
-                    {stop.isFirst ? '🚆 Điểm đầu' : stop.isLast ? '🎯 Điểm cuối' : '🛑 Dừng lại'}
+              <div className="flex-1 pb-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="font-bold text-slate-800 text-sm">{stop.name}</h4>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-wider ${
+                    (stop.isFirst || index === 0) ? 'bg-blue-50 text-blue-600' :
+                    (stop.isLast || index === displayStops.length - 1) ? 'bg-amber-50 text-amber-600' :
+                    'bg-slate-100 text-slate-500'
+                  }`}>
+                    {(stop.isFirst || index === 0) ? 'Điểm đầu' : (stop.isLast || index === displayStops.length - 1) ? 'Điểm cuối' : 'Dừng lại'}
                   </span>
                 </div>
+                
+                {stop.address && <p className="text-xs text-slate-500 mb-2">{stop.address}</p>}
 
-                <p className="stop-address">{stop.address}</p>
-
-                <div className="stop-times">
-                  <div className="time-item">
-                    <span className="time-label">
-                      {stop.isFirst ? '🚗 Khởi hành' : '📍 Đến'}
-                    </span>
-                    <span className="time-value">{stop.arrivalTime}</span>
+                <div className="flex items-center gap-3 text-xs font-semibold bg-slate-50 border border-slate-100 rounded-lg px-3 py-2 w-fit">
+                  <div className="text-slate-600">
+                    <span className="text-slate-400 mr-1.5">Đến</span>
+                    {stop.arrivalTime || stop.time}
                   </div>
-
-                  {!stop.isFirst && (
+                  
+                  {!(stop.isLast || index === displayStops.length - 1) && stop.departureTime && (
                     <>
-                      <span className="time-separator">→</span>
-                      <div className="time-item">
-                        <span className="time-label">
-                          {stop.isLast ? '🏁 Kết thúc' : '🚗 Rời'}
-                        </span>
-                        <span className="time-value">{stop.departureTime}</span>
+                      <span className="text-slate-300">→</span>
+                      <div className="text-slate-600">
+                        <span className="text-slate-400 mr-1.5">Rời</span>
+                        {stop.departureTime}
                       </div>
                     </>
                   )}
                 </div>
 
-                {stop.waitingTime && (
-                  <div className="stop-duration">
-                    ⏱️ Dừng {stop.waitingTime} phút
-                  </div>
-                )}
-
-                {/* Show segment duration */}
-                {index < visibleStops.length - 1 && (
-                  <div className="segment-duration">
-                    ➜ Đến điểm tiếp theo: {calculateDuration(stop.departureTime, visibleStops[index + 1].arrivalTime)}
+                {/* Show segment duration to next stop if we can */}
+                {index < visibleStops.length - 1 && visibleStops[index + 1]?.arrivalTime && stop.departureTime && (
+                  <div className="mt-3 mb-1 ml-2 border-l-2 border-dashed border-slate-200 pl-3">
+                    <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
+                      ~ {calculateDuration(stop.departureTime, visibleStops[index + 1].arrivalTime)} di chuyển
+                    </span>
                   </div>
                 )}
               </div>
@@ -171,34 +176,14 @@ export default function BusStopTimeline({ stops = [] }) {
       {/* Expand/Collapse Button */}
       {hasHiddenStops && (
         <button
-          className="timeline-expand-btn"
+          className="w-full py-3 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 text-xs font-bold border-t border-slate-100 flex items-center justify-center gap-1.5 transition-colors"
           onClick={() => setExpanded(!expanded)}
         >
-          <FiChevronDown size={18} style={{
-            transform: expanded ? 'rotate(180deg)' : 'rotate(0)',
-            transition: 'transform 0.3s ease'
-          }} />
-          {expanded ? 'Thu gọn' : `Xem thêm (${displayStops.length - 3} điểm dừng)`}
+          {expanded ? 'Thu gọn lộ trình' : `Xem thêm ${displayStops.length - 3} điểm dừng`}
+          <FiChevronDown className={`transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} />
         </button>
       )}
 
-      {/* Route Summary */}
-      <div className="route-summary">
-        <div className="summary-item">
-          <span className="summary-label">Số điểm dừng:</span>
-          <span className="summary-value">{displayStops.length}</span>
-        </div>
-        <div className="summary-item">
-          <span className="summary-label">Thời gian chuyến:</span>
-          <span className="summary-value">{totalDuration}</span>
-        </div>
-        <div className="summary-item">
-          <span className="summary-label">Tuyến đường:</span>
-          <span className="summary-value">
-            {displayStops[0].name} → {displayStops[displayStops.length - 1].name}
-          </span>
-        </div>
-      </div>
     </div>
   )
 }

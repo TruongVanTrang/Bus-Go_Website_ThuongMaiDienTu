@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react'
-import { FiX, FiClock, FiMapPin, FiEdit2, FiWifi } from 'react-icons/fi'
-import { MdDirectionsBus } from 'react-icons/md'
-import './TripDetailsModal.css'
+import { useEffect } from 'react'
+import { FiX, FiClock, FiEdit2, FiWifi, FiCheck } from 'react-icons/fi'
+import BusStopTimeline from './BusStopTimeline'
+import { BUS_TYPES } from '../../utils/constants'
 
 export default function TripDetailsModal({ trip, onClose, onBook }) {
-  const [selectedSeats, setSelectedSeats] = useState([])
-
   // Khóa scroll body khi modal mở
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -17,164 +15,148 @@ export default function TripDetailsModal({ trip, onClose, onBook }) {
   if (!trip) return null
 
   const progressStops = trip.stops || []
+  const busTypeName = Object.values(BUS_TYPES).find(b => b.id === trip.busType)?.name || 
+    (trip.busType === '16-seater' ? 'Xe 16 chỗ' : trip.busType === '35-seater' ? 'Xe 35 chỗ' : trip.busType || 'Xe khách')
 
   return (
-    <div className="trip-details-modal-overlay" onClick={onClose}>
-      <div className="trip-details-modal" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <div 
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="modal-header">
-          <h2 className="fw-bold mb-0">Chi tiết chuyến xe</h2>
-          <button className="btn-close" onClick={onClose}>
-            <FiX size={24} />
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <h2 className="text-xl font-bold text-slate-900">Chi tiết chuyến xe</h2>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors shadow-sm"
+          >
+            <FiX size={18} />
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="modal-body">
-          {/* Trip Header */}
-          <div className="trip-header-info mb-4">
-            <div className="row align-items-center">
-              <div className="col-lg-4 col-md-5 mb-3 mb-md-0">
-                <div className="trip-time-info">
-                  <div className="departure">
-                    <div className="time fw-bold fs-4">{trip.departureTime}</div>
-                    <div className="from text-muted small">{trip.from}</div>
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* Left Column: Route & Info */}
+            <div className="lg:col-span-7 space-y-8">
+              
+              {/* Trip Time Info */}
+              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex items-center justify-between">
+                <div>
+                  <div className="text-3xl font-black text-slate-900 mb-1">{trip.departureTime}</div>
+                  <div className="text-sm font-medium text-slate-500">{trip.from}</div>
+                </div>
+                
+                <div className="flex flex-col items-center px-4">
+                  <div className="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1 bg-white px-2 py-1 rounded-full border border-slate-200">
+                    <FiClock /> {trip.duration}
                   </div>
-                  <div className="duration text-center my-3">
-                    <FiClock size={20} style={{ color: '#667eea' }} />
-                    <span className="ms-2 small fw-600">{trip.duration}</span>
+                  <div className="w-24 h-px bg-slate-300 relative">
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500"></div>
                   </div>
-                  <div className="arrival">
-                    <div className="time fw-bold fs-4">{trip.arrivalTime}</div>
-                    <div className="to text-muted small">{trip.to}</div>
+                </div>
+                
+                <div className="text-right">
+                  <div className="text-3xl font-black text-slate-900 mb-1">{trip.arrivalTime}</div>
+                  <div className="text-sm font-medium text-slate-500">{trip.to}</div>
+                </div>
+              </div>
+
+              {/* Grid Info */}
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Thông tin chung</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Nhà xe</div>
+                    <div className="font-bold text-slate-800">{trip.operator}</div>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Loại xe</div>
+                    <div className="font-bold text-slate-800 capitalize">{busTypeName}</div>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Ghế trống</div>
+                    <div className="font-bold text-green-600">{trip.seatsAvailable} <span className="text-slate-400 text-sm">/ {trip.totalSeats}</span></div>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Đánh giá</div>
+                    <div className="font-bold text-amber-500 flex items-center gap-1">
+                      ⭐ {trip.rating} <span className="text-slate-400 text-xs ml-1">({trip.reviewCount || 0})</span>
+                    </div>
+                  </div>
+                  <div className="col-span-2 sm:col-span-2 bg-blue-50 border border-blue-100 rounded-xl p-4">
+                    <div className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Giá vé</div>
+                    <div className="font-black text-2xl text-blue-600 leading-none">
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(trip.price)}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="col-lg-8 col-md-7">
-                <div className="p-3" style={{ backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-                  <h5 className="fw-bold mb-3 text-neutral-900">Thông tin chuyến xe</h5>
-                  <div className="row g-3">
-                    <div className="col-6 col-md-4">
-                      <div className="small text-muted mb-1">Nhà xe</div>
-                      <div className="fw-600">{trip.operator}</div>
-                    </div>
-                    <div className="col-6 col-md-4">
-                      <div className="small text-muted mb-1">Loại xe</div>
-                      <div className="fw-600">
-                        {trip.busType === '16-seater' ? 'Xe 16 chỗ'
-                          : trip.busType === '35-seater' ? 'Xe 35 chỗ'
-                          : trip.busType || 'Xe khách'}
-                      </div>
-                    </div>
-                    <div className="col-6 col-md-4">
-                      <div className="small text-muted mb-1">Ghế trống</div>
-                      <div className="fw-600" style={{ color: '#27ae60' }}>
-                        {trip.seatsAvailable}/{trip.totalSeats}
-                      </div>
-                    </div>
-                    <div className="col-6 col-md-4">
-                      <div className="small text-muted mb-1">Giá vé</div>
-                      <div className="fw-bold fs-5" style={{ color: '#667eea' }}>
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                          trip.price
-                        )}
-                      </div>
-                    </div>
-                    <div className="col-6 col-md-4">
-                      <div className="small text-muted mb-1">Đánh giá</div>
-                      <div className="fw-600">
-                        ⭐ {trip.rating}
-                        <span className="text-muted small ms-1">({trip.reviewCount || 0} reviews)</span>
-                      </div>
-                    </div>
-                  </div>
+              {/* Description */}
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-3">Mô tả chuyến xe</h3>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 text-sm font-medium text-slate-600 leading-relaxed">
+                  {trip.description || 'Chuyến xe chất lượng cao với đầy đủ tiện nghi, đảm bảo mang đến trải nghiệm thoải mái nhất cho hành khách trên suốt hành trình.'}
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Description */}
-          <div className="mb-4">
-            <h5 className="fw-bold mb-3 text-neutral-900">Mô tả chuyến xe</h5>
-            <div className="p-3" style={{ backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-              <p className="text-neutral-700 mb-0" style={{ lineHeight: '1.6' }}>
-                {trip.description}
-              </p>
-            </div>
-          </div>
-
-          {/* Amenities */}
-          <div className="mb-4">
-            <h5 className="fw-bold mb-3 text-neutral-900">Tiện nghi</h5>
-            <div className="amenities-grid">
-              {trip.amenities.map((amenity, idx) => (
-                <div key={idx} className="amenity-item p-2" style={{ backgroundColor: '#f0f4fa', borderRadius: '6px' }}>
-                  <div className="d-flex align-items-center gap-2">
-                    {amenity.includes('Wifi') && <FiWifi size={18} style={{ color: '#667eea' }} />}
-                    {amenity.includes('AC') && <span style={{ color: '#667eea' }}>❄️</span>}
-                    {amenity.includes('Charger') && <span style={{ color: '#667eea' }}>🔌</span>}
-                    {amenity.includes('Blanket') && <span style={{ color: '#667eea' }}>🛏️</span>}
-                    {amenity.includes('Toilet') && <span style={{ color: '#667eea' }}>🚽</span>}
-                    {amenity.includes('Pillow') && <span style={{ color: '#667eea' }}>🛌</span>}
-                    <span className="small fw-500">{amenity}</span>
-                  </div>
+              {/* Amenities */}
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 mb-3">Tiện nghi có sẵn</h3>
+                <div className="flex flex-wrap gap-2">
+                  {trip.amenities.map((amenity, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 shadow-sm">
+                      {amenity.includes('Wifi') && <FiWifi className="text-blue-500" />}
+                      {amenity.includes('AC') && <span>❄️</span>}
+                      {amenity.includes('Charger') && <span>🔌</span>}
+                      {amenity.includes('Blanket') && <span>🛏️</span>}
+                      {amenity.includes('Toilet') && <span>🚽</span>}
+                      {amenity.includes('Pillow') && <span>🛌</span>}
+                      <span className="text-xs font-bold text-slate-700">{amenity}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Bus Stops Timeline */}
-          {trip.stops && trip.stops.length > 0 && (
-            <div className="mb-4">
-              <h5 className="fw-bold mb-3 text-neutral-900">Các trạm dừng</h5>
-              <div className="stops-timeline">
-                {progressStops.map((stop, index) => (
-                  <div key={index} className="stop-item">
-                    <div className="stop-timeline">
-                      <div className={`stop-dot ${stop.type}`} />
-                      {index < progressStops.length - 1 && <div className="stop-line" />}
-                    </div>
-                    <div className="stop-info">
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div>
-                          <div className="fw-600 text-neutral-900">{stop.name}</div>
-                          <div className="small text-muted">
-                            <FiClock size={14} className="me-1" style={{ display: 'inline' }} />
-                            {stop.time}
-                          </div>
-                        </div>
-                        {stop.type === 'start' && (
-                          <span className="badge bg-success small">Khởi hành</span>
-                        )}
-                        {stop.type === 'end' && (
-                          <span className="badge bg-warning small">Kết thúc</span>
-                        )}
-                        {stop.type === 'stop' && (
-                          <span className="badge bg-light text-neutral-700 small">Dừng</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </div>
+
             </div>
-          )}
+
+            {/* Right Column: Timeline */}
+            <div className="lg:col-span-5">
+              {progressStops && progressStops.length > 0 ? (
+                <div className="sticky top-0">
+                  <BusStopTimeline stops={progressStops} />
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center text-slate-500 font-medium h-full flex items-center justify-center">
+                  Thông tin lộ trình chi tiết đang được cập nhật
+                </div>
+              )}
+            </div>
+
+          </div>
+          
         </div>
 
-        {/* Footer */}
-        <div className="modal-footer border-top p-3">
-          <button className="btn btn-outline-secondary px-4" onClick={onClose}>
-            Đóng
+        {/* Footer Actions */}
+        <div className="px-6 py-4 border-t border-slate-100 bg-white flex items-center justify-end gap-3">
+          <button 
+            className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+            onClick={onClose}
+          >
+            Đóng lại
           </button>
           <button
-            className="btn btn-primary px-5"
+            className="px-8 py-2.5 bg-slate-900 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center gap-2 transition-colors shadow-md"
             onClick={() => {
               onBook(trip)
               onClose()
             }}
           >
-            <FiEdit2 size={18} className="me-2" style={{ display: 'inline' }} />
+            <FiCheck size={18} />
             Đặt chuyến này
           </button>
         </div>

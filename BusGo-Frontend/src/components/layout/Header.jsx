@@ -1,365 +1,213 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { FiMenu, FiX, FiClock, FiArrowLeft, FiLogOut, FiUser } from 'react-icons/fi'
+import {
+  Navbar, NavbarBrand, NavbarContent, NavbarItem, NavbarMenuToggle, NavbarMenu, NavbarMenuItem,
+  Dropdown, DropdownTrigger, DropdownMenu, DropdownItem
+} from '@nextui-org/react'
+import { Clock, LogIn, LogOut, User, Menu } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { StorageUtil } from '../../utils/helpers'
-import './Header.css'
 
 export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [serviceType, setServiceType] = useState('booking') // 'booking' or 'cargo'
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [user, setUser] = useState(null)
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Load user info from localStorage on mount
   useEffect(() => {
     const userData = StorageUtil.getUser()
     setUser(userData)
-    setProfileMenuOpen(false)
+    setIsMenuOpen(false)
   }, [location.pathname])
 
-  // Sync serviceType with the current URL path
   useEffect(() => {
-    if (location.pathname.startsWith('/cargo-consignment')) {
-      setServiceType('cargo')
-    } else {
-      setServiceType('booking')
-    }
-  }, [location.pathname])
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
-  // Close profile menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      const profileDropdown = document.querySelector('.user-profile-dropdown')
-      if (profileDropdown && !profileDropdown.contains(event.target)) {
-        setProfileMenuOpen(false)
-      }
-    }
+  const handleLogout = () => {
+    StorageUtil.clearAuth()
+    setUser(null)
+    navigate('/')
+  }
 
-    if (profileMenuOpen) {
-      document.addEventListener('click', handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside)
-    }
-  }, [profileMenuOpen])
-
-  // Show back button on specific routes
-  const showBackButton = ['/booking', '/payment', '/ticket', '/search', '/cargo-consignment'].some(route =>
-    location.pathname.startsWith(route)
-  )
-
-  // Hide tabs on certain routes (only show on home page)
-  const hideServiceTabs = ['/booking', '/payment', '/ticket', '/login', '/search', '/cargo-consignment', '/history'].some(route =>
-    location.pathname.startsWith(route)
-  )
+  const navLinks = [
+    { label: 'TRANG CHỦ', href: '/' },
+    { label: 'TÌM VÉ', href: '/search' },
+    { label: 'LỊCH SỬ', href: '/history' },
+    { label: 'GỬI HÀNG', href: '/cargo-consignment' }
+  ]
 
   return (
-    <header className="bg-white border-bottom sticky-top">
-      <nav className="navbar navbar-expand-lg navbar-light">
-        <div className="container-fluid px-md-5 px-3">
-          {/* Back Button - Mobile & Desktop */}
-          {showBackButton && (
-            <button
-              onClick={() => navigate(-1)}
-              className="btn btn-sm me-2"
-              style={{
-                backgroundColor: 'transparent',
-                color: '#0066cc',
-                border: 'none',
-                padding: '0.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem'
-              }}
-              title="Quay lại"
-            >
-              <FiArrowLeft size={20} />
-            </button>
+    <motion.div
+      initial={{ y: -80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="fixed top-0 w-full z-50"
+    >
+      <Navbar
+        isMenuOpen={isMenuOpen}
+        onMenuOpenChange={setIsMenuOpen}
+        maxWidth="full"
+        className={`transition-all duration-300 bg-white ${
+          scrolled ? 'shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)]' : 'border-b border-slate-100'
+        }`}
+        classNames={{
+          wrapper: 'px-4 lg:px-12',
+        }}
+      >
+        {/* === LEFT: Logo === */}
+        <NavbarContent justify="start">
+          <NavbarBrand>
+            <Link to="/" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 bg-[#004b87] rounded-full flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
+                <span className="text-xl">🚌</span>
+              </div>
+              <span className="text-2xl font-black text-[#004b87] tracking-tight">BusGo</span>
+            </Link>
+          </NavbarBrand>
+        </NavbarContent>
+
+        {/* === CENTER: Nav Links – Desktop === */}
+        <NavbarContent className="hidden lg:flex gap-8" justify="center">
+          {navLinks.map((link) => {
+            const isActive = location.pathname === link.href || (link.href !== '/' && location.pathname.startsWith(link.href))
+            return (
+              <NavbarItem key={link.href}>
+                <Link
+                  to={link.href}
+                  className={`text-[13px] font-bold tracking-widest uppercase transition-all duration-200 py-1 ${
+                    isActive
+                      ? 'text-[#004b87] border-b-2 border-[#004b87]'
+                      : 'text-slate-500 hover:text-[#004b87]'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              </NavbarItem>
+            )
+          })}
+        </NavbarContent>
+
+        {/* === RIGHT: Auth === */}
+        <NavbarContent justify="end" className="gap-4">
+          <div className="hidden lg:block w-px h-6 bg-slate-200 mx-2"></div>
+          
+          {user ? (
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <button className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-full text-slate-700 transition-all duration-200">
+                  <div className="w-8 h-8 rounded-full bg-[#004b87] flex items-center justify-center text-white text-sm font-bold">
+                    {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                  <span className="text-sm font-bold hidden sm:block max-w-[120px] truncate">{user.name}</span>
+                </button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="User menu"
+                className="w-48"
+                itemClasses={{ base: 'gap-3' }}
+              >
+                <DropdownItem
+                  key="profile"
+                  startContent={<User size={16} className="text-[#004b87]" />}
+                  onPress={() => navigate('/profile')}
+                >
+                  <span className="font-semibold text-slate-700">Hồ sơ cá nhân</span>
+                </DropdownItem>
+                <DropdownItem
+                  key="history"
+                  startContent={<Clock size={16} className="text-slate-500" />}
+                  onPress={() => navigate('/history')}
+                >
+                  <span className="font-semibold text-slate-700">Lịch sử đặt vé</span>
+                </DropdownItem>
+                <DropdownItem
+                  key="logout"
+                  color="danger"
+                  startContent={<LogOut size={16} />}
+                  onPress={handleLogout}
+                >
+                  <span className="font-semibold">Đăng xuất</span>
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          ) : (
+            <div className="hidden lg:flex items-center">
+              <button
+                onClick={() => navigate('/login')}
+                className="flex items-center gap-2 bg-[#004b87] hover:bg-[#003666] text-white px-6 py-2.5 rounded-full font-bold text-[13px] tracking-wide shadow-md transition-all uppercase"
+              >
+                Đăng nhập
+                <LogIn size={16} />
+              </button>
+            </div>
           )}
 
-          {/* Logo */}
-          <Link to="/" className="navbar-brand fw-bold fs-4 d-flex align-items-center me-0">
-            <span className="text-primary" style={{ color: 'var(--color-primary-600)' }}>
-              Bus
-            </span>
-            <span className="text-secondary" style={{ color: 'var(--color-secondary-600)' }}>
-              Go
-            </span>
-          </Link>
+          {/* Mobile Hamburger */}
+          <NavbarMenuToggle
+            icon={<Menu size={24} className="text-[#004b87]" />}
+            aria-label={isMenuOpen ? 'Đóng menu' : 'Mở menu'}
+            className="lg:hidden"
+          />
+        </NavbarContent>
 
-          {/* Service Switcher */}
-          <div className="service-switcher d-flex align-items-center gap-1 ms-2 ms-md-4">
-            <button
-              onClick={() => {
-                setServiceType('booking')
-                navigate('/')
-              }}
-              className={`btn service-btn d-flex align-items-center gap-1 ${serviceType === 'booking' ? 'active' : ''}`}
-            >
-              <span>🛫</span>
-              <span className="d-none d-sm-inline">Đặt vé xe</span>
-              <span className="d-inline d-sm-none">Đặt vé</span>
-            </button>
-            <button
-              onClick={() => {
-                setServiceType('cargo')
-                navigate('/cargo-consignment')
-              }}
-              className={`btn service-btn d-flex align-items-center gap-1 ${serviceType === 'cargo' ? 'active' : ''}`}
-            >
-              <span>📦</span>
-              <span>Gửi hàng</span>
-            </button>
-          </div>
-
-          {/* Mobile Toggle */}
-          <button
-            className="navbar-toggler border-0 p-0"
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? (
-              <FiX size={24} />
-            ) : (
-              <FiMenu size={24} />
-            )}
-          </button>
-
-          {/* Nav Items */}
-          <div
-            className={`collapse navbar-collapse ${mobileMenuOpen ? 'show' : ''}`}
-            id="navbarNav"
-          >
-            <ul className="navbar-nav ms-auto gap-3">
-              <li className="nav-item">
-                <Link
-                  to="/"
-                  className="nav-link text-neutral-700 fw-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Trang Chủ
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link
-                  to="/search"
-                  className="nav-link text-neutral-700 fw-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Tìm Vé
-                </Link>
-              </li>
-              <li className="nav-item">
-                <a
-                  href="#about"
-                  className="nav-link text-neutral-700 fw-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Về Chúng Tôi
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  href="#contact"
-                  className="nav-link text-neutral-700 fw-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Liên Hệ
-                </a>
-              </li>
-            </ul>
-
-            {/* Auth Buttons - Mobile */}
-            <div className="d-lg-none mt-3 gap-2 d-flex flex-column">
+        {/* === MOBILE MENU === */}
+        <NavbarMenu className="bg-white/95 backdrop-blur-xl pt-6 pb-8 gap-2 border-t border-slate-100">
+          {navLinks.map((link) => (
+            <NavbarMenuItem key={link.href}>
               <Link
-                to="/history"
-                className="btn btn-light text-decoration-none"
-                style={{ border: '1px solid #e5e7eb', color: 'var(--color-primary-600)' }}
+                to={link.href}
+                className={`flex items-center px-4 py-3 rounded-xl text-sm font-bold tracking-wide transition-all uppercase ${
+                  location.pathname === link.href
+                    ? 'text-[#004b87] bg-blue-50'
+                    : 'text-slate-600 hover:text-[#004b87] hover:bg-slate-50'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
               >
-                <FiClock size={18} className="me-2" style={{ display: 'inline' }} />
-                Lịch Sử
+                {link.label}
               </Link>
-              {user ? (
-                <>
-                  <button
-                    className="btn btn-light w-100 text-start d-flex align-items-center gap-2"
-                    style={{ border: '1px solid #e5e7eb' }}
-                    onClick={() => {
-                      navigate('/profile')
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    <span style={{ fontSize: '24px' }}>👤</span>
-                    <div style={{ flex: 1, textAlign: 'left' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>
-                        {user.name}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#999' }}>Hồ sơ</div>
-                    </div>
-                  </button>
-                  <button
-                    className="btn btn-outline-danger w-100"
-                    style={{ borderColor: '#ef4444', color: '#ef4444' }}
-                    onClick={() => {
-                      StorageUtil.clearAuth()
-                      setUser(null)
-                      navigate('/')
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    <FiLogOut size={18} className="me-2" style={{ display: 'inline' }} />
-                    Đăng Xuất
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    className="btn btn-outline-primary w-100"
-                    style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}
-                    onClick={() => {
-                      navigate('/login')
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    Đăng Nhập
-                  </button>
-                  <button
-                    className="btn w-100"
-                    style={{ backgroundColor: 'var(--color-primary-600)', color: 'white' }}
-                    onClick={() => {
-                      navigate('/register')
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    Đăng Ký
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
+            </NavbarMenuItem>
+          ))}
 
-          {/* Auth Buttons - Desktop */}
-          <div className="d-none d-lg-flex gap-2 ms-3 align-items-center">
-            <Link
-              to="/history"
-              className="btn btn-light text-decoration-none"
-              style={{ border: '1px solid #e5e7eb', color: 'var(--color-primary-600)', padding: '0.5rem 1rem' }}
-            >
-              <FiClock size={18} className="me-2" style={{ display: 'inline' }} />
-              Lịch Sử
-            </Link>
-            {user ? (
-              <div className="user-profile-dropdown" style={{ position: 'relative' }}>
-                <button
-                  className="btn user-profile-btn d-flex align-items-center gap-2 ps-2 pe-3"
-                  style={{
-                    border: '2px solid var(--color-primary-600)',
-                    color: 'var(--color-primary-600)',
-                    borderRadius: '50px',
-                    padding: '0.4rem 0.75rem'
-                  }}
-                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                >
-                  <span style={{ fontSize: '20px' }}>👤</span>
-                  <span style={{ fontSize: '14px', fontWeight: '600' }}>{user.name}</span>
-                </button>
-                {profileMenuOpen && (
-                  <div
-                    className="profile-dropdown-menu"
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: '0',
-                      marginTop: '0.5rem',
-                      backgroundColor: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                      minWidth: '200px',
-                      zIndex: 1000
-                    }}
-                  >
-                    <button
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        background: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s ease'
-                      }}
-                      onClick={() => {
-                        navigate('/profile')
-                        setProfileMenuOpen(false)
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f9fafb'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }}
-                    >
-                      <FiUser size={18} style={{ color: 'var(--color-primary-600)' }} />
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Hồ sơ cá nhân</span>
-                    </button>
-                    <hr style={{ margin: '0.5rem 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
-                    <button
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        background: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        color: '#ef4444',
-                        transition: 'background 0.2s ease'
-                      }}
-                      onClick={() => {
-                        StorageUtil.clearAuth()
-                        setUser(null)
-                        setProfileMenuOpen(false)
-                        navigate('/')
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }}
-                    >
-                      <FiLogOut size={18} />
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Đăng Xuất</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <button
-                  className="btn btn-outline-primary"
-                  style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}
-                  onClick={() => navigate('/login')}
-                >
-                  Đăng Nhập
-                </button>
-                <button
-                  className="btn"
-                  style={{ backgroundColor: 'var(--color-primary-600)', color: 'white' }}
-                  onClick={() => navigate('/register')}
-                >
-                  Đăng Ký
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-    </header>
+          <div className="h-px bg-slate-100 my-4" />
+
+          {user ? (
+            <>
+              <button
+                onClick={() => { navigate('/profile'); setIsMenuOpen(false) }}
+                className="flex items-center gap-3 px-4 py-3 bg-slate-50 rounded-xl text-left w-full border border-slate-100"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#004b87] flex items-center justify-center text-white font-bold">
+                  {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <div className="text-slate-800 font-bold">{user.name}</div>
+                  <div className="text-slate-500 text-xs font-semibold">Hồ sơ cá nhân</div>
+                </div>
+              </button>
+              <button
+                onClick={() => { handleLogout(); setIsMenuOpen(false) }}
+                className="flex items-center justify-center gap-2 py-3 mt-2 text-red-500 hover:bg-red-50 rounded-xl font-bold transition-all w-full border border-red-100"
+              >
+                <LogOut size={18} /> Đăng xuất
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col gap-3 mt-2 px-2">
+              <button
+                onClick={() => { navigate('/login'); setIsMenuOpen(false) }}
+                className="flex items-center justify-center gap-2 py-3.5 text-white bg-[#004b87] rounded-xl font-bold tracking-wide shadow-md transition-all uppercase text-sm"
+              >
+                Đăng nhập
+                <LogIn size={18} />
+              </button>
+            </div>
+          )}
+        </NavbarMenu>
+      </Navbar>
+    </motion.div>
   )
 }

@@ -1,290 +1,174 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiMapPin, FiCalendar, FiChevronRight, FiZap, FiWifi, FiActivity } from 'react-icons/fi'
-import { MdDirectionsBus } from 'react-icons/md'
-import { BUS_CATEGORIES, BUS_TYPES, CITY_STOPS, INTERCITY_ROUTES, DEPARTURE_TIMES } from '../../utils/constants'
-import './SearchBar.css'
+import { MapPin, CalendarDays, Search, Bus, ChevronDown, Clock, Check } from 'lucide-react'
+import { Card, CardBody, Button } from '@nextui-org/react'
+import { BUS_CATEGORIES, CITY_STOPS, INTERCITY_ROUTES, DEPARTURE_TIMES } from '../../utils/constants'
 
 export default function SearchBar() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     category: 'city',
-    busType: '',
     from: '',
     to: '',
     date: '',
     departureTime: ''
   })
-  const [showSmartTags, setShowSmartTags] = useState(false)
-
-  // Smart Suggestion Tags
-  const smartTags = [
-    { id: 1, icon: '🚐', label: 'Xe 16 chỗ cao cấp', state: { busType: 'mini_16' } },
-    { id: 2, icon: '📡', label: 'Có WiFi & Sạc', state: { amenities: ['Wifi', 'Phone Charger'] } },
-    { id: 3, icon: '🌙', label: 'Chuyến đêm', state: { departureTime: 'night' } },
-    { id: 4, icon: '💰', label: 'Giá dưới 200k', state: { priceRange: [0, 200000] } },
-    { id: 6, icon: '🚌', label: 'Xe 35 chỗ', state: { busType: 'coach_29_35' } }
-  ]
-
-  // Get available destinations based on category
-  const destinations = useMemo(() => {
-    if (formData.category === 'city') {
-      return CITY_STOPS
-    } else if (formData.category === 'interCity') {
-      return INTERCITY_ROUTES.map(route => ({ from: route.from, to: route.to }))
-    }
-    return []
-  }, [formData.category])
 
   const handleCategorySelect = (categoryId) => {
-    setFormData(prev => ({
-      ...prev,
-      category: categoryId,
-      busType: '',
-      from: '',
-      to: '',
-      date: '',
-      departureTime: ''
-    }))
+    setFormData({ category: categoryId, from: '', to: '', date: '', departureTime: '' })
   }
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+    setFormData(prev => ({ ...prev, [name]: value }))
   }
 
   const handleSearch = (e) => {
     e.preventDefault()
-    
-    // Validate form
     if (!formData.from || !formData.to || !formData.date || !formData.category) {
-      alert('Vui lòng điền đầy đủ thông tin')
+      alert('Vui lòng điền đầy đủ thông tin: Điểm đi, Điểm đến, Ngày đi')
       return
     }
-
-    // Navigate to search results
     const params = new URLSearchParams(formData)
     navigate(`/search?${params.toString()}`)
   }
 
-  const getCategoryIcon = (categoryId) => {
-    return BUS_CATEGORIES[categoryId]?.icon || '🚌'
-  }
-
   return (
-    <div className="search-bar-container">
-      <div className="search-bar-content">
-        <h1 className="search-bar-title mb-4" style={{ color: '#FFFFFF' }}>
-          Tìm và đặt vé xe thông minh dễ dàng
-        </h1>
-        <p className="search-bar-subtitle mb-4" style={{ color: '#FFFFFF' }}>
-          Khám phá các tuyến xe nội - ngoại thành Đà Nẵng của chúng tôi - BusGo
-        </p>
+    <Card
+      className="w-full max-w-sm lg:max-w-md shadow-[0_25px_60px_-15px_rgba(30,58,138,0.25)] border border-white/60"
+      style={{
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      }}
+    >
+      <CardBody className="p-6 sm:p-7">
 
-        {/* Smart Suggestion Tags */}
-        <div className="smart-tags-section mb-4">
-          <p className="smart-tags-label">Tìm kiếm nhanh:</p>
-          <div className="smart-tags-container">
-            {smartTags.map(tag => (
-              <button
-                key={tag.id}
-                className="smart-tag-btn"
-                onClick={() => {
-                  setShowSmartTags(false)
-                  navigate('/search', { state: tag.state })
-                }}
-                title={tag.label}
+        {/* Title */}
+        <div className="text-center mb-6">
+          <h2 className="text-xl font-black text-blue-950 tracking-tight">Tìm chuyến đi</h2>
+          <p className="text-slate-500 text-xs mt-1 font-semibold">Đặt vé nhanh chỉ 3 phút</p>
+        </div>
+
+        {/* Category Tabs */}
+        <div className="flex bg-slate-100/80 p-1.5 rounded-2xl mb-5 border border-slate-200/50">
+          {[
+            { id: 'city', icon: <Bus size={14} />, label: 'Nội thành' },
+            { id: 'interCity', icon: <MapPin size={14} />, label: 'Liên tỉnh' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleCategorySelect(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+                formData.category === tab.id
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/40'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSearch} className="space-y-4">
+
+          {/* From & To Horizontal Joined */}
+          <div className="flex items-center w-full bg-white border border-slate-200 rounded-xl shadow-sm focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100 transition-all">
+            {/* From */}
+            <div className="relative flex-1">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 z-10 pointer-events-none" size={16} />
+              <select
+                name="from"
+                value={formData.from}
+                onChange={handleChange}
+                className="w-full pl-9 pr-7 py-3.5 bg-transparent border-r border-slate-200 hover:bg-slate-50 focus:outline-none text-slate-800 font-semibold text-[13px] transition-all cursor-pointer appearance-none rounded-l-xl"
               >
-                <span className="tag-icon">{tag.icon}</span>
-                <span className="tag-label">{tag.label}</span>
-              </button>
-            ))}
+                <option value="" disabled hidden>Điểm đi</option>
+                {formData.category === 'city'
+                  ? CITY_STOPS.map((stop, i) => <option key={i} value={stop}>{stop}</option>)
+                  : Array.from(new Set(INTERCITY_ROUTES.map(r => r.from))).map((city, i) => <option key={i} value={city}>{city}</option>)
+                }
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+            </div>
+
+            {/* To */}
+            <div className="relative flex-1">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-500 z-10 pointer-events-none" size={16} />
+              <select
+                name="to"
+                value={formData.to}
+                onChange={handleChange}
+                className="w-full pl-9 pr-7 py-3.5 bg-transparent hover:bg-slate-50 focus:outline-none text-slate-800 font-semibold text-[13px] transition-all cursor-pointer appearance-none rounded-r-xl"
+              >
+                <option value="" disabled hidden>Điểm đến</option>
+                {formData.category === 'city'
+                  ? CITY_STOPS.map((stop, i) => <option key={i} value={stop}>{stop}</option>)
+                  : formData.from
+                    ? Array.from(new Set(INTERCITY_ROUTES.filter(r => r.from === formData.from).map(r => r.to))).map((city, i) => <option key={i} value={city}>{city}</option>)
+                    : []
+                }
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+            </div>
           </div>
+
+          {/* Date + Time */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="relative">
+              <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 z-10 pointer-events-none" size={16} />
+              <input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full pl-9 pr-2 py-3.5 bg-white border border-slate-200 hover:border-blue-400 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:outline-none rounded-xl text-slate-800 font-semibold text-[13px] transition-all cursor-pointer shadow-sm"
+              />
+            </div>
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 z-10 pointer-events-none" size={16} />
+              <select
+                name="departureTime"
+                value={formData.departureTime}
+                onChange={handleChange}
+                className="w-full pl-9 pr-7 py-3.5 bg-white border border-slate-200 hover:border-blue-400 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:outline-none rounded-xl text-slate-800 font-semibold text-[13px] transition-all cursor-pointer appearance-none shadow-sm"
+              >
+                <option value="">Tất cả giờ</option>
+                {Object.entries(DEPARTURE_TIMES).map(([key, time]) => (
+                  <option key={key} value={key}>{time.start}-{time.end}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+            </div>
+          </div>
+
+          {/* Search Button */}
+          <Button
+            type="submit"
+            className="w-full h-14 bg-blue-600 hover:bg-blue-700
+                       text-white font-extrabold text-base rounded-xl
+                       shadow-lg shadow-blue-600/25 transition-all duration-300
+                       hover:-translate-y-0.5 mt-2"
+            size="lg"
+            startContent={<Search size={20} />}
+          >
+            Tìm Vé Ngay
+          </Button>
+        </form>
+
+        {/* Bottom hints */}
+        <div className="flex items-center justify-center gap-4 mt-5">
+          {['Miễn phí đặt vé', 'Hoàn tiền 100%'].map((hint) => (
+            <span key={hint} className="flex items-center gap-1.5 text-slate-500 text-xs font-semibold">
+              <Check size={12} className="text-blue-600" />
+              {hint}
+            </span>
+          ))}
         </div>
-
-        {/* Buttons and Search Form Wrapper */}
-        <div className="search-wrapper">
-          {/* Category Selection Buttons */}
-          <div className="route-type-buttons">
-            <button
-              type="button"
-              className={`route-type-btn ${formData.category === 'city' ? 'active' : ''}`}
-              onClick={() => handleCategorySelect('city')}
-            >
-              <span className="btn-icon">🏢</span>
-              <span className="btn-text">Nội thành</span>
-            </button>
-            <button
-              type="button"
-              className={`route-type-btn ${formData.category === 'interCity' ? 'active' : ''}`}
-              onClick={() => handleCategorySelect('interCity')}
-            >
-              <span className="btn-icon">🗺️</span>
-              <span className="btn-text">Ngoại thành</span>
-            </button>
-          </div>
-
-          {/* Search Form */}
-          <form onSubmit={handleSearch} className="search-form">
-            <div className="row g-3">
-              {/* From */}
-              <div className="col-lg-3 col-md-6">
-                <div className="search-input-group">
-                  <label className="form-label fw-600 mb-2">
-                    <FiMapPin className="me-2" />
-                    Điểm đi
-                  </label>
-                  {formData.category === 'city' ? (
-                    <select
-                      className="form-control form-input"
-                      name="from"
-                      value={formData.from}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn điểm đi --</option>
-                      {CITY_STOPS.map((stop, idx) => (
-                        <option key={idx} value={stop}>{stop}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      className="form-control form-input"
-                      name="from"
-                      value={formData.from}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn điểm đi --</option>
-                      {Array.from(new Set(INTERCITY_ROUTES.map(r => r.from))).map((city, idx) => (
-                        <option key={idx} value={city}>{city}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              {/* To */}
-              <div className="col-lg-3 col-md-6">
-                <div className="search-input-group">
-                  <label className="form-label fw-600 mb-2">
-                    <FiMapPin className="me-2" />
-                    Điểm đến
-                  </label>
-                  {formData.category === 'city' ? (
-                    <select
-                      className="form-control form-input"
-                      name="to"
-                      value={formData.to}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn điểm đến --</option>
-                      {CITY_STOPS.map((stop, idx) => (
-                        <option key={idx} value={stop}>{stop}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <select
-                      className="form-control form-input"
-                      name="to"
-                      value={formData.to}
-                      onChange={handleChange}
-                    >
-                      <option value="">-- Chọn điểm đến --</option>
-                      {formData.from && Array.from(new Set(INTERCITY_ROUTES.filter(r => r.from === formData.from).map(r => r.to))).map((city, idx) => (
-                        <option key={idx} value={city}>{city}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              {/* Date */}
-              <div className="col-lg-2 col-md-6">
-                <div className="search-input-group">
-                  <label className="form-label fw-600 mb-2">
-                    <FiCalendar className="me-2" />
-                    Ngày đi
-                  </label>
-                  <input
-                    type="date"
-                    className="form-control form-input"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleChange}
-                    min={new Date().toISOString().split('T')[0]}
-                  />
-                </div>
-              </div>
-
-              {/* Departure Time */}
-              <div className="col-lg-2 col-md-6">
-                <div className="search-input-group">
-                  <label className="form-label fw-600 mb-2">
-                    <FiCalendar className="me-2" />
-                    Giờ khởi hành
-                  </label>
-                  <select
-                    className="form-control form-input"
-                    name="departureTime"
-                    value={formData.departureTime}
-                    onChange={handleChange}
-                  >
-                    <option value="">-- Tất cả giờ --</option>
-                    {Object.entries(DEPARTURE_TIMES).map(([key, time]) => (
-                      <option key={key} value={key}>
-                        {time.label} ({time.start}-{time.end})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Search Button */}
-              <div className="col-lg-2 col-md-12 d-flex align-items-end">
-                <button
-                  type="submit"
-                  className="btn btn-primary w-100"
-                  style={{
-                    backgroundColor: 'var(--color-primary-600)',
-                    borderColor: 'var(--color-primary-600)',
-                    padding: '0.75rem 1.5rem',
-                    fontWeight: 600,
-                    height: '48px'
-                  }}
-                >
-                  Tìm vé
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="row mt-5 pt-4 border-top border-white border-opacity-25 justify-content-around">
-          <div className="col-auto text-center">
-            <div className="fs-5 fw-bold text-white">
-              500+
-            </div>
-            <div className="text-white-50 small">Tuyến đường BusGo</div>
-          </div>
-
-          <div className="col-auto text-center">
-            <div className="fs-5 fw-bold text-white">
-              10,000+
-            </div>
-            <div className="text-white-50 small">Chuyến đi mỗi ngày</div>
-          </div>
-
-          <div className="col-auto text-center">
-            <div className="fs-5 fw-bold text-white">
-              100K+
-            </div>
-            <div className="text-white-50 small">Khách BusGo hài lòng</div>
-          </div>
-      </div>
-      </div>
-    </div>
+      </CardBody>
+    </Card>
   )
 }

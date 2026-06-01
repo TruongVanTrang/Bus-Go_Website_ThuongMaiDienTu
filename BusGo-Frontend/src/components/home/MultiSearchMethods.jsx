@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiMapPin, FiTruck, FiClock, FiArrowRight } from 'react-icons/fi'
-import './MultiSearchMethods.css'
 
 export default function MultiSearchMethods() {
   const navigate = useNavigate()

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { FiStar, FiMapPin, FiArrowRight, FiTrendingUp } from 'react-icons/fi'
-import './FeaturedTrips.css'
+
 
 export default function FeaturedTrips() {
   const navigate = useNavigate()

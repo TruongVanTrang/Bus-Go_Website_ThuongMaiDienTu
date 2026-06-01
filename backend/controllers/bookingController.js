@@ -12,9 +12,9 @@ const calculateDuration = (startTime, endTime) => {
 // Helper function to format Date to YYYY-MM-DD
 const formatDate = (dateObj) => {
   const d = new Date(dateObj);
-  let month = '' + (d.getMonth() + 1);
-  let day = '' + d.getDate();
-  const year = d.getFullYear();
+  let month = '' + (d.getUTCMonth() + 1);
+  let day = '' + d.getUTCDate();
+  const year = d.getUTCFullYear();
 
   if (month.length < 2) month = '0' + month;
   if (day.length < 2) day = '0' + day;
@@ -25,8 +25,8 @@ const formatDate = (dateObj) => {
 // Helper function to format Time to HH:mm
 const formatTime = (dateObj) => {
   const d = new Date(dateObj);
-  let hours = '' + d.getHours();
-  let minutes = '' + d.getMinutes();
+  let hours = '' + d.getUTCHours();
+  let minutes = '' + d.getUTCMinutes();
 
   if (hours.length < 2) hours = '0' + hours;
   if (minutes.length < 2) minutes = '0' + minutes;

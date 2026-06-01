@@ -133,11 +133,18 @@ const releaseExpiredSeats = async (pool) => {
 // @route   GET /api/trips/search
 // @access  Public
 const searchTrips = async (req, res) => {
-  const { from, to, date, category } = req.query;
+  const { diemDi, diemDen, date, category } = req.query;
 
   try {
     const pool = await sql.connect();
-    releaseExpiredSeats(pool).catch(e => console.error(e));
+    
+    // Tự động dọn dẹp các vé đã quá hạn giữ chỗ (5 phút)
+    await releaseExpiredSeats(pool);
+
+    // Create default trips for testing if none exist
+    if (diemDi && diemDen && date) {
+      await ensureTripsExist(pool, diemDi, diemDen, date);
+    }
 
     let queryStr = `
       SELECT cx.*, td.danhSachTramDung, pt.tienIch as vehicleAmenities
@@ -155,12 +162,12 @@ const searchTrips = async (req, res) => {
         conditions.push("CAST(cx.thoiGianDi AS DATE) >= CAST(GETDATE() AS DATE)");
     }
 
-    if (from) {
-      request.input('from', sql.NVarChar, from);
+    if (diemDi) {
+      request.input('from', sql.NVarChar, diemDi);
       conditions.push('cx.diemDi = @from');
     }
-    if (to) {
-      request.input('to', sql.NVarChar, to);
+    if (diemDen) {
+      request.input('to', sql.NVarChar, diemDen);
       conditions.push('cx.diemDen = @to');
     }
     if (date) {
@@ -269,7 +276,9 @@ const getTripById = async (req, res) => {
 
   try {
     const pool = await sql.connect();
-    releaseExpiredSeats(pool).catch(e => console.error(e));
+    
+    // Tự động dọn dẹp các vé đã quá hạn giữ chỗ (5 phút)
+    await releaseExpiredSeats(pool);
 
     const result = await pool.request()
       .input('maChuyenXe', sql.Int, id)

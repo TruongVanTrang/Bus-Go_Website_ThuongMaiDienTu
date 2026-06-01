@@ -1,4 +1,5 @@
 const { sql } = require('../config/db');
+const { sendTicketEmail } = require('../utils/emailService');
 
 // Helper function to format duration
 const calculateDuration = (startTime, endTime) => {
@@ -12,9 +13,9 @@ const calculateDuration = (startTime, endTime) => {
 // Helper function to format Date to YYYY-MM-DD
 const formatDate = (dateObj) => {
   const d = new Date(dateObj);
-  let month = '' + (d.getMonth() + 1);
-  let day = '' + d.getDate();
-  const year = d.getFullYear();
+  let month = '' + (d.getUTCMonth() + 1);
+  let day = '' + d.getUTCDate();
+  const year = d.getUTCFullYear();
 
   if (month.length < 2) month = '0' + month;
   if (day.length < 2) day = '0' + day;
@@ -25,8 +26,8 @@ const formatDate = (dateObj) => {
 // Helper function to format Time to HH:mm
 const formatTime = (dateObj) => {
   const d = new Date(dateObj);
-  let hours = '' + d.getHours();
-  let minutes = '' + d.getMinutes();
+  let hours = '' + d.getUTCHours();
+  let minutes = '' + d.getUTCMinutes();
 
   if (hours.length < 2) hours = '0' + hours;
   if (minutes.length < 2) minutes = '0' + minutes;
@@ -70,15 +71,21 @@ const createBooking = async (req, res) => {
     
     const maPhuongThuc = paymentResult.recordset[0]?.maPhuongThuc || 2; // fallback to Momo
 
-    // 2. Lấy giá cơ bản chuyến xe
+    // 2. Lấy giá cơ bản chuyến xe và thông tin chuyến xe cho email
     const tripResult = await pool.request()
       .input('maChuyenXe', sql.Int, maChuyenXe)
-      .query('SELECT giaCoBan FROM ChuyenXe WHERE maChuyenXe = @maChuyenXe');
+      .query(`
+        SELECT cx.giaCoBan, cx.thoiGianDi, cx.thoiGianDen, td.diemDi, td.diemDen
+        FROM ChuyenXe cx
+        JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
+        WHERE cx.maChuyenXe = @maChuyenXe
+      `);
     
     if (tripResult.recordset.length === 0) {
       return res.status(404).json({ message: 'Không tìm thấy chuyến xe' });
     }
-    const giaCoBan = Number(tripResult.recordset[0].giaCoBan);
+    const tripData = tripResult.recordset[0];
+    const giaCoBan = Number(tripData.giaCoBan);
 
     // 3. Khởi chạy Transaction để đảm bảo tính toàn vẹn (tất cả ghế được đặt thành công hoặc hủy bỏ)
     const transaction = new sql.Transaction(pool);
@@ -196,13 +203,52 @@ const createBooking = async (req, res) => {
       }
 
       await transaction.commit();
-      res.status(201).json({
+
+      // Send email if payment method is "Tiền mặt" or "Chuyển khoản"
+      if (paymentMethod === 'tien_mat' || paymentMethod === 'bank_transfer') {
+        try {
+          const departureDateFormatted = formatDate(tripData.thoiGianDi);
+          const departureTimeFormatted = formatTime(tripData.thoiGianDi);
+          const arrivalTimeFormatted = formatTime(tripData.thoiGianDen);
+          
+          console.log(`Bắt đầu gửi email cho phương thức ${paymentMethod} tới ${passengerInfo.email || req.user.email}`);
+
+          const calculatedTotal = (giaCoBan * finalSeats.length) + (cargoInfo && cargoInfo.type !== 'none' ? Number(cargoInfo.estimatedPrice || 0) : 0);
+          const displaySeats = finalSeats.map(s => `Ghế ${s}`).join(', ');
+
+          await sendTicketEmail({
+            email: passengerInfo.email || req.user.email,
+            passengerName: `${passengerInfo.firstName} ${passengerInfo.lastName}`,
+            bookingId: createdBookingId,
+            from: tripData.diemDi,
+            to: tripData.diemDen,
+            departureTime: departureTimeFormatted,
+            arrivalTime: arrivalTimeFormatted,
+            date: departureDateFormatted,
+            seats: displaySeats,
+            totalPrice: calculatedTotal,
+            paymentMethod: paymentMethod === 'tien_mat' ? 'Tiền mặt tại quầy' : 'Chuyển khoản ngân hàng'
+          });
+        } catch (emailErr) {
+          console.error('Lỗi khi gửi email xác nhận:', emailErr);
+          // Do not fail the booking if email fails
+        }
+      }
+
+      return res.status(201).json({
         message: 'Đặt vé thành công',
         bookingId: createdBookingId
       });
 
     } catch (err) {
-      await transaction.rollback();
+      // Only rollback if the transaction hasn't been committed yet
+      // A transaction object might not have an easy 'isCommitted' property,
+      // but we know if it reached transaction.commit() successfully, we shouldn't rollback.
+      try {
+        await transaction.rollback();
+      } catch (rollbackErr) {
+        console.error('Lỗi rollback (có thể transaction đã commit):', rollbackErr);
+      }
       throw err;
     }
 
@@ -446,11 +492,11 @@ const cancelBooking = async (req, res) => {
 };
 
 // @desc    Đánh giá chuyến đi
-// @route   POST /api/bookings/:id/feedback
+// @desc    Lấy đánh giá của khách hàng cho một vé
+// @route   GET /api/bookings/:id/feedback
 // @access  Private
-const submitFeedback = async (req, res) => {
+const getFeedback = async (req, res) => {
   const { id } = req.params;
-  const { rating, comments } = req.body;
   try {
     const pool = await sql.connect();
     const ticketResult = await pool.request()
@@ -462,9 +508,93 @@ const submitFeedback = async (req, res) => {
     
     const ticket = ticketResult.recordset[0];
     if (!ticket) {
+      return res.status(404).json({ message: 'Không tìm thấy vé' });
+    }
+
+    const feedbackResult = await pool.request()
+      .input('maVe', sql.Int, ticket.maVe)
+      .input('maKhachHang', sql.Int, req.user.id)
+      .query(`
+        SELECT diemDanhGia, nhanXet, ngayTao, ngayCapNhat
+        FROM Feedback 
+        WHERE maVe = @maVe AND maKhachHang = @maKhachHang
+      `);
+
+    if (feedbackResult.recordset.length === 0) {
+      return res.json({ hasFeedback: false });
+    }
+
+    const feedback = feedbackResult.recordset[0];
+    res.json({
+      hasFeedback: true,
+      rating: feedback.diemDanhGia,
+      comments: feedback.nhanXet,
+      createdAt: feedback.ngayTao,
+      updatedAt: feedback.ngayCapNhat
+    });
+  } catch (error) {
+    console.error('Lỗi khi lấy đánh giá:', error);
+    res.status(500).json({ message: 'Lỗi server khi lấy đánh giá' });
+  }
+};
+
+// @route   POST /api/bookings/:id/feedback
+// @access  Private
+const submitFeedback = async (req, res) => {
+  const { id } = req.params;
+  const { rating, comments } = req.body;
+  
+  // Validate rating
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ message: 'Đánh giá phải từ 1 đến 5 sao' });
+  }
+  
+  try {
+    const pool = await sql.connect();
+    const ticketResult = await pool.request()
+      .input('bookingId', sql.VarChar, id)
+      .query(`
+        SELECT TOP 1 vdt.maVe, cx.trangThaiChuyen 
+        FROM VeDienTu vdt
+        INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
+        WHERE vdt.maQR LIKE @bookingId + '%' OR CAST(vdt.maVe AS VARCHAR) = @bookingId
+      `);
+    
+    const ticket = ticketResult.recordset[0];
+    if (!ticket) {
       return res.status(404).json({ message: 'Không tìm thấy vé để đánh giá' });
     }
 
+    // Check if trip is completed
+    if (ticket.trangThaiChuyen !== 'da_hoan_thanh') {
+      return res.status(400).json({ message: 'Chỉ có thể đánh giá chuyến xe đã hoàn thành' });
+    }
+
+    // Check if already rated
+    const existingFeedback = await pool.request()
+      .input('maVe', sql.Int, ticket.maVe)
+      .input('maKhachHang', sql.Int, req.user.id)
+      .query(`
+        SELECT maFeedback FROM Feedback 
+        WHERE maVe = @maVe AND maKhachHang = @maKhachHang
+      `);
+
+    if (existingFeedback.recordset.length > 0) {
+      // Update existing feedback
+      await pool.request()
+        .input('maVe', sql.Int, ticket.maVe)
+        .input('maKhachHang', sql.Int, req.user.id)
+        .input('diemDanhGia', sql.Int, rating)
+        .input('nhanXet', sql.NVarChar, comments)
+        .query(`
+          UPDATE Feedback 
+          SET diemDanhGia = @diemDanhGia, diemPhucVu = @diemDanhGia, diemGiaoThiep = @diemDanhGia, nhanXet = @nhanXet, ngayCapNhat = GETDATE()
+          WHERE maVe = @maVe AND maKhachHang = @maKhachHang
+        `);
+      return res.json({ message: 'Cập nhật đánh giá thành công' });
+    }
+
+    // Insert new feedback
     await pool.request()
       .input('maVe', sql.Int, ticket.maVe)
       .input('maKhachHang', sql.Int, req.user.id)
@@ -487,5 +617,6 @@ module.exports = {
   getMyTickets,
   getTicketDetail,
   cancelBooking,
+  getFeedback,
   submitFeedback
 };

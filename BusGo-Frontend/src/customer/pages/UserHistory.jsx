@@ -3,7 +3,7 @@ import { FiHeart, FiTrash2, FiMapPin, FiClock, FiDollarSign, FiX, FiDownload, Fi
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode.react'
 import { StorageUtil } from '../../utils/helpers'
-import { getMyTicketsAPI, cancelBookingAPI, submitFeedbackAPI } from '../../services/bookingService'
+import { getMyTicketsAPI, cancelBookingAPI, submitFeedbackAPI, getFeedbackAPI } from '../../services/bookingService'
 import './UserHistory.css'
 
 export default function UserHistory() {
@@ -82,6 +82,14 @@ export default function UserHistory() {
     setConsignments([])
   }, [navigate])
 
+  // Helper function to parse datetime correctly (handle timezone)
+  const parseDateTimeUTC = (dateStr, timeStr) => {
+    // Format: dateStr = "YYYY-MM-DD", timeStr = "HH:mm"
+    // Create ISO string to avoid timezone issues
+    const isoString = `${dateStr}T${timeStr}:00Z`
+    return new Date(isoString)
+  }
+
   // Get trip status based on DB tripStatus
   const getTripStatus = (booking) => {
     if (booking.status === 'Da huy') return 'cancelled'
@@ -90,8 +98,8 @@ export default function UserHistory() {
     if (booking.tripStatus === 'dang_khoi_hanh') return 'in_transit'
     if (booking.tripStatus === 'da_hoan_thanh') return 'completed'
     
-    // Fallback if tripStatus is missing
-    const departureDate = new Date(booking.date + ' ' + booking.departureTime)
+    // Fallback if tripStatus is missing - use UTC parsing
+    const departureDate = parseDateTimeUTC(booking.date, booking.departureTime)
     const now = new Date()
     if (departureDate > now) return 'upcoming'
     return 'completed'
@@ -105,14 +113,14 @@ export default function UserHistory() {
 
   // Check if cancellation is allowed
   const canCancelBooking = (booking) => {
-    const departureDate = new Date(booking.date + ' ' + booking.departureTime)
+    const departureDate = parseDateTimeUTC(booking.date, booking.departureTime)
     const now = new Date()
     return departureDate > now && booking.status === 'Da thanh toan'
   }
 
   // Calculate refund amount based on cancellation policy
   const calculateRefund = (booking) => {
-    const departureDate = new Date(booking.date + ' ' + booking.departureTime)
+    const departureDate = parseDateTimeUTC(booking.date, booking.departureTime)
     const now = new Date()
     const hoursUntilDeparture = (departureDate - now) / (1000 * 60 * 60)
     const totalPrice = booking.price + (booking.cargoInfo?.price || 0)
@@ -128,7 +136,7 @@ export default function UserHistory() {
 
   // Get time until departure
   const getTimeUntilDeparture = (booking) => {
-    const departureDate = new Date(booking.date + ' ' + booking.departureTime)
+    const departureDate = parseDateTimeUTC(booking.date, booking.departureTime)
     const now = new Date()
     const diff = departureDate - now
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -188,10 +196,29 @@ export default function UserHistory() {
     }
   }
 
-  const openRatingModal = (booking) => {
+  const openRatingModal = async (booking) => {
     setSelectedBooking(booking)
-    setRatingValue(bookingRatings[booking.id]?.rating || 0)
-    setRatingComment(bookingRatings[booking.id]?.comment || '')
+    
+    // Load existing feedback from backend
+    try {
+      const token = StorageUtil.getToken()
+      if (token) {
+        const feedbackData = await getFeedbackAPI(token, booking.id)
+        if (feedbackData.hasFeedback) {
+          setRatingValue(feedbackData.rating)
+          setRatingComment(feedbackData.comments)
+        } else {
+          setRatingValue(0)
+          setRatingComment('')
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi tải đánh giá:', err)
+      // Reset if error
+      setRatingValue(0)
+      setRatingComment('')
+    }
+    
     setShowRatingModal(true)
   }
 
@@ -205,6 +232,7 @@ export default function UserHistory() {
         }
         await submitFeedbackAPI(token, selectedBooking.id, ratingValue, ratingComment)
         
+        // Update local state
         const updatedRatings = {
           ...bookingRatings,
           [selectedBooking.id]: {
@@ -218,10 +246,13 @@ export default function UserHistory() {
         setShowRatingModal(false)
         setRatingValue(0)
         setRatingComment('')
+        alert('Cảm ơn bạn đã đánh giá chuyến xe!')
       } catch (err) {
         console.error('Lỗi khi gửi đánh giá:', err)
         alert(err.message || 'Lỗi khi gửi đánh giá. Vui lòng thử lại.')
       }
+    } else {
+      alert('Vui lòng chọn số sao để đánh giá')
     }
   }
 
@@ -388,118 +419,92 @@ export default function UserHistory() {
                         {statusBadge.icon} {statusBadge.text}
                       </div>
 
-                      {/* Card Content */}
-                      <div className="booking-card-content">
-                        {/* Booking ID */}
-                        <div className="booking-id-section">
-                          <div className="small text-muted">Mã vé</div>
-                          <div className="fw-bold">{booking.id}</div>
-                        </div>
+                      {/* Booking ID */}
+                      <div className="booking-id-section">
+                        <div className="small">Mã vé</div>
+                        <div className="fw-bold">{booking.id}</div>
+                      </div>
 
-                        {/* Divider */}
-                        <div className="divider"></div>
-
-                        {/* Route Info */}
-                        <div className="route-section">
-                          <div className="route-info">
-                            <div className="stop">
-                              <div className="stop-time fw-bold">{booking.departureTime}</div>
-                              <div className="stop-name text-muted">{booking.from}</div>
-                            </div>
-                            <div className="route-line">
-                              <FiMapPin size={16} style={{ color: '#0066cc' }} />
-                            </div>
-                            <div className="stop">
-                              <div className="stop-time fw-bold">~12:00</div>
-                              <div className="stop-name text-muted">{booking.to}</div>
-                            </div>
+                      {/* Route Info */}
+                      <div className="route-section">
+                        <div className="route-info">
+                          <div className="stop">
+                            <div className="stop-time">{booking.departureTime}</div>
+                            <div className="stop-name">{booking.from}</div>
+                          </div>
+                          <div className="route-line">
+                            <FiMapPin size={14} style={{ color: '#0066cc' }} />
+                          </div>
+                          <div className="stop">
+                            <div className="stop-time">{booking.arrivalTime}</div>
+                            <div className="stop-name">{booking.to}</div>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Divider */}
-                        <div className="divider"></div>
+                      {/* Trip Details */}
+                      <div className="trip-details">
+                        <div className="detail-row">
+                          <span className="label">Ngày:</span>
+                          <span className="value">{booking.date}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span className="label">Ghế:</span>
+                          <span className="value">{booking.seats.join(', ')}</span>
+                        </div>
+                        {booking.cargoInfo?.type !== 'none' && (
+                          <div className="detail-row">
+                            <span className="label">Hàng:</span>
+                            <span className="value badge">{booking.cargoInfo.description}</span>
+                          </div>
+                        )}
+                      </div>
 
-                        {/* Trip Details */}
-                        <div className="trip-details">
-                          <div className="detail-row">
-                            <span className="label">Ngày:</span>
-                            <span className="value fw-600">{booking.date}</span>
+                      {/* Price Section */}
+                      <div className="price-action">
+                        <div className="price-section">
+                          <div className="text-muted">Tổng tiền</div>
+                          <div className="fw-bold fs-5">
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalPrice)}
                           </div>
-                          <div className="detail-row">
-                            <span className="label">Ghế:</span>
-                            <span className="value fw-600">{booking.seats.join(', ')}</span>
-                          </div>
-                          {booking.cargoInfo?.type !== 'none' && (
-                            <div className="detail-row">
-                              <span className="label">Hàng:</span>
-                              <span className="value fw-600 badge bg-info">{booking.cargoInfo.description}</span>
+                          {getTripStatus(booking) === 'upcoming' && (
+                            <div className="time-remaining">
+                              <FiClock size={12} />
+                              {getTimeUntilDeparture(booking)}
                             </div>
                           )}
                         </div>
+                      </div>
 
-                        {/* Divider */}
-                        <div className="divider"></div>
+                      {/* Action Buttons */}
+                      <div className="action-buttons">
+                        <button
+                          onClick={() => openDetailModal(booking)}
+                          className="btn-action btn-detail"
+                        >
+                          <FiDownload size={14} />
+                          Chi tiết
+                        </button>
 
-                        {/* Price & Actions */}
-                        <div className="price-action">
-                          <div className="price-section">
-                            <div className="text-muted small">Tổng tiền</div>
-                            <div className="fw-bold fs-5" style={{ color: '#0066cc' }}>
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalPrice)}
-                            </div>
-                            {getTripStatus(booking) === 'upcoming' && (
-                              <div className="time-remaining">
-                                <FiClock size={12} />
-                                {getTimeUntilDeparture(booking)}
-                              </div>
-                            )}
-                          </div>
+                        {getTripStatus(booking) === 'completed' && (
+                          <button
+                            onClick={() => openRatingModal(booking)}
+                            className="btn-action btn-rating"
+                          >
+                            <FiStar size={14} />
+                            Đánh giá
+                          </button>
+                        )}
 
-                          <div className="action-buttons">
-                            <button
-                              onClick={() => openDetailModal(booking)}
-                              className="btn-action btn-detail"
-                              style={{
-                                backgroundColor: '#f0f7ff',
-                                color: '#0066cc',
-                                border: '1px solid #0066cc'
-                              }}
-                            >
-                              <FiDownload size={16} />
-                              Chi tiết & Hóa đơn
-                            </button>
-
-                            {getTripStatus(booking) === 'completed' && (
-                              <button
-                                onClick={() => openRatingModal(booking)}
-                                className="btn-action btn-rating"
-                                style={{
-                                  backgroundColor: bookingRatings[booking.id] ? '#fff0f5' : '#fff8f0',
-                                  color: bookingRatings[booking.id] ? '#ec4899' : '#f59e0b',
-                                  border: bookingRatings[booking.id] ? '1px solid #fbcfe8' : '1px solid #fed7aa'
-                                }}
-                              >
-                                <FiStar size={16} />
-                                {bookingRatings[booking.id] ? 'Cập nhật đánh giá' : 'Đánh giá'}
-                              </button>
-                            )}
-
-                            {canCancelBooking(booking) && (
-                              <button
-                                onClick={() => handleCancelRequest(booking)}
-                                className="btn-action btn-cancel"
-                                style={{
-                                  backgroundColor: '#fee2e2',
-                                  color: '#dc2626',
-                                  border: '1px solid #fecaca'
-                                }}
-                              >
-                                <FiX size={16} />
-                                Hủy vé
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                        {canCancelBooking(booking) && (
+                          <button
+                            onClick={() => handleCancelRequest(booking)}
+                            className="btn-action btn-cancel"
+                          >
+                            <FiX size={14} />
+                            Hủy
+                          </button>
+                        )}
                       </div>
                     </div>
                   )
@@ -522,72 +527,89 @@ export default function UserHistory() {
               <div className="watchlist">
                 {watchlist.map(trip => (
                   <div key={trip.id} className="watchlist-card">
-                    <div className="watchlist-content">
-                      <div className="route-info d-flex align-items-center gap-2">
-                        <FiHeart size={24} className="text-danger" />
-                        <div className="from-to">
-                          <div className="fw-bold fs-5 text-neutral-900 d-flex align-items-center gap-2">
-                            {trip.from} <FiMapPin size={18} style={{ color: '#0066cc' }} /> {trip.to}
-                          </div>
-                          <div className="text-muted small d-flex align-items-center gap-1 mt-1">
-                            <FiTruck size={14} /> Chuyến xe cụ thể • {trip.busType ? (trip.busType === 'bus' ? 'Xe Bus' : 'Xe Minibus') : 'Chuyên dụng'}
-                          </div>
+                    {/* Heart Icon Badge */}
+                    <div className="watchlist-heart-badge">
+                      <FiHeart size={20} className="text-danger" fill="currentColor" />
+                    </div>
+
+                    {/* Route Section */}
+                    <div className="watchlist-route">
+                      <div className="route-from">
+                        <div className="route-label">Từ</div>
+                        <div className="route-city">{trip.from}</div>
+                      </div>
+                      <div className="route-arrow">
+                        <FiMapPin size={20} style={{ color: '#0066cc' }} />
+                      </div>
+                      <div className="route-to">
+                        <div className="route-label">Đến</div>
+                        <div className="route-city">{trip.to}</div>
+                      </div>
+                    </div>
+
+                    {/* Details Grid */}
+                    <div className="watchlist-details">
+                      <div className="detail-item">
+                        <div className="detail-icon">
+                          <FiClock size={16} />
+                        </div>
+                        <div className="detail-content">
+                          <div className="detail-label">Thời gian</div>
+                          <div className="detail-value">{trip.departureTime}</div>
+                          <div className="detail-subtext">{trip.date}</div>
                         </div>
                       </div>
 
-                      <div className="divider"></div>
+                      <div className="detail-item">
+                        <div className="detail-icon">
+                          <FiTruck size={16} />
+                        </div>
+                        <div className="detail-content">
+                          <div className="detail-label">Loại xe</div>
+                          <div className="detail-value">{trip.busType ? (trip.busType === 'bus' ? 'Xe Bus' : 'Xe Minibus') : 'Chuyên dụng'}</div>
+                        </div>
+                      </div>
 
-                      <div className="route-stats">
-                        <div className="stat">
-                          <span className="label d-flex align-items-center gap-1"><FiClock size={14}/> Thời gian:</span>
-                          <span className="value">{trip.departureTime} • {trip.date}</span>
+                      <div className="detail-item">
+                        <div className="detail-icon">
+                          <FiDollarSign size={16} />
                         </div>
-                        <div className="stat">
-                          <span className="label d-flex align-items-center gap-1"><FiStar size={14}/> Nhà xe:</span>
-                          <span className="value">{trip.operator}</span>
-                        </div>
-                        <div className="stat">
-                          <span className="label d-flex align-items-center gap-1"><FiDollarSign size={14}/> Giá:</span>
-                          <span className="value fw-bold" style={{ color: '#0066cc' }}>
+                        <div className="detail-content">
+                          <div className="detail-label">Giá vé</div>
+                          <div className="detail-value price-highlight">
                             {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(trip.price)}
-                          </span>
-                        </div>
-                        {trip.averageRating && (
-                          <div className="stat">
-                            <span className="label d-flex align-items-center gap-1"><FiStar size={14}/> Đánh giá:</span>
-                            <span className="value text-warning fw-bold">{trip.averageRating}</span>
                           </div>
-                        )}
+                        </div>
                       </div>
 
-                      <div className="divider"></div>
+                      {trip.averageRating && (
+                        <div className="detail-item">
+                          <div className="detail-icon">
+                            <FiStar size={16} />
+                          </div>
+                          <div className="detail-content">
+                            <div className="detail-label">Đánh giá</div>
+                            <div className="detail-value rating-highlight">{trip.averageRating} ⭐</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-                      <div className="watchlist-actions">
-                        <button
-                          onClick={() => removeFromWatchlist(trip.id)}
-                          className="btn-action"
-                          style={{
-                            backgroundColor: 'white',
-                            color: '#ef4444',
-                            border: '1px solid #fecaca'
-                          }}
-                        >
-                          <FiTrash2 size={16} />
-                          Xóa khỏi yêu thích
-                        </button>
-                        <button
-                          onClick={() => navigate(`/search?from=${trip.from}&to=${trip.to}`)}
-                          className="btn-action"
-                          style={{
-                            backgroundColor: '#0066cc',
-                            color: 'white',
-                            border: 'none',
-                            textDecoration: 'none'
-                          }}
-                        >
-                          Tìm chuyến tương tự
-                        </button>
-                      </div>
+                    {/* Action Buttons */}
+                    <div className="watchlist-actions">
+                      <button
+                        onClick={() => removeFromWatchlist(trip.id)}
+                        className="btn-watchlist btn-remove"
+                      >
+                        <FiTrash2 size={16} />
+                        Xóa
+                      </button>
+                      <button
+                        onClick={() => navigate(`/search?from=${trip.from}&to=${trip.to}`)}
+                        className="btn-watchlist btn-search"
+                      >
+                        Tìm chuyến
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -762,23 +784,46 @@ export default function UserHistory() {
       {/* Detail Modal */}
       {showDetailModal && selectedBooking && (
         <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 className="fw-bold">Chi tiết vé & Hóa đơn</h3>
+              <div>
+                <h3 className="fw-bold mb-1">Chi tiết vé & Hóa đơn</h3>
+                <p className="text-muted small mb-0">Mã vé: {selectedBooking.id}</p>
+              </div>
               <button
                 className="modal-close"
                 onClick={() => setShowDetailModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}
               >
                 ×
               </button>
             </div>
 
             <div className="modal-body">
+              {/* Trip Header */}
+              <div className="trip-header-section mb-4">
+                <div className="trip-route">
+                  <div className="route-item">
+                    <div className="route-time">{selectedBooking.departureTime}</div>
+                    <div className="route-location">{selectedBooking.from}</div>
+                  </div>
+                  <div className="route-arrow">
+                    <FiMapPin size={18} style={{ color: '#0066cc' }} />
+                  </div>
+                  <div className="route-item">
+                    <div className="route-time">{selectedBooking.arrivalTime}</div>
+                    <div className="route-location">{selectedBooking.to}</div>
+                  </div>
+                </div>
+                <div className="trip-date-operator">
+                  <span className="badge-date">{selectedBooking.date}</span>
+                  <span className="badge-operator">{selectedBooking.operator}</span>
+                </div>
+              </div>
+
               {/* QR Code Section */}
-              <div className="qr-section text-center mb-4">
-                <h6 className="fw-bold mb-3">Mã QR vé di động</h6>
-                <div className="qr-container p-3 bg-light rounded">
+              <div className="qr-section mb-4">
+                <h6 className="fw-bold mb-3">📱 Mã QR vé di động</h6>
+                <div className="qr-container">
                   <QRCode
                     value={JSON.stringify({
                       bookingId: selectedBooking.id,
@@ -788,163 +833,172 @@ export default function UserHistory() {
                       date: selectedBooking.date,
                       time: selectedBooking.departureTime
                     })}
-                    size={200}
+                    size={180}
                     level="H"
                     includeMargin={true}
                   />
                 </div>
-                <div className="small text-muted mt-2">Sử dụng khi lên xe hoặc nhận hàng</div>
+                <p className="text-muted small mt-2 text-center">Sử dụng khi lên xe hoặc nhận hàng</p>
               </div>
 
-              {/* Invoice Information */}
-              <div className="invoice-section">
-                <h6 className="fw-bold mb-3 border-bottom pb-2">Thông tin hóa đơn</h6>
-                
-                <div className="invoice-grid">
-                  <div className="invoice-item">
-                    <span className="label">Mã vận đơn:</span>
-                    <span className="value">{selectedBooking.id}</span>
+              {/* Passenger Information */}
+              <div className="info-section mb-4">
+                <h6 className="fw-bold mb-3">👤 Thông tin hành khách</h6>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Tên:</span>
+                    <span className="info-value">{selectedBooking.passengerName}</span>
                   </div>
-                  <div className="invoice-item">
-                    <span className="label">Hành khách:</span>
-                    <span className="value">{selectedBooking.passengerName}</span>
+                  <div className="info-item">
+                    <span className="info-label">Email:</span>
+                    <span className="info-value">{selectedBooking.email}</span>
                   </div>
-                  <div className="invoice-item">
-                    <span className="label">Email:</span>
-                    <span className="value">{selectedBooking.email}</span>
-                  </div>
-                  <div className="invoice-item">
-                    <span className="label">Điện thoại:</span>
-                    <span className="value">{selectedBooking.phone}</span>
-                  </div>
-                  <div className="invoice-item">
-                    <span className="label">Tuyến đường:</span>
-                    <span className="value">{selectedBooking.from} → {selectedBooking.to}</span>
-                  </div>
-                  <div className="invoice-item">
-                    <span className="label">Ngày khởi hành:</span>
-                    <span className="value">{selectedBooking.date} {selectedBooking.departureTime}</span>
-                  </div>
-                  <div className="invoice-item">
-                    <span className="label">Nhà xe:</span>
-                    <span className="value">{selectedBooking.operator}</span>
-                  </div>
-                  <div className="invoice-item">
-                    <span className="label">Ghế:</span>
-                    <span className="value">{selectedBooking.seats.join(', ')}</span>
+                  <div className="info-item">
+                    <span className="info-label">Điện thoại:</span>
+                    <span className="info-value">{selectedBooking.phone}</span>
                   </div>
                 </div>
+              </div>
 
-                {/* Cost Breakdown */}
-                <div className="cost-breakdown mt-4 p-3 bg-light rounded">
-                  <h6 className="fw-bold mb-3">Chi tiết chi phí</h6>
+              {/* Booking Information */}
+              <div className="info-section mb-4">
+                <h6 className="fw-bold mb-3">🎫 Thông tin đặt vé</h6>
+                <div className="info-grid">
+                  <div className="info-item">
+                    <span className="info-label">Ghế:</span>
+                    <span className="info-value">{selectedBooking.seats.join(', ')}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Số lượng:</span>
+                    <span className="info-value">{selectedBooking.seats.length} ghế</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">Trạng thái:</span>
+                    <span className="info-value">
+                      <span className="badge" style={{
+                        backgroundColor: selectedBooking.status === 'Da thanh toan' ? '#d1fae5' : '#fee2e2',
+                        color: selectedBooking.status === 'Da thanh toan' ? '#065f46' : '#991b1b',
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.85rem',
+                        fontWeight: '600'
+                      }}>
+                        {selectedBooking.status}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cost Breakdown */}
+              <div className="cost-section mb-4">
+                <h6 className="fw-bold mb-3">💰 Chi tiết chi phí</h6>
+                <div className="cost-table">
                   <div className="cost-row">
-                    <span>Giá vé ({selectedBooking.seats.length} ghế):</span>
-                    <span className="fw-bold">
+                    <span className="cost-label">Giá vé ({selectedBooking.seats.length} ghế)</span>
+                    <span className="cost-value">
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(selectedBooking.price)}
                     </span>
                   </div>
                   {selectedBooking.cargoInfo?.type !== 'none' && (
                     <>
                       <div className="cost-row">
-                        <span>Loại hàng:</span>
-                        <span className="fw-bold">{selectedBooking.cargoInfo.description}</span>
+                        <span className="cost-label">Loại hàng</span>
+                        <span className="cost-value">{selectedBooking.cargoInfo.description}</span>
                       </div>
                       {selectedBooking.cargoInfo.weight && (
                         <div className="cost-row">
-                          <span>Cân nặng:</span>
-                          <span className="fw-bold">{selectedBooking.cargoInfo.weight} kg</span>
+                          <span className="cost-label">Cân nặng</span>
+                          <span className="cost-value">{selectedBooking.cargoInfo.weight} kg</span>
                         </div>
                       )}
                       <div className="cost-row">
-                        <span>Cước hàng hóa:</span>
-                        <span className="fw-bold">
+                        <span className="cost-label">Cước hàng hóa</span>
+                        <span className="cost-value">
                           {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(selectedBooking.cargoInfo.price)}
                         </span>
                       </div>
                     </>
                   )}
-                  <hr className="my-2" />
-                  <div className="cost-row fw-bold">
-                    <span>Tổng cộng:</span>
-                    <span style={{ color: '#0066cc', fontSize: '1.1rem' }}>
+                  <div className="cost-row-total">
+                    <span className="cost-label">Tổng cộng</span>
+                    <span className="cost-value-total">
                       {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
                         selectedBooking.price + (selectedBooking.cargoInfo?.price || 0)
                       )}
                     </span>
                   </div>
                 </div>
+              </div>
 
-                {/* Cargo Tracking Timeline - Chỉ hiển thị khi chuyến đã hoàn thành hoặc đã hủy */}
-                {selectedBooking.cargoInfo?.type !== 'none' && getTripStatus(selectedBooking) !== 'upcoming' && selectedBooking.trackingInfo && (
-                  <div className="cargo-tracking mt-4">
-                    <h6 className="fw-bold mb-3">Theo dõi hàng hóa</h6>
-                    <div className="timeline">
-                      <div className="timeline-item completed">
+              {/* Cargo Tracking Timeline */}
+              {selectedBooking.cargoInfo?.type !== 'none' && getTripStatus(selectedBooking) !== 'upcoming' && selectedBooking.trackingInfo && (
+                <div className="tracking-section mb-4">
+                  <h6 className="fw-bold mb-3">📦 Theo dõi hàng hóa</h6>
+                  <div className="timeline">
+                    <div className="timeline-item completed">
+                      <div className="timeline-marker">
+                        <FiCheckCircle size={20} />
+                      </div>
+                      <div className="timeline-content">
+                        <div className="fw-bold">Nhà xe đã nhận hàng</div>
+                        <div className="small text-muted">{selectedBooking.trackingInfo.accepted.time}</div>
+                        <div className="small text-muted">{selectedBooking.trackingInfo.accepted.location}</div>
+                      </div>
+                    </div>
+
+                    {selectedBooking.trackingInfo.in_transit && (
+                      <div className={`timeline-item ${selectedBooking.trackingStatus === 'in_transit' ? 'in-progress' : 'completed'}`}>
+                        <div className="timeline-marker">
+                          {selectedBooking.trackingStatus === 'in_transit' ? <FiLoader size={20} /> : <FiCheckCircle size={20} />}
+                        </div>
+                        <div className="timeline-content">
+                          <div className="fw-bold">Đang giao hàng</div>
+                          <div className="small text-muted">{selectedBooking.trackingInfo.in_transit.time}</div>
+                          <div className="small text-muted">{selectedBooking.trackingInfo.in_transit.location}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedBooking.trackingInfo.delivered && (
+                      <div className={`timeline-item ${selectedBooking.trackingStatus === 'delivered' ? 'completed' : ''}`}>
                         <div className="timeline-marker">
                           <FiCheckCircle size={20} />
                         </div>
                         <div className="timeline-content">
-                          <div className="fw-bold">Nhà xe đã nhận hàng</div>
-                          <div className="small text-muted">{selectedBooking.trackingInfo.accepted.time}</div>
-                          <div className="small text-muted">{selectedBooking.trackingInfo.accepted.location}</div>
+                          <div className="fw-bold">Đã giao thành công</div>
+                          <div className="small text-muted">{selectedBooking.trackingInfo.delivered.time}</div>
+                          <div className="small text-muted">{selectedBooking.trackingInfo.delivered.location}</div>
                         </div>
                       </div>
-
-                      {selectedBooking.trackingInfo.in_transit && (
-                        <div className={`timeline-item ${selectedBooking.trackingStatus === 'in_transit' ? 'in-progress' : 'completed'}`}>
-                          <div className="timeline-marker">
-                            {selectedBooking.trackingStatus === 'in_transit' ? <FiLoader size={20} /> : <FiCheckCircle size={20} />}
-                          </div>
-                          <div className="timeline-content">
-                            <div className="fw-bold">Đang giao hàng</div>
-                            <div className="small text-muted">{selectedBooking.trackingInfo.in_transit.time}</div>
-                            <div className="small text-muted">{selectedBooking.trackingInfo.in_transit.location}</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {selectedBooking.trackingInfo.delivered && (
-                        <div className={`timeline-item ${selectedBooking.trackingStatus === 'delivered' ? 'completed' : ''}`}>
-                          <div className="timeline-marker">
-                            <FiCheckCircle size={20} />
-                          </div>
-                          <div className="timeline-content">
-                            <div className="fw-bold">Đã giao thành công</div>
-                            <div className="small text-muted">{selectedBooking.trackingInfo.delivered.time}</div>
-                            <div className="small text-muted">{selectedBooking.trackingInfo.delivered.location}</div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Notifications */}
-                {selectedBooking.notifications && selectedBooking.notifications.length > 0 && (
-                  <div className="notifications-section mt-4">
-                    <h6 className="fw-bold mb-3">
-                      <FiBell size={18} className="me-2" />
-                      Thông báo từ nhà xe
-                    </h6>
-                    <div className="notifications-list">
-                      {selectedBooking.notifications.map((notif, idx) => (
-                        <div key={idx} className={`notification-item notification-${notif.type}`}>
-                          <div className="notification-time small">{notif.time}</div>
-                          <div className="notification-message">{notif.message}</div>
-                        </div>
-                      ))}
-                    </div>
+              {/* Notifications */}
+              {selectedBooking.notifications && selectedBooking.notifications.length > 0 && (
+                <div className="notifications-section">
+                  <h6 className="fw-bold mb-3">
+                    <FiBell size={18} className="me-2" />
+                    Thông báo từ nhà xe
+                  </h6>
+                  <div className="notifications-list">
+                    {selectedBooking.notifications.map((notif, idx) => (
+                      <div key={idx} className={`notification-item notification-${notif.type}`}>
+                        <div className="notification-time small">{notif.time}</div>
+                        <div className="notification-message">{notif.message}</div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             <div className="modal-footer">
               <button
                 onClick={() => setShowDetailModal(false)}
-                className="btn"
-                style={{ backgroundColor: '#0066cc', color: 'white', border: 'none', padding: '0.75rem 1.5rem' }}
+                className="btn btn-secondary"
               >
                 Đóng
               </button>

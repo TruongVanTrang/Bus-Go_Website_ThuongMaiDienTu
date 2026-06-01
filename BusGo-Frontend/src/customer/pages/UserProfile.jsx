@@ -105,13 +105,18 @@ export default function UserProfile() {
         const dbLevel = (profile.capDoThanhVien || 'bronze').toLowerCase()
         const mappedLevel = ['bronze', 'silver', 'gold'].includes(dbLevel) ? dbLevel : 'bronze'
 
+        // Tính tổng chi tiêu từ các vé đã thanh toán thành công
+        const totalSpentFromTickets = tickets
+          .filter(ticket => ticket.status === 'Da thanh toan')
+          .reduce((sum, ticket) => sum + (ticket.price || 0), 0)
+
         setUserInfo({
           name: profile.name || '',
           email: profile.email || '',
           phone: profile.phone || '',
           membershipLevel: mappedLevel,
           diemTichLuy: profile.diemTichLuy || 0,
-          totalSpent: Number(profile.tongTienDaChiTra || 0),
+          totalSpent: totalSpentFromTickets || Number(profile.tongTienDaChiTra || 0),
           joinedDate: profile.ngayTaoTaiKhoan || new Date().toISOString(),
           avatar: '👤'
         })

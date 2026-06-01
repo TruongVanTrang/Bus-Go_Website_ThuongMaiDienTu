@@ -393,7 +393,7 @@ export default function SearchFilters({ filters, setFilters }) {
             setPriceMin(0)
             setPriceMax(config.defaultMax)
           }}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors shadow-sm"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold rounded-xl transition-colors shadow-sm"
         >
           <FiRefreshCw />
           Đặt lại bộ lọc

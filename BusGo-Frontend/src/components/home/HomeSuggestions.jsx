@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiAlertCircle, FiClock, FiChevronRight } from 'react-icons/fi'
+import { FiAlertCircle, FiClock, FiChevronRight, FiArrowRight, FiTrendingUp, FiMapPin } from 'react-icons/fi'
 import { MdSearch } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
 import { StorageUtil } from '../../utils/helpers'
@@ -62,8 +62,8 @@ export default function HomeSuggestions() {
   }
 
   return (
-    <div className="w-full relative z-10 bg-blue-50 pt-8 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+    <div className="w-full relative z-10 bg-blue-50 pt-4 pb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Information Alerts */}
         {!userInfo.emailVerified && (
@@ -119,10 +119,12 @@ export default function HomeSuggestions() {
 
         {/* 🔥 Tuyến đường được đặt nhiều nhất */}
         <section>
-          <div className="mb-8 border-b border-slate-200 pb-4 flex items-center justify-between">
+          <div className="mb-6 border-b border-slate-200 pb-4 flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <span className="text-2xl">🔥</span>
+                <div className="p-2 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg">
+                  <FiTrendingUp className="text-white" size={24} />
+                </div>
                 <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Tuyến đường phổ biến</h3>
               </div>
               <p className="text-sm font-medium text-slate-500">Các tuyến xe được hành khách lựa chọn nhiều nhất</p>
@@ -132,48 +134,61 @@ export default function HomeSuggestions() {
             </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {MOST_BOOKED_ROUTES.map((route) => (
               <div 
                 key={route.id} 
                 onClick={() => goSearch({ from: route.from, to: route.to, category: route.category })}
-                className="group cursor-pointer bg-white border border-slate-200 rounded-2xl p-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-blue-200 transition-all duration-300 relative overflow-hidden flex flex-col"
+                className="group cursor-pointer bg-white border-2 border-slate-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition-all duration-300"
               >
-                <div className="flex justify-between items-start mb-6">
-                  <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 px-3 py-1 rounded-full text-[13px] font-semibold">
-                    <span className="text-xs">🔥</span>
-                    <span>{route.bookings.toLocaleString()} lượt đặt</span>
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 px-2.5 py-1 rounded-full text-xs font-bold border border-red-200">
+                    <span>🔥</span>
+                    <span>{route.bookings.toLocaleString()}</span>
                   </div>
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-100 px-2 py-1 rounded-md">{route.label}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-1 rounded">{route.label}</span>
                 </div>
 
-                <div className="flex items-center gap-4 mb-8">
-                  <h4 className="text-lg font-bold text-slate-900">{route.from}</h4>
-                  <div className="flex-1 flex items-center">
-                    <div className="w-2 h-2 rounded-full border-2 border-slate-300"></div>
-                    <div className="flex-1 border-t-2 border-dashed border-slate-200 relative">
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 transition-colors">
-                        <FiChevronRight size={16} />
-                      </div>
+                {/* Route Info */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Từ</div>
+                      <div className="text-base font-black text-slate-900 truncate">{route.from}</div>
                     </div>
-                    <div className="w-2 h-2 rounded-full border-2 border-blue-500 bg-white"></div>
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                      <FiArrowRight size={16} className="font-bold" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-right">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Đến</div>
+                      <div className="text-base font-black text-slate-900 truncate">{route.to}</div>
+                    </div>
                   </div>
-                  <h4 className="text-lg font-bold text-slate-900">{route.to}</h4>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(route.bookings / 15, 100)}%` }}
+                    ></div>
+                  </div>
                 </div>
 
-                <div className="mt-auto flex items-end justify-between border-t border-slate-100 pt-4">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-medium text-slate-500 mb-0.5">Giá vé từ</span>
-                    <span className="text-lg font-black text-blue-600">{route.avgPrice.toLocaleString()}đ</span>
+                {/* Footer */}
+                <div className="flex items-end justify-between pt-3 border-t border-slate-100">
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Giá từ</div>
+                    <div className="text-lg font-black text-blue-600">{(route.avgPrice / 1000).toFixed(0)}k</div>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                    <FiChevronRight size={20} />
-                  </div>
+                  <button className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all">
+                    <FiChevronRight size={16} className="font-bold" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
-          <button className="w-full sm:hidden mt-4 py-3 bg-slate-50 text-blue-600 font-semibold rounded-xl border border-slate-200">
+          <button className="w-full sm:hidden mt-3 py-2.5 bg-slate-50 text-blue-600 font-semibold rounded-lg border border-slate-200">
             Xem tất cả tuyến đường
           </button>
         </section>

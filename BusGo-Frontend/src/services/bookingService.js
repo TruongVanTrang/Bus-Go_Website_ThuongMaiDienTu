@@ -54,6 +54,25 @@ export const getMyTicketsAPI = async (token) => {
 }
 
 /**
+ * Lấy chi tiết vé
+ * @param {string} token - JWT Token
+ * @param {string} bookingId - Mã đặt vé
+ * @returns {Promise<object>} response - Chi tiết vé
+ */
+export const getTicketDetailAPI = async (token, bookingId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/bookings/${bookingId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    return response.data
+  } catch (error) {
+    throw error.response?.data || { message: 'Lỗi kết nối server' }
+  }
+}
+
+/**
  * Hủy đặt vé
  * @param {string} token - JWT Token
  * @param {string} bookingId - Mã đặt vé
@@ -62,6 +81,25 @@ export const getMyTicketsAPI = async (token) => {
 export const cancelBookingAPI = async (token, bookingId) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/bookings/${bookingId}/cancel`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    return response.data
+  } catch (error) {
+    throw error.response?.data || { message: 'Lỗi kết nối server' }
+  }
+}
+
+/**
+ * Lấy đánh giá đã gửi cho một vé
+ * @param {string} token - JWT Token
+ * @param {string} bookingId - Mã đặt vé
+ * @returns {Promise<object>} response - Thông tin đánh giá
+ */
+export const getFeedbackAPI = async (token, bookingId) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/bookings/${bookingId}/feedback`, {
       headers: {
         Authorization: `Bearer ${token}`
       }

@@ -28,6 +28,9 @@ export default function SearchResultsPage() {
 
   // Fetch matching trips from backend API when core filters change
   useEffect(() => {
+    // Luôn xóa bản nháp khi người dùng quay lại trang tìm kiếm để không bị dính trạng thái cũ
+    sessionStorage.removeItem('bookingDraft')
+
     const fetchTrips = async () => {
       setLoading(true)
       setError(null)

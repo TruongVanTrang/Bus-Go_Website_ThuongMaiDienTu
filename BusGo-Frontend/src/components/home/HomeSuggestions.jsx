@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
-import { FiAlertCircle, FiClock, FiTrendingUp, FiChevronRight, FiStar, FiZap } from 'react-icons/fi'
-import { MdDirectionsBus, MdSearch } from 'react-icons/md'
+import { FiAlertCircle, FiClock, FiChevronRight, FiArrowRight, FiTrendingUp, FiMapPin } from 'react-icons/fi'
+import { MdSearch } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
 import { StorageUtil } from '../../utils/helpers'
-import './HomeSuggestions.css'
 
 // Tuyến được đặt nhiều nhất (nội thành + ngoại thành thực tế từ DB)
 const MOST_BOOKED_ROUTES = [
@@ -12,49 +11,11 @@ const MOST_BOOKED_ROUTES = [
   { id: 3, from: 'Đà Nẵng', to: 'Quảng Nam', bookings: 756, avgPrice: 80000, category: 'interCity', label: 'Ngoại thành' },
 ]
 
-// Chuyến xe chất lượng cao (đánh giá cao nhất, tuyến thực tế)
-const HIGH_QUALITY_TRIPS = [
-  {
-    id: 'hq-1',
-    from: 'Đà Nẵng', to: 'Huế',
-    rating: 4.9, reviews: 324,
-    amenities: ['AC', 'Wifi', 'Phone Charger'],
-    price: 120000, originalPrice: 150000, discount: 20,
-    busType: 'Xe 35 chỗ', tag: 'BEST RATED',
-    departure: '06:00', category: 'interCity'
-  },
-  {
-    id: 'hq-2',
-    from: 'Cầu Rồng', to: 'Phố cổ Hội An',
-    rating: 4.7, reviews: 287,
-    amenities: ['AC', 'Wifi'],
-    price: 60000, originalPrice: 60000, discount: 0,
-    busType: 'Xe 16 chỗ', tag: 'POPULAR',
-    departure: '08:00', category: 'city'
-  },
-  {
-    id: 'hq-3',
-    from: 'Đà Nẵng', to: 'Quảng Ngãi',
-    rating: 4.8, reviews: 156,
-    amenities: ['AC', 'Wifi', 'Pillow & Blanket'],
-    price: 150000, originalPrice: 180000, discount: 17,
-    busType: 'Xe 35 chỗ', tag: 'PREMIUM',
-    departure: '07:30', category: 'interCity'
-  }
-]
 
-// Gợi ý "Tìm kiếm theo cách bạn muốn"
-const SEARCH_SHORTCUTS = [
-  { id: 'sc-1', label: 'Nội thành Đà Nẵng', icon: '🏙️', query: { category: 'city' }, desc: 'Di chuyển nội thành' },
-  { id: 'sc-2', label: 'Đến Huế hôm nay', icon: '🏯', query: { from: 'Đà Nẵng', to: 'Huế', category: 'interCity' }, desc: 'Ngày hôm nay' },
-  { id: 'sc-3', label: 'Đến Quảng Nam', icon: '🌿', query: { from: 'Đà Nẵng', to: 'Quảng Nam', category: 'interCity' }, desc: 'Tuyến ngắn phổ biến' },
-  { id: 'sc-4', label: 'Giá rẻ nhất', icon: '💰', query: { category: 'city', sort: 'price_asc' }, desc: 'Vé dưới 60.000đ' },
-]
 
 export default function HomeSuggestions() {
   const [recentActivity, setRecentActivity] = useState([])
   const [userInfo, setUserInfo] = useState({ emailVerified: true, phoneVerified: true, hasName: true })
-  const [upcomingTrips, setUpcomingTrips] = useState([])
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -81,33 +42,7 @@ export default function HomeSuggestions() {
       }
     }
 
-    // "Khởi hành trong 24h tới" — tính ngày hôm nay và ngày mai
-    const today = new Date()
-    const todayStr = today.toISOString().split('T')[0]
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const tomorrowStr = tomorrow.toISOString().split('T')[0]
-
-    setUpcomingTrips([
-      {
-        id: 'up-1', from: 'Đà Nẵng', to: 'Huế',
-        date: todayStr, displayDate: 'Hôm nay',
-        departure: '14:00', category: 'interCity',
-        price: 120000, seatsLeft: 8
-      },
-      {
-        id: 'up-2', from: 'Cầu Rồng', to: 'Phố cổ Hội An',
-        date: todayStr, displayDate: 'Hôm nay',
-        departure: '15:30', category: 'city',
-        price: 60000, seatsLeft: 12
-      },
-      {
-        id: 'up-3', from: 'Đà Nẵng', to: 'Quảng Nam',
-        date: tomorrowStr, displayDate: 'Ngày mai',
-        departure: '06:00', category: 'interCity',
-        price: 80000, seatsLeft: 5
-      },
-    ])
+    // "Khởi hành trong 24h tới" — Removed to avoid duplication with UpcomingTrips
   }, [])
 
   // Điều hướng đến trang tìm kiếm với params
@@ -127,227 +62,137 @@ export default function HomeSuggestions() {
   }
 
   return (
-    <div className="home-suggestions">
-      {/* Information Alerts */}
-      {!userInfo.emailVerified && (
-        <div className="suggestions-alerts">
-          <div className="alert-card alert-warning">
-            <div className="alert-icon"><FiAlertCircle size={20} /></div>
-            <div className="alert-content">
-              <p className="alert-title">⚠️ Email chưa được xác minh</p>
-              <p className="alert-desc">Xác minh email để bảo mật tài khoản và nhận thông báo đặt vé</p>
+    <div className="w-full relative z-10 bg-blue-50 pt-4 pb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        
+        {/* Information Alerts */}
+        {!userInfo.emailVerified && (
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-4">
+              <div className="bg-white/50 p-2 rounded-full text-amber-500">
+                <FiAlertCircle size={24} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-amber-900">⚠️ Email chưa được xác minh</h4>
+                <p className="text-xs text-amber-800/80 mt-0.5">Xác minh email để bảo mật tài khoản và nhận thông báo đặt vé</p>
+              </div>
             </div>
-            <button className="btn-verify">Xác minh</button>
+            <button className="px-4 py-2 bg-white text-amber-600 font-semibold text-sm rounded-lg shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+              Xác minh
+            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Lịch sử tìm kiếm gần đây */}
-      {recentActivity.length > 0 && (
-        <div className="suggestions-section">
-          <div className="section-header">
-            <div className="section-title-group">
-              <FiClock size={22} className="title-icon" />
-              <h3>Hoạt động gần đây</h3>
+        {/* Lịch sử tìm kiếm gần đây */}
+        {recentActivity.length > 0 && (
+          <section>
+            <div className="mb-6 border-b-2 border-slate-100 pb-4">
+              <div className="flex items-center gap-3 mb-1">
+                <FiClock size={24} className="text-slate-700" />
+                <h3 className="text-2xl font-bold text-slate-900">Hoạt động gần đây</h3>
+              </div>
+              <p className="text-sm font-medium text-slate-500">Những tuyến bạn vừa tìm kiếm</p>
             </div>
-            <p className="section-subtitle">Những tuyến bạn vừa tìm kiếm</p>
-          </div>
-          <div className="activity-grid">
-            {recentActivity.map((activity, idx) => (
-              <div key={idx} className="activity-card" onClick={() => handleRecentActivityClick(activity)}>
-                <div className="activity-route">
-                  <span className="route-city">{activity.from}</span>
-                  <span className="route-arrow">↔️</span>
-                  <span className="route-city">{activity.to}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {recentActivity.map((activity, idx) => (
+                <div 
+                  key={idx} 
+                  onClick={() => handleRecentActivityClick(activity)}
+                  className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-5 rounded-2xl cursor-pointer hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 shadow-sm"
+                >
+                  <div className="flex items-center gap-3 font-bold text-lg mb-4">
+                    <span className="truncate">{activity.from}</span>
+                    <span>↔️</span>
+                    <span className="truncate">{activity.to}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-white/90 font-medium">
+                    <span>{new Date(activity.timestamp).toLocaleDateString('vi-VN')}</span>
+                    <span className="flex items-center gap-1 font-semibold">
+                      Xem lại <FiChevronRight size={16} />
+                    </span>
+                  </div>
                 </div>
-                <div className="activity-meta">
-                  <span className="activity-date">
-                    {new Date(activity.timestamp).toLocaleDateString('vi-VN')}
-                  </span>
-                  <span className="activity-action">Xem lại <FiChevronRight size={16} /></span>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 🔥 Tuyến đường được đặt nhiều nhất */}
+        <section>
+          <div className="mb-6 border-b border-slate-200 pb-4 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="p-2 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg">
+                  <FiTrendingUp className="text-white" size={24} />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Tuyến đường phổ biến</h3>
+              </div>
+              <p className="text-sm font-medium text-slate-500">Các tuyến xe được hành khách lựa chọn nhiều nhất</p>
+            </div>
+            <button className="hidden sm:flex items-center gap-1 text-blue-600 font-semibold hover:text-blue-700 text-sm transition-colors">
+              Xem tất cả <FiChevronRight />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {MOST_BOOKED_ROUTES.map((route) => (
+              <div 
+                key={route.id} 
+                onClick={() => goSearch({ from: route.from, to: route.to, category: route.category })}
+                className="group cursor-pointer bg-white border-2 border-slate-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition-all duration-300"
+              >
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 px-2.5 py-1 rounded-full text-xs font-bold border border-red-200">
+                    <span>🔥</span>
+                    <span>{route.bookings.toLocaleString()}</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-1 rounded">{route.label}</span>
+                </div>
+
+                {/* Route Info */}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Từ</div>
+                      <div className="text-base font-black text-slate-900 truncate">{route.from}</div>
+                    </div>
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                      <FiArrowRight size={16} className="font-bold" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-right">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Đến</div>
+                      <div className="text-base font-black text-slate-900 truncate">{route.to}</div>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                    <div 
+                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(route.bookings / 15, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-end justify-between pt-3 border-t border-slate-100">
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Giá từ</div>
+                    <div className="text-lg font-black text-blue-600">{(route.avgPrice / 1000).toFixed(0)}k</div>
+                  </div>
+                  <button className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all">
+                    <FiChevronRight size={16} className="font-bold" />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
+          <button className="w-full sm:hidden mt-3 py-2.5 bg-slate-50 text-blue-600 font-semibold rounded-lg border border-slate-200">
+            Xem tất cả tuyến đường
+          </button>
+        </section>
 
-      {/* 🔥 Tuyến đường được đặt nhiều nhất */}
-      <div className="suggestions-section">
-        <div className="section-header">
-          <div className="section-title-group">
-            <span className="title-emoji">🔥</span>
-            <h3>Tuyến đường được đặt nhiều nhất</h3>
-          </div>
-          <p className="section-subtitle">Những chuyến được yêu thích nhất hiện nay</p>
-        </div>
-        <div className="routes-grid">
-          {MOST_BOOKED_ROUTES.map((route) => (
-            <div key={route.id} className="route-card popular">
-              <div className="route-header">
-                <div className="route-info">
-                  <h4>{route.from}</h4>
-                  <span className="route-arrow">→</span>
-                  <h4>{route.to}</h4>
-                </div>
-                <div className="route-badge">
-                  <span className="badge-fire">🔥</span>
-                  <span className="badge-text">{route.bookings.toLocaleString()} lượt</span>
-                </div>
-              </div>
-              <div className="route-details">
-                <div className="detail-item">
-                  <span className="detail-label">Giá từ</span>
-                  <span className="detail-value">{route.avgPrice.toLocaleString()}đ</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Loại</span>
-                  <span className="detail-value">{route.label}</span>
-                </div>
-              </div>
-              <button
-                className="btn-search"
-                onClick={() => goSearch({ from: route.from, to: route.to, category: route.category })}
-              >
-                Tìm kiếm ngay
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ⭐ Chuyến xe chất lượng dịch vụ cao */}
-      <div className="suggestions-section popular-trips-featured">
-        <div className="section-header featured-style">
-          <div className="section-title-group">
-            <span className="title-emoji">⭐</span>
-            <h3>Chuyến xe chất lượng dịch vụ cao!</h3>
-          </div>
-          <p className="section-subtitle">Những chuyến được đánh giá cao nhất</p>
-        </div>
-        <div className="featured-trips-grid">
-          {HIGH_QUALITY_TRIPS.map((trip) => (
-            <div key={trip.id} className="featured-trip-card">
-              {trip.discount > 0 && (
-                <div className="discount-badge">-<span>{trip.discount}%</span></div>
-              )}
-              <div className="featured-badge-tag">{trip.tag}</div>
-              <div className="card-header">
-                <div className="route-display">
-                  <span className="city-from">{trip.from}</span>
-                  <span className="separator">→</span>
-                  <span className="city-to">{trip.to}</span>
-                </div>
-              </div>
-              <div className="rating-section">
-                <div className="stars">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className={i < Math.floor(trip.rating) ? 'star-filled' : 'star-empty'}>★</span>
-                  ))}
-                </div>
-                <span className="rating-value">{trip.rating}</span>
-                <span className="review-count">({trip.reviews})</span>
-              </div>
-              <div className="bus-badge">{trip.busType}</div>
-              <div className="amenities-row">
-                {trip.amenities.map((amenity, idx) => (
-                  <span key={idx} className="amenity-chip">
-                    {amenity === 'Wifi' && '📡 '}
-                    {amenity === 'AC' && '❄️ '}
-                    {amenity === 'Phone Charger' && '🔌 '}
-                    {amenity === 'Pillow & Blanket' && '🛏️ '}
-                    {amenity}
-                  </span>
-                ))}
-              </div>
-              <div className="pricing-footer">
-                <div className="price-info">
-                  {trip.discount > 0 && (
-                    <span className="original-price">{trip.originalPrice.toLocaleString()}đ</span>
-                  )}
-                  <span className="current-price">{trip.price.toLocaleString()}đ</span>
-                </div>
-                {/* Tìm chuyến thực tế trên trang search thay vì booking trực tiếp */}
-                <button
-                  className="btn-book-featured"
-                  onClick={() => goSearch({ from: trip.from, to: trip.to, category: trip.category })}
-                >
-                  Tìm chuyến này
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ⚡ Khởi hành trong 24h tới */}
-      <div className="suggestions-section">
-        <div className="section-header">
-          <div className="section-title-group">
-            <span className="title-emoji">⚡</span>
-            <h3>Khởi hành trong 24h tới</h3>
-          </div>
-          <p className="section-subtitle">Đặt nhanh trước khi hết chỗ!</p>
-        </div>
-        <div className="upcoming-grid">
-          {upcomingTrips.map((trip) => (
-            <div key={trip.id} className="upcoming-card">
-              <div className="upcoming-header">
-                <span className="upcoming-date-badge">{trip.displayDate}</span>
-                <span className="upcoming-seats">
-                  {trip.seatsLeft <= 5
-                    ? <span style={{ color: '#ef4444' }}>⚠️ Còn {trip.seatsLeft} chỗ</span>
-                    : <span style={{ color: '#22c55e' }}>✓ Còn {trip.seatsLeft} chỗ</span>}
-                </span>
-              </div>
-              <div className="upcoming-route">
-                <span className="upcoming-city">{trip.from}</span>
-                <span className="upcoming-arrow">→</span>
-                <span className="upcoming-city">{trip.to}</span>
-              </div>
-              <div className="upcoming-meta">
-                <span>🕐 {trip.departure}</span>
-                <span className="upcoming-price">{trip.price.toLocaleString()}đ</span>
-              </div>
-              <button
-                className="btn-search upcoming-btn"
-                onClick={() => goSearch({ from: trip.from, to: trip.to, date: trip.date, category: trip.category })}
-              >
-                Đặt vé ngay
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 🔍 Tìm kiếm theo cách bạn muốn */}
-      <div className="suggestions-section">
-        <div className="section-header">
-          <div className="section-title-group">
-            <MdSearch size={24} className="title-icon" />
-            <h3>Tìm kiếm theo cách bạn muốn</h3>
-          </div>
-          <p className="section-subtitle">Chọn nhanh theo nhu cầu của bạn</p>
-        </div>
-        <div className="shortcuts-grid">
-          {SEARCH_SHORTCUTS.map((sc) => (
-            <div
-              key={sc.id}
-              className="shortcut-card"
-              onClick={() => goSearch(sc.query)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && goSearch(sc.query)}
-            >
-              <span className="shortcut-icon">{sc.icon}</span>
-              <div className="shortcut-content">
-                <span className="shortcut-label">{sc.label}</span>
-                <span className="shortcut-desc">{sc.desc}</span>
-              </div>
-              <FiChevronRight size={18} className="shortcut-arrow" />
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   )

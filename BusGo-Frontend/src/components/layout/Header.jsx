@@ -1,38 +1,40 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { FiMenu, FiX, FiClock, FiArrowLeft, FiLogOut, FiUser } from 'react-icons/fi'
+import { FiMenu, FiX, FiClock, FiLogOut, FiUser } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import { StorageUtil } from '../../utils/helpers'
-import './Header.css'
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [serviceType, setServiceType] = useState('booking') // 'booking' or 'cargo'
   const [user, setUser] = useState(null)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  
   const navigate = useNavigate()
   const location = useLocation()
+
+  const isHomePage = location.pathname === '/' || location.pathname === '/home'
+
+  // Detect scroll to toggle transparent -> solid header
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   // Load user info from localStorage on mount
   useEffect(() => {
     const userData = StorageUtil.getUser()
     setUser(userData)
     setProfileMenuOpen(false)
-  }, [location.pathname])
-
-  // Sync serviceType with the current URL path
-  useEffect(() => {
-    if (location.pathname.startsWith('/cargo-consignment')) {
-      setServiceType('cargo')
-    } else {
-      setServiceType('booking')
-    }
+    setMobileMenuOpen(false)
   }, [location.pathname])
 
   // Close profile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      const profileDropdown = document.querySelector('.user-profile-dropdown')
-      if (profileDropdown && !profileDropdown.contains(event.target)) {
+      if (!event.target.closest('.user-profile-dropdown')) {
         setProfileMenuOpen(false)
       }
     }
@@ -46,320 +48,179 @@ export default function Header() {
     }
   }, [profileMenuOpen])
 
-  // Show back button on specific routes
-  const showBackButton = ['/booking', '/payment', '/ticket', '/search', '/cargo-consignment'].some(route =>
-    location.pathname.startsWith(route)
-  )
-
-  // Hide tabs on certain routes (only show on home page)
-  const hideServiceTabs = ['/booking', '/payment', '/ticket', '/login', '/search', '/cargo-consignment', '/history'].some(route =>
-    location.pathname.startsWith(route)
-  )
+  const isTransparent = false // User requested a solid background at all times
+  
+  const textColor = 'text-slate-700'
+  const textHover = 'hover:text-blue-600'
+  const logoBlue = 'text-blue-600'
+  const logoDark = 'text-slate-800'
 
   return (
-    <header className="bg-white border-bottom sticky-top">
-      <nav className="navbar navbar-expand-lg navbar-light">
-        <div className="container-fluid px-md-5 px-3">
-          {/* Back Button - Mobile & Desktop */}
-          {showBackButton && (
-            <button
-              onClick={() => navigate(-1)}
-              className="btn btn-sm me-2"
-              style={{
-                backgroundColor: 'transparent',
-                color: '#0066cc',
-                border: 'none',
-                padding: '0.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem'
-              }}
-              title="Quay lại"
-            >
-              <FiArrowLeft size={20} />
-            </button>
-          )}
-
+    <header 
+      className={`w-full z-[100] transition-all duration-300 ${
+        isHomePage ? 'sticky top-0 left-0' : 'sticky top-0 left-0'
+      } bg-white shadow-sm py-3 border-b border-slate-100`}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center">
+          
           {/* Logo */}
-          <Link to="/" className="navbar-brand fw-bold fs-4 d-flex align-items-center me-0">
-            <span className="text-primary" style={{ color: 'var(--color-primary-600)' }}>
-              Bus
-            </span>
-            <span className="text-secondary" style={{ color: 'var(--color-secondary-600)' }}>
-              Go
-            </span>
+          <Link to="/" className="flex items-center gap-1 text-2xl font-black tracking-tight">
+            <span className={`transition-colors ${logoBlue}`}>Bus</span>
+            <span className={`transition-colors ${logoDark}`}>Go</span>
           </Link>
 
-          {/* Service Switcher */}
-          <div className="service-switcher d-flex align-items-center gap-1 ms-2 ms-md-4">
-            <button
-              onClick={() => {
-                setServiceType('booking')
-                navigate('/')
-              }}
-              className={`btn service-btn d-flex align-items-center gap-1 ${serviceType === 'booking' ? 'active' : ''}`}
-            >
-              <span>🛫</span>
-              <span className="d-none d-sm-inline">Đặt vé xe</span>
-              <span className="d-inline d-sm-none">Đặt vé</span>
-            </button>
-            <button
-              onClick={() => {
-                setServiceType('cargo')
-                navigate('/cargo-consignment')
-              }}
-              className={`btn service-btn d-flex align-items-center gap-1 ${serviceType === 'cargo' ? 'active' : ''}`}
-            >
-              <span>📦</span>
-              <span>Gửi hàng</span>
-            </button>
-          </div>
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-8">
+            <Link to="/" className={`font-semibold text-[15px] transition-colors ${textColor} ${textHover}`}>
+              Trang Chủ
+            </Link>
+            <Link to="/search" className={`font-semibold text-[15px] transition-colors ${textColor} ${textHover}`}>
+              Tìm Vé
+            </Link>
+            <Link to="/cargo-consignment" className={`font-semibold text-[15px] transition-colors ${textColor} ${textHover}`}>
+              Gửi Hàng
+            </Link>
+          </nav>
 
-          {/* Mobile Toggle */}
-          <button
-            className="navbar-toggler border-0 p-0"
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? (
-              <FiX size={24} />
-            ) : (
-              <FiMenu size={24} />
-            )}
-          </button>
-
-          {/* Nav Items */}
-          <div
-            className={`collapse navbar-collapse ${mobileMenuOpen ? 'show' : ''}`}
-            id="navbarNav"
-          >
-            <ul className="navbar-nav ms-auto gap-3">
-              <li className="nav-item">
-                <Link
-                  to="/"
-                  className="nav-link text-neutral-700 fw-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Trang Chủ
-                </Link>
-              </li>
-              <li className="nav-item">
-                <Link
-                  to="/search"
-                  className="nav-link text-neutral-700 fw-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Tìm Vé
-                </Link>
-              </li>
-              <li className="nav-item">
-                <a
-                  href="#about"
-                  className="nav-link text-neutral-700 fw-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Về Chúng Tôi
-                </a>
-              </li>
-              <li className="nav-item">
-                <a
-                  href="#contact"
-                  className="nav-link text-neutral-700 fw-500"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Liên Hệ
-                </a>
-              </li>
-            </ul>
-
-            {/* Auth Buttons - Mobile */}
-            <div className="d-lg-none mt-3 gap-2 d-flex flex-column">
-              <Link
-                to="/history"
-                className="btn btn-light text-decoration-none"
-                style={{ border: '1px solid #e5e7eb', color: 'var(--color-primary-600)' }}
-              >
-                <FiClock size={18} className="me-2" style={{ display: 'inline' }} />
-                Lịch Sử
-              </Link>
-              {user ? (
-                <>
-                  <button
-                    className="btn btn-light w-100 text-start d-flex align-items-center gap-2"
-                    style={{ border: '1px solid #e5e7eb' }}
-                    onClick={() => {
-                      navigate('/profile')
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    <span style={{ fontSize: '24px' }}>👤</span>
-                    <div style={{ flex: 1, textAlign: 'left' }}>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#1a1a1a' }}>
-                        {user.name}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#999' }}>Hồ sơ</div>
-                    </div>
-                  </button>
-                  <button
-                    className="btn btn-outline-danger w-100"
-                    style={{ borderColor: '#ef4444', color: '#ef4444' }}
-                    onClick={() => {
-                      StorageUtil.clearAuth()
-                      setUser(null)
-                      navigate('/')
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    <FiLogOut size={18} className="me-2" style={{ display: 'inline' }} />
-                    Đăng Xuất
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    className="btn btn-outline-primary w-100"
-                    style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}
-                    onClick={() => {
-                      navigate('/login')
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    Đăng Nhập
-                  </button>
-                  <button
-                    className="btn w-100"
-                    style={{ backgroundColor: 'var(--color-primary-600)', color: 'white' }}
-                    onClick={() => {
-                      navigate('/register')
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    Đăng Ký
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Auth Buttons - Desktop */}
-          <div className="d-none d-lg-flex gap-2 ms-3 align-items-center">
+          {/* Desktop Auth/Actions */}
+          <div className="hidden md:flex items-center gap-4">
             <Link
               to="/history"
-              className="btn btn-light text-decoration-none"
-              style={{ border: '1px solid #e5e7eb', color: 'var(--color-primary-600)', padding: '0.5rem 1rem' }}
+              className={`flex items-center gap-2 font-medium text-[14px] px-3 py-2 rounded-full transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200`}
             >
-              <FiClock size={18} className="me-2" style={{ display: 'inline' }} />
-              Lịch Sử
+              <FiClock size={16} />
+              <span>Lịch sử</span>
             </Link>
+
             {user ? (
-              <div className="user-profile-dropdown" style={{ position: 'relative' }}>
+              <div className="relative user-profile-dropdown">
                 <button
-                  className="btn user-profile-btn d-flex align-items-center gap-2 ps-2 pe-3"
-                  style={{
-                    border: '2px solid var(--color-primary-600)',
-                    color: 'var(--color-primary-600)',
-                    borderRadius: '50px',
-                    padding: '0.4rem 0.75rem'
-                  }}
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border-2 transition-colors border-blue-600 text-blue-600 hover:bg-blue-50`}
                 >
-                  <span style={{ fontSize: '20px' }}>👤</span>
-                  <span style={{ fontSize: '14px', fontWeight: '600' }}>{user.name}</span>
+                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-semibold text-[14px]">{user.name.split(' ').pop()}</span>
                 </button>
+                
+                {/* Dropdown Menu */}
                 {profileMenuOpen && (
-                  <div
-                    className="profile-dropdown-menu"
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: '0',
-                      marginTop: '0.5rem',
-                      backgroundColor: 'white',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                      minWidth: '200px',
-                      zIndex: 1000
-                    }}
-                  >
-                    <button
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        background: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        transition: 'background 0.2s ease'
-                      }}
-                      onClick={() => {
-                        navigate('/profile')
-                        setProfileMenuOpen(false)
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#f9fafb'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }}
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden origin-top-right animate-in fade-in slide-in-from-top-2">
+                    <Link
+                      to="/profile"
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      onClick={() => setProfileMenuOpen(false)}
                     >
-                      <FiUser size={18} style={{ color: 'var(--color-primary-600)' }} />
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Hồ sơ cá nhân</span>
-                    </button>
-                    <hr style={{ margin: '0.5rem 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+                      <FiUser size={16} className="text-blue-500" />
+                      Hồ sơ cá nhân
+                    </Link>
+                    <div className="h-px bg-slate-100"></div>
                     <button
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      style={{
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        background: 'none',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        color: '#ef4444',
-                        transition: 'background 0.2s ease'
-                      }}
                       onClick={() => {
                         StorageUtil.clearAuth()
                         setUser(null)
                         setProfileMenuOpen(false)
                         navigate('/')
                       }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent'
-                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
                     >
-                      <FiLogOut size={18} />
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>Đăng Xuất</span>
+                      <FiLogOut size={16} />
+                      Đăng xuất
                     </button>
                   </div>
                 )}
               </div>
             ) : (
-              <>
-                <button
-                  className="btn btn-outline-primary"
-                  style={{ color: 'var(--color-primary-600)', borderColor: 'var(--color-primary-600)' }}
-                  onClick={() => navigate('/login')}
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/login"
+                  className={`font-semibold text-[14px] px-4 py-2 rounded-full transition-colors text-blue-600 hover:bg-blue-50`}
                 >
                   Đăng Nhập
-                </button>
-                <button
-                  className="btn"
-                  style={{ backgroundColor: 'var(--color-primary-600)', color: 'white' }}
-                  onClick={() => navigate('/register')}
+                </Link>
+                <Link
+                  to="/register"
+                  className={`font-semibold text-[14px] px-5 py-2 rounded-full transition-colors bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg`}
                 >
                   Đăng Ký
-                </button>
-              </>
+                </Link>
+              </div>
             )}
           </div>
+
+          {/* Mobile Menu Toggle */}
+          <button
+            className={`md:hidden p-2 rounded-lg transition-colors text-slate-700 hover:bg-slate-100`}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+          </button>
         </div>
-      </nav>
+      </div>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-white shadow-xl border-t border-slate-100 animate-in slide-in-from-top-2">
+          <div className="px-4 py-6 space-y-4">
+            <nav className="flex flex-col gap-4 border-b border-slate-100 pb-6">
+              <Link to="/" className="font-semibold text-slate-800 text-lg">Trang Chủ</Link>
+              <Link to="/search" className="font-semibold text-slate-800 text-lg">Tìm Vé</Link>
+              <Link to="/cargo-consignment" className="font-semibold text-slate-800 text-lg">Gửi Hàng</Link>
+            </nav>
+            
+            <div className="flex flex-col gap-3 pt-2">
+              <Link
+                to="/history"
+                className="flex items-center justify-center gap-2 font-medium text-slate-700 bg-slate-100 py-3 rounded-xl"
+              >
+                <FiClock size={18} />
+                Lịch sử đặt vé
+              </Link>
+              
+              {user ? (
+                <>
+                  <Link
+                    to="/profile"
+                    className="flex items-center justify-center gap-2 font-medium text-white bg-blue-600 py-3 rounded-xl shadow-md"
+                  >
+                    <FiUser size={18} />
+                    Hồ sơ ({user.name})
+                  </Link>
+                  <button
+                    onClick={() => {
+                      StorageUtil.clearAuth()
+                      setUser(null)
+                      setMobileMenuOpen(false)
+                      navigate('/')
+                    }}
+                    className="flex items-center justify-center gap-2 font-medium text-red-600 bg-red-50 py-3 rounded-xl"
+                  >
+                    <FiLogOut size={18} />
+                    Đăng xuất
+                  </button>
+                </>
+              ) : (
+                <div className="flex gap-3">
+                  <Link
+                    to="/login"
+                    className="flex-1 text-center font-semibold text-blue-600 bg-blue-50 py-3 rounded-xl"
+                  >
+                    Đăng Nhập
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="flex-1 text-center font-semibold text-white bg-blue-600 py-3 rounded-xl shadow-md"
+                  >
+                    Đăng Ký
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   )
 }

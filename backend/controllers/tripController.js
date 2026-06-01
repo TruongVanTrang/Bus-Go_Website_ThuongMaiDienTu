@@ -103,20 +103,49 @@ const ensureTripsExist = async (pool, diemDi, diemDen, dateStr) => {
   }
 };
 
+// Helper function to release expired seats (held > 5 mins)
+const releaseExpiredSeats = async (pool) => {
+  try {
+    await pool.request().query(`
+      DECLARE @ExpiredTickets TABLE (maVe INT, maGhe INT);
+
+      INSERT INTO @ExpiredTickets (maVe, maGhe)
+      SELECT maVe, maGhe FROM VeDienTu 
+      WHERE trangThaiVe = 'da_dat' AND DATEDIFF(minute, ngayDatVe, GETDATE()) >= 5;
+
+      IF EXISTS (SELECT 1 FROM @ExpiredTickets)
+      BEGIN
+        UPDATE VeDienTu 
+        SET trangThaiVe = 'da_huy' 
+        WHERE maVe IN (SELECT maVe FROM @ExpiredTickets);
+
+        UPDATE GheNgoi 
+        SET trangThaiGhe = 'trong' 
+        WHERE maGhe IN (SELECT maGhe FROM @ExpiredTickets WHERE maGhe IS NOT NULL);
+      END
+    `);
+  } catch (err) {
+    console.error('Error releasing expired seats:', err);
+  }
+};
+
 // @desc    Tìm kiếm chuyến xe
 // @route   GET /api/trips/search
 // @access  Public
 const searchTrips = async (req, res) => {
-  const { from, to, date, category } = req.query;
+  const { diemDi, diemDen, date, category } = req.query;
 
   try {
     const pool = await sql.connect();
+    
+    // Tự động dọn dẹp các vé đã quá hạn giữ chỗ (5 phút)
+    await releaseExpiredSeats(pool);
 
-    if (from && to && date) {
-      // NOTE: Auto-generate trips logic is temporarily disabled because BusGo_DB_Updated.sql 
-      // now automatically seeds 7-days of trips dynamically for all routes.
-      // await ensureTripsExist(pool, from, to, date);
+    // Create default trips for testing if none exist
+    if (diemDi && diemDen && date) {
+      await ensureTripsExist(pool, diemDi, diemDen, date);
     }
+
     let queryStr = `
       SELECT cx.*, td.danhSachTramDung, pt.tienIch as vehicleAmenities
       FROM vw_ChuyenXeChiTiet cx
@@ -128,12 +157,17 @@ const searchTrips = async (req, res) => {
     const request = pool.request();
     const conditions = [];
 
-    if (from) {
-      request.input('from', sql.NVarChar, from);
+    // Tối ưu: Nếu không có tham số tìm kiếm, chỉ lấy chuyến xe từ hôm nay trở đi để giảm tải
+    if (!date) {
+        conditions.push("CAST(cx.thoiGianDi AS DATE) >= CAST(GETDATE() AS DATE)");
+    }
+
+    if (diemDi) {
+      request.input('from', sql.NVarChar, diemDi);
       conditions.push('cx.diemDi = @from');
     }
-    if (to) {
-      request.input('to', sql.NVarChar, to);
+    if (diemDen) {
+      request.input('to', sql.NVarChar, diemDen);
       conditions.push('cx.diemDen = @to');
     }
     if (date) {
@@ -151,22 +185,34 @@ const searchTrips = async (req, res) => {
 
     queryStr += ' ORDER BY cx.thoiGianDi ASC';
 
-    const result = await pool.request();
-    // We run the built query using pool.request() or passing request.query
-    // Actually we can execute request.query(queryStr) which is safer because of inputs.
+    // We run the built query
     const queryResult = await request.query(queryStr);
     const trips = [];
+    
+    // Tối ưu hóa N+1: Lấy tất cả ghế đã đặt của các chuyến xe trong kết quả một lần duy nhất
+    const tripIds = queryResult.recordset.map(r => r.maChuyenXe);
+    let allOccupiedSeats = [];
+    
+    if (tripIds.length > 0) {
+      // Vì tripIds có thể dài, ta có thể dùng bảng tạm hoặc IN clause nếu số lượng vừa phải. 
+      // Ở đây dùng chuỗi join cho IN clause là an toàn nhất nếu số lượng < 2000
+      const idsString = tripIds.join(',');
+      const bulkSeatResult = await pool.request().query(`
+        SELECT maChuyenXe, soGhe 
+        FROM GheNgoi 
+        WHERE maChuyenXe IN (${idsString}) AND trangThaiGhe != 'trong'
+      `);
+      allOccupiedSeats = bulkSeatResult.recordset;
+    }
 
     for (const row of queryResult.recordset) {
-      // Lấy danh sách ghế đã đặt cho chuyến xe này
-      const seatResult = await pool.request()
-        .input('maChuyenXe', sql.Int, row.maChuyenXe)
-        .query("SELECT soGhe FROM GheNgoi WHERE maChuyenXe = @maChuyenXe AND trangThaiGhe != 'trong'");
-      
-      const occupiedSeats = seatResult.recordset.map(s => {
-        const num = parseInt(s.soGhe);
-        return isNaN(num) ? s.soGhe : num;
-      });
+      // Lấy danh sách ghế đã đặt cho chuyến xe này từ kết quả bulk
+      const occupiedSeats = allOccupiedSeats
+        .filter(s => s.maChuyenXe === row.maChuyenXe)
+        .map(s => {
+          const num = parseInt(s.soGhe);
+          return isNaN(num) ? s.soGhe : num;
+        });
 
       // Parse tiện ích
       let amenities = ['AC', 'Wifi'];
@@ -201,7 +247,7 @@ const searchTrips = async (req, res) => {
         arrivalTime: formatTime(row.thoiGianDen),
         duration: calculateDuration(row.thoiGianDi, row.thoiGianDen),
         busType: row.loaiXe,
-        seatsAvailable: row.soGheConTrong,
+        seatsAvailable: row.tongSoGhe - occupiedSeats.length,
         totalSeats: row.tongSoGhe,
         seats: row.tongSoGhe,
         price: row.giaCoBan,
@@ -230,6 +276,10 @@ const getTripById = async (req, res) => {
 
   try {
     const pool = await sql.connect();
+    
+    // Tự động dọn dẹp các vé đã quá hạn giữ chỗ (5 phút)
+    await releaseExpiredSeats(pool);
+
     const result = await pool.request()
       .input('maChuyenXe', sql.Int, id)
       .query(`
@@ -290,7 +340,7 @@ const getTripById = async (req, res) => {
       arrivalTime: formatTime(row.thoiGianDen),
       duration: calculateDuration(row.thoiGianDi, row.thoiGianDen),
       busType: row.loaiXe,
-      seatsAvailable: row.soGheConTrong,
+      seatsAvailable: row.tongSoGhe - occupiedSeats.length,
       totalSeats: row.tongSoGhe,
       seats: row.tongSoGhe,
       price: row.giaCoBan,

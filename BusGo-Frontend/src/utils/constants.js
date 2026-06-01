@@ -221,10 +221,10 @@ export const DEPARTURE_TIMES = {
 // Menu items based on role
 export const ROLE_MENU = {
   [USER_ROLES.ADMIN]: [
+    { id: 'users', label: 'Quản lý người dùng', icon: 'users', path: '/admin/users' },
     { id: 'vehicles', label: 'Quản lý đội xe', icon: 'bus', path: '/admin/vehicles' },
     { id: 'routes', label: 'Quản lý tuyến đường', icon: 'route', path: '/admin/routes' },
     { id: 'schedules', label: 'Quản lý lịch trình', icon: 'clock', path: '/admin/schedules' },
-    { id: 'users', label: 'Quản lý người dùng', icon: 'users', path: '/admin/users' },
     { id: 'reports', label: 'Thống kê & Báo cáo', icon: 'chart', path: '/admin/reports' }
   ],
   [USER_ROLES.DRIVER]: [

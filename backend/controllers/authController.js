@@ -129,10 +129,7 @@ const login = async (req, res) => {
     // Check mật khẩu
     const isMatch = await bcrypt.compare(password, user.matKhau);
     if (!isMatch) {
-      // For development, check if plain text matches (to support mock data in SQL if it's not hashed)
-      if (password !== user.matKhau && user.matKhau !== 'secure_hash') {
-          return res.status(401).json({ message: 'Mật khẩu không chính xác' });
-      }
+      return res.status(401).json({ message: 'Mật khẩu không chính xác' });
     }
 
     // Cập nhật lastLoginDate
@@ -236,5 +233,6 @@ module.exports = {
   register,
   login,
   sendOTP,
-  verifyOTP
+  verifyOTP,
+  otpStore
 };

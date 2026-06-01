@@ -4,7 +4,7 @@ import { AuthUtil } from '@/utils/helpers'
 import './AdminTopbar.css'
 
 /**
- * AdminTopbar - Thanh trên cùng hiển thị user info và logout
+ * AdminTopbar - Thanh trên cùng giống hình minh họa BusGo
  */
 function AdminTopbar({ userName, userRole, onMenuToggle }) {
   const navigate = useNavigate()
@@ -15,34 +15,51 @@ function AdminTopbar({ userName, userRole, onMenuToggle }) {
     navigate('/login')
   }
 
+  const today = new Date().toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+
   return (
     <header className="admin-topbar">
+      {/* Mobile menu toggle */}
       <div className="topbar-left">
         <button className="btn-menu-toggle" onClick={onMenuToggle}>
           <i className="fas fa-bars" />
         </button>
       </div>
 
-      <div className="topbar-center">
-        <h1 className="topbar-title">BusGo Dashboard</h1>
+      {/* Search Bar */}
+      <div className="topbar-search">
+        <i className="fas fa-search topbar-search-icon" />
+        <input
+          type="text"
+          placeholder="Tìm kiếm nhanh chuyến xe, hành khách..."
+          id="admin-topbar-search"
+        />
       </div>
 
+      {/* Right side */}
       <div className="topbar-right">
-        {/* Notifications */}
+        {/* Date */}
+        <span className="topbar-date">{today}</span>
+
+        {/* Bell notification */}
         <div className="topbar-item">
-          <button className="btn-icon" title="Thông báo">
+          <button className="btn-icon" title="Thông báo" id="admin-bell-btn">
             <i className="fas fa-bell" />
-            <span className="notification-badge">3</span>
           </button>
         </div>
 
-        {/* User Profile Dropdown */}
+        {/* User Profile */}
         <div className="topbar-item user-dropdown-container">
           <button
             className="btn-user-profile"
             onClick={() => setShowDropdown(!showDropdown)}
+            id="admin-profile-btn"
           >
-            <span className="user-avatar">{userName.charAt(0).toUpperCase()}</span>
+            <span className="user-avatar">{userName?.charAt(0)?.toUpperCase() || 'U'}</span>
             <span className="user-info">
               <span className="user-name">{userName}</span>
               <span className="user-role">{getRoleLabel(userRole)}</span>
@@ -50,7 +67,6 @@ function AdminTopbar({ userName, userRole, onMenuToggle }) {
             <i className="fas fa-chevron-down" />
           </button>
 
-          {/* Dropdown Menu */}
           {showDropdown && (
             <div className="user-dropdown-menu">
               <a href="#" className="dropdown-item">
@@ -68,26 +84,19 @@ function AdminTopbar({ userName, userRole, onMenuToggle }) {
         </div>
       </div>
 
-      {/* Close dropdown when clicking outside */}
       {showDropdown && (
-        <div
-          className="dropdown-backdrop"
-          onClick={() => setShowDropdown(false)}
-        />
+        <div className="dropdown-backdrop" onClick={() => setShowDropdown(false)} />
       )}
     </header>
   )
 }
 
-/**
- * Hàm hỗ trợ - Lấy nhãn role
- */
 function getRoleLabel(role) {
   const labels = {
     ADMIN: 'Quản trị viên',
-    DRIVER: 'Tài xế',
-    TICKET_STAFF: 'Soát vé',
-    SUPPORT_STAFF: 'Hỗ trợ'
+    DRIVER: 'Tài xế điều hành',
+    TICKET_STAFF: 'Nhân viên soát vé',
+    SUPPORT_STAFF: 'Nhân viên hỗ trợ'
   }
   return labels[role] || 'User'
 }

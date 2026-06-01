@@ -100,6 +100,7 @@ function getMenuIcon(iconName) {
     route: '🛣️',
     clock: '⏰',
     users: '👥',
+    staff: '👨‍💼',
     chart: '📊',
     calendar: '📅',
     road: '🛣️',

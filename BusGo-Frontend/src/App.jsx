@@ -22,6 +22,11 @@ import { ProtectedRoute, RoleProtectedRoute, StaffProtectedRoute } from './auth/
 
 // Admin Components
 import Dashboard from './admin/pages/Dashboard'
+import UsersPage from './admin/pages/UsersPage'
+import VehiclesPage from './admin/pages/VehiclesPage'
+import RoutesPage from './admin/pages/RoutesPage'
+import SchedulesPage from './admin/pages/SchedulesPage'
+import ReportsPage from './admin/pages/ReportsPage'
 
 // Reset scroll lên đầu trang mỗi khi navigate sang route mới
 function ScrollToTop() {
@@ -51,6 +56,11 @@ function App() {
             </StaffProtectedRoute>
           }
         />
+        <Route path="/admin/users" element={<StaffProtectedRoute><UsersPage /></StaffProtectedRoute>} />
+        <Route path="/admin/vehicles" element={<StaffProtectedRoute><VehiclesPage /></StaffProtectedRoute>} />
+        <Route path="/admin/routes" element={<StaffProtectedRoute><RoutesPage /></StaffProtectedRoute>} />
+        <Route path="/admin/schedules" element={<StaffProtectedRoute><SchedulesPage /></StaffProtectedRoute>} />
+        <Route path="/admin/reports" element={<StaffProtectedRoute><ReportsPage /></StaffProtectedRoute>} />
 
         {/* ==================== CLIENT ROUTES (No auth required) ==================== */}
         <Route

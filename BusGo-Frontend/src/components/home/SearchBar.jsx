@@ -1,174 +1,263 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin, CalendarDays, Search, Bus, ChevronDown, Clock, Check } from 'lucide-react'
-import { Card, CardBody, Button } from '@nextui-org/react'
-import { BUS_CATEGORIES, CITY_STOPS, INTERCITY_ROUTES, DEPARTURE_TIMES } from '../../utils/constants'
+import { FiMapPin, FiCalendar, FiClock } from 'react-icons/fi'
+import { BUS_CATEGORIES, BUS_TYPES, CITY_STOPS, INTERCITY_ROUTES, DEPARTURE_TIMES } from '../../utils/constants'
 
 export default function SearchBar() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     category: 'city',
+    busType: '',
     from: '',
     to: '',
     date: '',
     departureTime: ''
   })
+  const [showSmartTags, setShowSmartTags] = useState(false)
+
+  // Smart Suggestion Tags
+  const smartTags = [
+    { id: 1, icon: '🚐', label: 'Xe 16 chỗ cao cấp', state: { busType: 'mini_16' } },
+    { id: 5, icon: '🛏️', label: 'Xe giường nằm', state: { busType: 'sleeper_36' } },
+    { id: 2, icon: '📡', label: 'Có WiFi & Sạc', state: { amenities: ['Wifi', 'Phone Charger'] } },
+    { id: 3, icon: '🌙', label: 'Chuyến đêm', state: { departureTime: 'night' } },
+    { id: 4, icon: '💰', label: 'Giá dưới 200k', state: { priceRange: [0, 200000] } },
+    { id: 6, icon: '🚌', label: 'Xe 35 chỗ', state: { busType: 'coach_29_35' } }
+  ]
+
+  // Get available destinations based on category
+  const destinations = useMemo(() => {
+    if (formData.category === 'city') {
+      return CITY_STOPS
+    } else if (formData.category === 'interCity') {
+      return INTERCITY_ROUTES.map(route => ({ from: route.from, to: route.to }))
+    }
+    return []
+  }, [formData.category])
 
   const handleCategorySelect = (categoryId) => {
-    setFormData({ category: categoryId, from: '', to: '', date: '', departureTime: '' })
+    setFormData(prev => ({
+      ...prev,
+      category: categoryId,
+      busType: '',
+      from: '',
+      to: '',
+      date: '',
+      departureTime: ''
+    }))
   }
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
   }
 
   const handleSearch = (e) => {
     e.preventDefault()
+    
+    // Validate form
     if (!formData.from || !formData.to || !formData.date || !formData.category) {
-      alert('Vui lòng điền đầy đủ thông tin: Điểm đi, Điểm đến, Ngày đi')
+      alert('Vui lòng điền đầy đủ thông tin')
       return
     }
+
+    // Navigate to search results
     const params = new URLSearchParams(formData)
     navigate(`/search?${params.toString()}`)
   }
 
+  const getCategoryIcon = (categoryId) => {
+    return BUS_CATEGORIES[categoryId]?.icon || '🚌'
+  }
+
   return (
-    <Card
-      className="w-full max-w-sm lg:max-w-md shadow-[0_25px_60px_-15px_rgba(30,58,138,0.25)] border border-white/60"
-      style={{
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-      }}
+    <div 
+      className="relative w-full min-h-[600px] flex items-center justify-center bg-cover bg-center py-20 px-4"
+      style={{ backgroundImage: "url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?q=80&w=2069&auto=format&fit=crop')" }}
     >
-      <CardBody className="p-6 sm:p-7">
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/40"></div>
+      
+      <div className="relative z-10 w-full max-w-6xl flex flex-col items-center">
+        
+        <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-4 text-center drop-shadow-md">
+          Tìm và đặt vé xe thông minh dễ dàng
+        </h1>
+        <p className="text-lg md:text-xl text-white/95 mb-8 text-center font-medium drop-shadow">
+          Khám phá các tuyến xe nội - ngoại thành Đà Nẵng của chúng tôi - BusGo
+        </p>
 
-        {/* Title */}
-        <div className="text-center mb-6">
-          <h2 className="text-xl font-black text-blue-950 tracking-tight">Tìm chuyến đi</h2>
-          <p className="text-slate-500 text-xs mt-1 font-semibold">Đặt vé nhanh chỉ 3 phút</p>
-        </div>
-
-        {/* Category Tabs */}
-        <div className="flex bg-slate-100/80 p-1.5 rounded-2xl mb-5 border border-slate-200/50">
-          {[
-            { id: 'city', icon: <Bus size={14} />, label: 'Nội thành' },
-            { id: 'interCity', icon: <MapPin size={14} />, label: 'Liên tỉnh' },
-          ].map((tab) => (
+        {/* Smart Suggestion Tags */}
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-10 w-full max-w-4xl">
+          <span className="text-white font-bold text-sm uppercase tracking-wide drop-shadow-md hidden md:inline-block mr-2">Tìm kiếm nhanh:</span>
+          {smartTags.map(tag => (
             <button
-              key={tab.id}
+              key={tag.id}
               type="button"
-              onClick={() => handleCategorySelect(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                formData.category === tab.id
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/40'
-              }`}
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 border border-white/40 rounded-full text-white text-sm font-semibold transition-all backdrop-blur-md shadow-sm"
+              onClick={() => {
+                setShowSmartTags(false)
+                navigate('/search', { state: tag.state })
+              }}
+              title={tag.label}
             >
-              {tab.icon}
-              {tab.label}
+              <span>{tag.icon}</span>
+              <span>{tag.label}</span>
             </button>
           ))}
         </div>
 
-        <form onSubmit={handleSearch} className="space-y-4">
+        {/* Search Card */}
+        <div className="w-full max-w-5xl bg-white rounded-3xl shadow-2xl p-6 md:p-8 animate-[fadeIn_0.5s_ease-out]">
+          {/* Category Tabs */}
+          <div className="flex justify-center md:justify-start gap-4 mb-6 border-b border-slate-100 pb-4">
+            <button
+              type="button"
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[15px] transition-all ${
+                formData.category === 'city' 
+                ? 'bg-primary-50 text-primary-600 border-2 border-primary-500 shadow-sm' 
+                : 'bg-white text-slate-500 hover:bg-slate-50 border-2 border-transparent'
+              }`}
+              onClick={() => handleCategorySelect('city')}
+            >
+              <span className="text-xl">🏢</span>
+              Tuyến Nội thành
+            </button>
+            <button
+              type="button"
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[15px] transition-all ${
+                formData.category === 'interCity' 
+                ? 'bg-primary-50 text-primary-600 border-2 border-primary-500 shadow-sm' 
+                : 'bg-white text-slate-500 hover:bg-slate-50 border-2 border-transparent'
+              }`}
+              onClick={() => handleCategorySelect('interCity')}
+            >
+              <span className="text-xl">🗺️</span>
+              Tuyến Ngoại thành
+            </button>
+          </div>
 
-          {/* From & To Horizontal Joined */}
-          <div className="flex items-center w-full bg-white border border-slate-200 rounded-xl shadow-sm focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100 transition-all">
+          {/* Search Form */}
+          <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* From */}
-            <div className="relative flex-1">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 z-10 pointer-events-none" size={16} />
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-700 text-[13px] uppercase tracking-wide flex items-center gap-2">
+                <FiMapPin className="text-primary-500 w-4 h-4" />
+                Điểm đi
+              </label>
               <select
+                className="w-full border border-slate-300 rounded-xl px-4 py-3.5 text-[15px] text-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all cursor-pointer bg-slate-50 hover:bg-white"
                 name="from"
                 value={formData.from}
                 onChange={handleChange}
-                className="w-full pl-9 pr-7 py-3.5 bg-transparent border-r border-slate-200 hover:bg-slate-50 focus:outline-none text-slate-800 font-semibold text-[13px] transition-all cursor-pointer appearance-none rounded-l-xl"
               >
-                <option value="" disabled hidden>Điểm đi</option>
-                {formData.category === 'city'
-                  ? CITY_STOPS.map((stop, i) => <option key={i} value={stop}>{stop}</option>)
-                  : Array.from(new Set(INTERCITY_ROUTES.map(r => r.from))).map((city, i) => <option key={i} value={city}>{city}</option>)
-                }
+                <option value="">-- Chọn điểm đi --</option>
+                {formData.category === 'city' ? (
+                  CITY_STOPS.map((stop, idx) => (
+                    <option key={idx} value={stop}>{stop}</option>
+                  ))
+                ) : (
+                  Array.from(new Set(INTERCITY_ROUTES.map(r => r.from))).map((city, idx) => (
+                    <option key={idx} value={city}>{city}</option>
+                  ))
+                )}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
             </div>
 
             {/* To */}
-            <div className="relative flex-1">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-sky-500 z-10 pointer-events-none" size={16} />
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-700 text-[13px] uppercase tracking-wide flex items-center gap-2">
+                <FiMapPin className="text-primary-500 w-4 h-4" />
+                Điểm đến
+              </label>
               <select
+                className="w-full border border-slate-300 rounded-xl px-4 py-3.5 text-[15px] text-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all cursor-pointer bg-slate-50 hover:bg-white"
                 name="to"
                 value={formData.to}
                 onChange={handleChange}
-                className="w-full pl-9 pr-7 py-3.5 bg-transparent hover:bg-slate-50 focus:outline-none text-slate-800 font-semibold text-[13px] transition-all cursor-pointer appearance-none rounded-r-xl"
               >
-                <option value="" disabled hidden>Điểm đến</option>
-                {formData.category === 'city'
-                  ? CITY_STOPS.map((stop, i) => <option key={i} value={stop}>{stop}</option>)
-                  : formData.from
-                    ? Array.from(new Set(INTERCITY_ROUTES.filter(r => r.from === formData.from).map(r => r.to))).map((city, i) => <option key={i} value={city}>{city}</option>)
-                    : []
-                }
+                <option value="">-- Chọn điểm đến --</option>
+                {formData.category === 'city' ? (
+                  CITY_STOPS.map((stop, idx) => (
+                    <option key={idx} value={stop}>{stop}</option>
+                  ))
+                ) : (
+                  formData.from && Array.from(new Set(INTERCITY_ROUTES.filter(r => r.from === formData.from).map(r => r.to))).map((city, idx) => (
+                    <option key={idx} value={city}>{city}</option>
+                  ))
+                )}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
             </div>
-          </div>
 
-          {/* Date + Time */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="relative">
-              <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 z-10 pointer-events-none" size={16} />
+            {/* Date */}
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-700 text-[13px] uppercase tracking-wide flex items-center gap-2">
+                <FiCalendar className="text-primary-500 w-4 h-4" />
+                Ngày đi
+              </label>
               <input
                 type="date"
+                className="w-full border border-slate-300 rounded-xl px-4 py-3.5 text-[15px] text-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all cursor-pointer bg-slate-50 hover:bg-white"
                 name="date"
                 value={formData.date}
                 onChange={handleChange}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full pl-9 pr-2 py-3.5 bg-white border border-slate-200 hover:border-blue-400 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:outline-none rounded-xl text-slate-800 font-semibold text-[13px] transition-all cursor-pointer shadow-sm"
               />
             </div>
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 z-10 pointer-events-none" size={16} />
+
+            {/* Departure Time */}
+            <div className="flex flex-col gap-2">
+              <label className="font-bold text-slate-700 text-[13px] uppercase tracking-wide flex items-center gap-2">
+                <FiClock className="text-primary-500 w-4 h-4" />
+                Giờ khởi hành
+              </label>
               <select
+                className="w-full border border-slate-300 rounded-xl px-4 py-3.5 text-[15px] text-slate-700 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all cursor-pointer bg-slate-50 hover:bg-white"
                 name="departureTime"
                 value={formData.departureTime}
                 onChange={handleChange}
-                className="w-full pl-9 pr-7 py-3.5 bg-white border border-slate-200 hover:border-blue-400 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 focus:outline-none rounded-xl text-slate-800 font-semibold text-[13px] transition-all cursor-pointer appearance-none shadow-sm"
               >
-                <option value="">Tất cả giờ</option>
+                <option value="">-- Tất cả giờ --</option>
                 {Object.entries(DEPARTURE_TIMES).map(([key, time]) => (
-                  <option key={key} value={key}>{time.start}-{time.end}</option>
+                  <option key={key} value={key}>
+                    {time.label} ({time.start}-{time.end})
+                  </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
             </div>
-          </div>
 
-          {/* Search Button */}
-          <Button
-            type="submit"
-            className="w-full h-14 bg-blue-600 hover:bg-blue-700
-                       text-white font-extrabold text-base rounded-xl
-                       shadow-lg shadow-blue-600/25 transition-all duration-300
-                       hover:-translate-y-0.5 mt-2"
-            size="lg"
-            startContent={<Search size={20} />}
-          >
-            Tìm Vé Ngay
-          </Button>
-        </form>
-
-        {/* Bottom hints */}
-        <div className="flex items-center justify-center gap-4 mt-5">
-          {['Miễn phí đặt vé', 'Hoàn tiền 100%'].map((hint) => (
-            <span key={hint} className="flex items-center gap-1.5 text-slate-500 text-xs font-semibold">
-              <Check size={12} className="text-blue-600" />
-              {hint}
-            </span>
-          ))}
+            {/* Submit Button */}
+            <div className="flex items-end">
+              <button
+                type="submit"
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 flex justify-center items-center gap-2 h-[50px] md:h-[54px]"
+              >
+                Tìm vé xe
+              </button>
+            </div>
+          </form>
         </div>
-      </CardBody>
-    </Card>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-3 gap-4 md:gap-12 mt-12 pt-8 border-t border-white/20 w-full max-w-4xl">
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-extrabold text-white mb-1 drop-shadow-sm">500+</div>
+            <div className="text-white/90 text-sm md:text-base font-medium">Tuyến đường</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-extrabold text-white mb-1 drop-shadow-sm">10,000+</div>
+            <div className="text-white/90 text-sm md:text-base font-medium">Chuyến/ngày</div>
+          </div>
+          <div className="text-center">
+            <div className="text-3xl md:text-4xl font-extrabold text-white mb-1 drop-shadow-sm">100K+</div>
+            <div className="text-white/90 text-sm md:text-base font-medium">Khách hài lòng</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
   )
 }

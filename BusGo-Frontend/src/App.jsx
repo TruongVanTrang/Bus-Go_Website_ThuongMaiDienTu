@@ -7,6 +7,7 @@ import HomePage from './customer/pages/HomePage'
 import SearchResultsPage from './customer/pages/SearchResultsPage'
 import BookingPage from './customer/pages/BookingPage'
 import PaymentPage from './customer/pages/PaymentPage'
+import VNPayReturnPage from './customer/pages/VNPayReturnPage'
 import CargoConsignmentPage from './customer/pages/CargoConsignmentPage'
 import ETicketPage from './customer/pages/ETicketPage'
 import UserHistory from './customer/pages/UserHistory'
@@ -21,6 +22,11 @@ import { ProtectedRoute, RoleProtectedRoute, StaffProtectedRoute } from './auth/
 
 // Admin Components
 import Dashboard from './admin/pages/Dashboard'
+import UsersPage from './admin/pages/UsersPage'
+import VehiclesPage from './admin/pages/VehiclesPage'
+import RoutesPage from './admin/pages/RoutesPage'
+import SchedulesPage from './admin/pages/SchedulesPage'
+import ReportsPage from './admin/pages/ReportsPage'
 
 // Driver Components
 import DriverDashboard from './driver/pages/DriverDashboard'
@@ -68,6 +74,11 @@ function App() {
             </StaffProtectedRoute>
           }
         />
+        <Route path="/admin/users" element={<StaffProtectedRoute><UsersPage /></StaffProtectedRoute>} />
+        <Route path="/admin/vehicles" element={<StaffProtectedRoute><VehiclesPage /></StaffProtectedRoute>} />
+        <Route path="/admin/routes" element={<StaffProtectedRoute><RoutesPage /></StaffProtectedRoute>} />
+        <Route path="/admin/schedules" element={<StaffProtectedRoute><SchedulesPage /></StaffProtectedRoute>} />
+        <Route path="/admin/reports" element={<StaffProtectedRoute><ReportsPage /></StaffProtectedRoute>} />
 
         {/* ==================== DRIVER ROUTES ==================== */}
         <Route
@@ -85,6 +96,7 @@ function App() {
         <Route path="/search" element={<PageLayout><SearchResultsPage /></PageLayout>} />
         <Route path="/booking/:tripId" element={<PageLayout><BookingPage /></PageLayout>} />
         <Route path="/payment" element={<PageLayout><PaymentPage /></PageLayout>} />
+        <Route path="/vnpay-return" element={<PageLayout><VNPayReturnPage /></PageLayout>} />
         <Route path="/cargo-consignment" element={<PageLayout><CargoConsignmentPage /></PageLayout>} />
         <Route path="/ticket/:bookingId" element={<PageLayout><ETicketPage /></PageLayout>} />
         <Route path="/history" element={<PageLayout><UserHistory /></PageLayout>} />

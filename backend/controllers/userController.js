@@ -1,4 +1,5 @@
 const { sql } = require('../config/db');
+const { otpStore } = require('./authController');
 
 // @desc    Lấy thông tin profile người dùng
 // @route   GET /api/users/profile
@@ -53,19 +54,51 @@ const getProfile = async (req, res) => {
 // @route   PUT /api/users/profile
 // @access  Private
 const updateProfile = async (req, res) => {
-  const { name, email, phone } = req.body;
+  const { name, email, phone, otp } = req.body;
   const userId = req.user.id;
 
   try {
     const pool = await sql.connect();
 
-    // Check if user exists
+    // Check if user exists and get current data
     const userResult = await pool.request()
       .input('maNguoiDung', sql.Int, userId)
       .query('SELECT * FROM NguoiDung WHERE maNguoiDung = @maNguoiDung');
 
     if (userResult.recordset.length === 0) {
       return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    const currentUser = userResult.recordset[0];
+
+    // Determine if sensitive info (email or phone) is changed
+    const isEmailChanged = email && email !== currentUser.email;
+    const isPhoneChanged = phone && phone !== currentUser.soDienThoai;
+
+    if (isEmailChanged || isPhoneChanged) {
+      // Must provide OTP sent to the CURRENT email
+      if (!otp) {
+        return res.status(400).json({ message: 'Vui lòng cung cấp mã xác thực OTP' });
+      }
+
+      const currentEmail = currentUser.email;
+      const record = otpStore[currentEmail];
+
+      if (!record) {
+        return res.status(400).json({ message: 'Mã xác thực không tồn tại hoặc đã hết hạn' });
+      }
+
+      if (Date.now() > record.expiresAt) {
+        delete otpStore[currentEmail];
+        return res.status(400).json({ message: 'Mã xác thực đã hết hạn' });
+      }
+
+      if (record.code !== otp) {
+        return res.status(400).json({ message: 'Mã xác thực không chính xác' });
+      }
+
+      // Verification success, delete OTP
+      delete otpStore[currentEmail];
     }
 
     // Check if email or phone is already taken by ANOTHER user

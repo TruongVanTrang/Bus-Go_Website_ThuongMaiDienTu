@@ -8,7 +8,8 @@ import { useLocation, useParams, useNavigate } from "react-router-dom"
 import { FiDownload, FiPrinter, FiShare2, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
 import TicketCard from '../../components/ticket/TicketCard'
 import Stepper from '../../components/common/Stepper'
-import FeedbackForm from '../../components/feedback/FeedbackForm'
+import { getTicketDetailAPI } from '../../services/bookingService'
+import { StorageUtil } from '../../utils/helpers'
 import './ETicketPage.css'
 
 export default function ETicketPage() {
@@ -18,7 +19,6 @@ export default function ETicketPage() {
   const { state } = location
   const [paymentVerified, setPaymentVerified] = useState(false)
   const [verifying, setVerifying] = useState(true)
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
 
   // Check payment status on component mount
   useEffect(() => {
@@ -39,21 +39,28 @@ export default function ETicketPage() {
     return () => clearTimeout(timer)
   }, [state, navigate])
 
-  // Mock ticket data if not coming from payment page
-  const ticketData = state || {
-    trip: {
-      from: 'Hà Nội',
-      to: 'Sài Gòn',
-      date: '2024-01-15',
-      departureTime: '08:00',
-      operator: 'BusGo Express'
-    },
-    selectedSeats: ['A1', 'A2'],
-    passengerInfo: {
-      firstName: 'Nguyễn',
-      lastName: 'Văn A'
+  const [ticketData, setTicketData] = useState(state?.trip ? state : null)
+
+  useEffect(() => {
+    // If ticket data is not in state (e.g. accessed directly or returned from VNPay without full state)
+    if (!ticketData && bookingId) {
+      const fetchTicket = async () => {
+        try {
+          const token = StorageUtil.getToken()
+          if (token) {
+            const data = await getTicketDetailAPI(token, bookingId)
+            setTicketData(data)
+            if (data.paymentStatus === 'Da thanh toan') {
+              setPaymentVerified(true)
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch ticket data", error)
+        }
+      }
+      fetchTicket()
     }
-  }
+  }, [bookingId, ticketData])
 
   const handleDownload = () => {
     const canvas = document.querySelector('.ticket-qr canvas')
@@ -89,17 +96,13 @@ export default function ETicketPage() {
     }
   }
 
-  if (verifying) {
+  if (verifying || !ticketData) {
     return (
-      <div className="eticket-page">
-        <div className="container-fluid px-md-5 px-3 d-flex align-items-center justify-content-center min-vh-100">
-          <div className="text-center">
-            <div className="spinner-border text-primary mb-3" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
-            <h5 className="fw-bold text-neutral-900 mb-2">Đang xác thực vé...</h5>
-            <p className="text-muted small">Vui lòng chờ trong giây lát</p>
-          </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <h5 className="text-xl font-bold text-slate-900 mb-2">Đang xác thực và tải vé...</h5>
+          <p className="text-slate-500 font-medium">Vui lòng chờ trong giây lát</p>
         </div>
       </div>
     )
@@ -107,34 +110,28 @@ export default function ETicketPage() {
 
   if (!paymentVerified) {
     return (
-      <div className="eticket-page">
-        <div className="container-fluid px-md-5 px-3 d-flex align-items-center justify-content-center min-vh-100">
-          <div className="text-center">
-            <FiAlertCircle size={60} className="text-danger mb-3" />
-            <h5 className="fw-bold text-neutral-900 mb-2">Thanh toán chưa xác nhận</h5>
-            <p className="text-muted mb-4">
-              Vé của bạn chưa được kích hoạt. Vui lòng hoàn tất thanh toán để nhận vé điện tử.
-            </p>
-            <button
-              onClick={() => navigate('/payment', { state })}
-              className="btn btn-primary"
-              style={{
-                backgroundColor: '#0066cc',
-                borderColor: '#0066cc',
-                padding: '0.75rem 2rem'
-              }}
-            >
-              Tiếp tục thanh toán
-            </button>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center animate-fade-in-up">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <FiAlertCircle className="text-red-500" size={40} />
           </div>
+          <h5 className="text-xl font-bold text-slate-900 mb-3">Thanh toán chưa xác nhận</h5>
+          <p className="text-slate-500 font-medium mb-8">
+            Vé của bạn chưa được kích hoạt. Vui lòng hoàn tất thanh toán để nhận vé điện tử.
+          </p>
+          <button
+            onClick={() => navigate('/payment', { state })}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition-colors"
+          >
+            Tiếp tục thanh toán
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="eticket-page">
-      
+    <div className="min-h-screen bg-slate-50 pb-16">
       {/* =========================================================
           STYLE IN ẤN: CHO PHÉP IN VÉ + HƯỚNG DẪN 3 BƯỚC
       ========================================================== */}
@@ -144,7 +141,7 @@ export default function ETicketPage() {
           margin: 10mm 15mm;
         }
         
-        html, body, #root, .eticket-page {
+        html, body, #root, .min-h-screen {
           height: auto !important;
           min-height: 0 !important;
           margin: 0 !important;
@@ -153,21 +150,16 @@ export default function ETicketPage() {
         }
 
         /* Ẩn tất cả các phần không cần in */
-        .alert-success, 
-        .col-lg-3, 
+        .print-hide,
         button,
         header, 
         nav, 
-        footer,
-        .navbar,
-        .row > .col-lg-3,
-        .card,
-        .alert {
+        footer {
           display: none !important;
         }
 
         /* Chỉ hiển thị vé */
-        .container-fluid, .row, .col-lg-9 {
+        .print-show {
           display: block !important; 
           width: 100% !important;
           margin: 0 !important;
@@ -192,56 +184,38 @@ export default function ETicketPage() {
       {/* ========================================================= */}
 
       {/* Stepper */}
-      <Stepper
-        currentStep={3}
-        steps={[]}
-      />
+      <div className="print-hide">
+        <Stepper currentStep={3} steps={[]} />
+      </div>
 
-      <div className="container-fluid px-md-5 px-3 py-5">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8 md:px-16 pt-8 print-show">
         {/* Success Message */}
-        <div className="alert alert-success mb-5 d-flex align-items-center gap-3" role="alert" style={{ borderRadius: '0.75rem' }}>
-          <div style={{ flexShrink: 0 }}>
-            <FiCheckCircle size={32} style={{ color: '#10b981' }} />
+        <div className="flex items-center gap-4 bg-emerald-50 border border-emerald-200 rounded-2xl p-6 mb-8 print-hide">
+          <div className="shrink-0 w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+            <FiCheckCircle size={28} className="text-emerald-600" />
           </div>
-          <div style={{ flex: 1 }}>
-            <div className="fw-bold text-neutral-900">Thanh toán thành công - Vé đã kích hoạt!</div>
-            <div className="small text-muted">Mã đặt chỗ: <strong>{bookingId}</strong></div>
+          <div>
+            <div className="text-lg font-black text-emerald-900 mb-1">Thanh toán thành công - Vé đã kích hoạt!</div>
+            <div className="text-emerald-700 font-medium">Mã đặt chỗ: <strong className="text-emerald-900">{bookingId}</strong></div>
           </div>
         </div>
 
         {/* Main Ticket + Actions Layout */}
-        <div className="row g-3 mb-4">
+        <div className="flex flex-col xl:flex-row gap-8 mb-8">
           {/* Main Ticket - 70% */}
-          <div className="col-lg-9">
+          <div className="xl:col-span-2 flex-grow print-show">
             <TicketCard bookingId={bookingId} ticketData={ticketData} />
           </div>
 
           {/* Action Sidebar - 30% */}
-          <div className="col-lg-3">
-            <div className="card h-100 sticky-top actions" style={{ top: '100px', borderRadius: '0.75rem' }}>
-              <div className="card-body p-4">
-                <h5 className="fw-bold mb-4 text-neutral-900">Thao tác với vé</h5>
+          <div className="xl:w-[400px] shrink-0 print-hide">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-24">
+              <h5 className="text-xl font-bold text-slate-900 mb-6">Thao tác với vé</h5>
 
+              <div className="space-y-4">
                 <button
                   onClick={handleDownload}
-                  className="btn btn-action w-100 mb-3 d-flex align-items-center justify-content-center gap-2"
-                  style={{
-                    backgroundColor: '#0066cc',
-                    color: 'white',
-                    padding: '0.85rem',
-                    borderRadius: '0.5rem',
-                    border: 'none',
-                    fontWeight: 600,
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#0052a3'
-                    e.target.style.boxShadow = '0 4px 12px rgba(0, 102, 204, 0.3)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#0066cc'
-                    e.target.style.boxShadow = 'none'
-                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-sm hover:shadow-md"
                 >
                   <FiDownload size={20} />
                   Tải vé
@@ -249,22 +223,7 @@ export default function ETicketPage() {
 
                 <button
                   onClick={handlePrint}
-                  className="btn btn-action-outline w-100 mb-3 d-flex align-items-center justify-content-center gap-2"
-                  style={{
-                    backgroundColor: 'white',
-                    color: '#0066cc',
-                    border: '2px solid #0066cc',
-                    padding: '0.75rem',
-                    borderRadius: '0.5rem',
-                    fontWeight: 600,
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f0f7ff'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'white'
-                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-blue-600 font-bold py-3.5 rounded-xl border-2 border-blue-600 transition-all"
                 >
                   <FiPrinter size={20} />
                   In vé
@@ -272,146 +231,77 @@ export default function ETicketPage() {
 
                 <button
                   onClick={handleShare}
-                  className="btn btn-action-secondary w-100 mb-4 d-flex align-items-center justify-content-center gap-2"
-                  style={{
-                    backgroundColor: 'white',
-                    color: '#666666',
-                    border: '2px solid #e5e7eb',
-                    padding: '0.75rem',
-                    borderRadius: '0.5rem',
-                    fontWeight: 600,
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f9fafb'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'white'
-                  }}
+                  className="w-full flex items-center justify-center gap-2 bg-white hover:bg-slate-50 text-slate-600 font-bold py-3.5 rounded-xl border border-slate-300 transition-all"
                 >
                   <FiShare2 size={20} />
                   Chia sẻ
                 </button>
+              </div>
 
-                <div className="alert alert-info small p-3" style={{ backgroundColor: '#f0f7ff', border: '1px solid #0066cc', borderRadius: '0.5rem' }}>
-                  <div className="fw-bold mb-2 text-neutral-900">💡 Hướng dẫn quan trọng:</div>
-                  <ul className="mb-0 ps-3 text-neutral-700">
-                    <li>Lưu mã QR trên điện thoại</li>
-                    <li>Xuất trình vé trước 30 phút</li>
-                    <li>Mang theo CMND khi lên xe</li>
-                    <li>Kiểm tra thời gian khởi hành</li>
-                  </ul>
+              <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+                  <FiAlertCircle className="text-blue-600" />
+                  Hướng dẫn quan trọng:
                 </div>
+                <ul className="space-y-2 text-sm text-blue-800 font-medium pl-6 list-disc">
+                  <li>Lưu mã QR trên điện thoại</li>
+                  <li>Xuất trình vé trước 30 phút</li>
+                  <li>Mang theo CMND khi lên xe</li>
+                  <li>Kiểm tra thời gian khởi hành</li>
+                </ul>
               </div>
             </div>
           </div>
         </div>
 
         {/* Next Steps - HƯỚNG DẪN ĐƯỢC IN KÈM THEO VÉ */}
-        <div className="row">
-          <div className="col-lg-9">
-            <div className="card" style={{ borderRadius: '0.75rem', border: '1px solid #e5e7eb' }}>
-              <div className="card-body p-4">
-                <h5 className="fw-bold mb-4 text-neutral-900">Quy trình tiếp theo</h5>
+        <div className="flex flex-col xl:flex-row gap-8 print-hide">
+          <div className="xl:col-span-2 flex-grow">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+              <h5 className="text-xl font-bold text-slate-900 mb-8">Quy trình tiếp theo</h5>
 
-                {/* Lưới 3 cột ngang */}
-                <div className="row g-4">
-                  {/* Bước 1 */}
-                  <div className="col-md-4">
-                    <div className="d-flex flex-column align-items-center text-center">
-                      <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mb-3 shadow-sm" style={{ width: '45px', height: '45px', fontSize: '1.2rem', fontWeight: 'bold' }}>1</div>
-                      <div className="fw-bold text-neutral-900 mb-2">Lưu hoặc in vé</div>
-                      <p className="text-muted small mb-0 px-2">
-                        Lưu vé trên điện thoại hoặc in vé từ bây giờ. Bạn có thể lấy bất cứ lúc nào trước chuyến xe.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Bước 2 */}
-                  <div className="col-md-4">
-                    <div className="d-flex flex-column align-items-center text-center">
-                      <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mb-3 shadow-sm" style={{ width: '45px', height: '45px', fontSize: '1.2rem', fontWeight: 'bold' }}>2</div>
-                      <div className="fw-bold text-neutral-900 mb-2">Xuất trình tại quầy</div>
-                      <p className="text-muted small mb-0 px-2">
-                        Đến bến xe 30 phút trước giờ khởi hành. Xuất trình mã QR hoặc vé in tại quầy làm thủ tục.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Bước 3 */}
-                  <div className="col-md-4">
-                    <div className="d-flex flex-column align-items-center text-center">
-                      <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mb-3 shadow-sm" style={{ width: '45px', height: '45px', fontSize: '1.2rem', fontWeight: 'bold' }}>3</div>
-                      <div className="fw-bold text-neutral-900 mb-2">Lên xe</div>
-                      <p className="text-muted small mb-0 px-2">
-                        Mang theo CMND/Hộ chiếu để xác nhận và lên xe. Ghế đã được đặt sẵn cho bạn.
-                      </p>
-                    </div>
-                  </div>
+              {/* Lưới 3 cột ngang */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Bước 1 */}
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-black mb-4 shadow-sm border-2 border-blue-200">1</div>
+                  <div className="text-lg font-bold text-slate-900 mb-2">Lưu hoặc in vé</div>
+                  <p className="text-slate-500 font-medium text-sm">
+                    Lưu vé trên điện thoại hoặc in vé từ bây giờ. Bạn có thể lấy bất cứ lúc nào trước chuyến xe.
+                  </p>
                 </div>
 
+                {/* Bước 2 */}
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-black mb-4 shadow-sm border-2 border-blue-200">2</div>
+                  <div className="text-lg font-bold text-slate-900 mb-2">Xuất trình tại quầy</div>
+                  <p className="text-slate-500 font-medium text-sm">
+                    Đến bến xe 30 phút trước giờ khởi hành. Xuất trình mã QR hoặc vé in tại quầy làm thủ tục.
+                  </p>
+                </div>
+
+                {/* Bước 3 */}
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-black mb-4 shadow-sm border-2 border-blue-200">3</div>
+                  <div className="text-lg font-bold text-slate-900 mb-2">Lên xe</div>
+                  <p className="text-slate-500 font-medium text-sm">
+                    Mang theo CMND/Hộ chiếu để xác nhận và lên xe. Ghế đã được đặt sẵn cho bạn.
+                  </p>
+                </div>
               </div>
             </div>
+          </div>
 
+          <div className="xl:w-[400px] shrink-0">
             {/* Back to Home Button */}
             <button
               onClick={() => navigate('/')}
-              className="btn w-100 mt-4 shadow-sm"
-              style={{
-                backgroundColor: '#0066cc',
-                color: 'white',
-                padding: '0.85rem',
-                fontWeight: 600,
-                borderRadius: '0.5rem',
-                border: 'none',
-                transition: 'all 0.3s ease',
-                marginBottom: '1rem'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#0052a3'
-                e.target.style.boxShadow = '0 4px 12px rgba(0, 102, 204, 0.3)'
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#0066cc'
-                e.target.style.boxShadow = 'none'
-              }}
+              className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-all shadow-md mb-4"
             >
               ← Quay về trang chủ
             </button>
-
-            {/* Feedback Button */}
-            <button
-              onClick={() => setFeedbackOpen(true)}
-              className="btn w-100 shadow-sm"
-              style={{
-                backgroundColor: '#f59e0b',
-                color: 'white',
-                padding: '0.85rem',
-                fontWeight: 600,
-                borderRadius: '0.5rem',
-                border: 'none',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = '#d97706'
-                e.target.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.3)'
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.backgroundColor = '#f59e0b'
-                e.target.style.boxShadow = 'none'
-              }}
-            >
-              ⭐ Đánh giá trải nghiệm
-            </button>
           </div>
         </div>
-
-        {/* Feedback Form Modal */}
-        <FeedbackForm
-          isOpen={feedbackOpen}
-          onClose={() => setFeedbackOpen(false)}
-          bookingId={bookingId}
-        />
       </div>
     </div>
   )

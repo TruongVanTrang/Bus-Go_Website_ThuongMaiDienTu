@@ -145,9 +145,11 @@ const updateTripStatus = async (req, res) => {
     await pool.request()
       .input('tripId', sql.Int, tripId)
       .input('status', sql.NVarChar, dbStatus)
+      .input('note', sql.NVarChar, note)
       .query(`
         UPDATE ChuyenXe
-        SET trangThaiChuyen = @status
+        SET trangThaiChuyen = @status,
+            ghiChu = ISNULL(@note, ghiChu)
         WHERE maChuyenXe = @tripId
       `);
 
@@ -279,6 +281,49 @@ const getTripCargo = async (req, res) => {
   }
 };
 
+// @desc    Lấy danh sách hàng hóa nguyên chuyến (Dành riêng cho Truck Driver)
+// @route   GET /api/driver/truck-cargo
+// @access  Private (Driver only)
+const getTruckCargo = async (req, res) => {
+  const driverId = req.user.id; // maNhanVien
+
+  try {
+    const pool = await sql.connect();
+    
+    // Chỉ lấy đơn hàng thuộc loại dịch vụ 'van_tai' được gán cho tài xế này
+    const result = await pool.request()
+      .input('driverId', sql.Int, driverId)
+      .query(`
+        SELECT *
+        FROM KyGuiHang
+        WHERE maTaiXe = @driverId AND loaiDichVu = 'van_tai'
+      `);
+
+    const cargoList = result.recordset.map(row => ({
+      id: `CSM-${row.consignmentId}`,
+      dbId: row.consignmentId,
+      tripId: null, // Không gắn với chuyến xe cố định
+      type: row.loaiHangHoa,
+      sender: row.tenNguoiGui,
+      receiver: row.tenNguoiNhan,
+      phone: row.soDienThoaiNguoiNhan,
+      status: mapKyGuiStatusToClient(row.trangThaiKyGui),
+      isConsignment: true,
+      paymentStatus: row.trangThaiThanhToan,
+      from: row.diemGui,
+      to: row.diemNhan,
+      pickupLocation: row.diaChiGuiChiTiet,
+      deliveryLocation: row.diaChiNhanChiTiet,
+      date: row.ngayGui
+    }));
+
+    res.json(cargoList);
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách vận tải nguyên chuyến:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ' });
+  }
+};
+
 // @desc    Cập nhật trạng thái kiện hàng
 // @route   PUT /api/driver/cargo/:cargoId/status
 // @access  Private (Driver only)
@@ -374,5 +419,6 @@ module.exports = {
   getTripPassengers,
   checkInPassenger,
   getTripCargo,
+  getTruckCargo,
   updateCargoStatus
 };

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { FiCheckCircle, FiXCircle, FiAlertCircle } from 'react-icons/fi'
 import { StorageUtil } from '../../utils/helpers'

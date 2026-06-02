@@ -65,7 +65,7 @@ function LoginPage() {
         // Điều hướng theo role
         if (data.user.role === USER_ROLES.CUSTOMER) {
           navigate('/home')
-        } else if (data.user.role === USER_ROLES.DRIVER) {
+        } else if (data.user.role === USER_ROLES.DRIVER || data.user.role === USER_ROLES.TRUCK_DRIVER) {
           navigate('/driver/dashboard')
         } else {
           navigate('/admin/dashboard')

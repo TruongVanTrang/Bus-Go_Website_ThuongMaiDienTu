@@ -96,7 +96,7 @@ function App() {
         <Route
           path="/driver/dashboard"
           element={
-            <RoleProtectedRoute allowedRoles={[USER_ROLES.DRIVER]}>
+            <RoleProtectedRoute allowedRoles={[USER_ROLES.DRIVER, USER_ROLES.TRUCK_DRIVER]}>
               <DriverDashboard />
             </RoleProtectedRoute>
           }

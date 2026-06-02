@@ -26,6 +26,7 @@ import {
   getTripPassengersAPI, 
   checkInPassengerAPI, 
   getTripCargoAPI, 
+  getTruckCargoAPI,
   updateCargoStatusAPI 
 } from '@/services/driverService'
 
@@ -50,7 +51,7 @@ export default function DriverDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Shift working status
-  const [onShift, setOnShift] = useState(false)
+  const [onShift, setOnShift] = useState(() => AuthUtil.getCurrentUser()?.role === 'TRUCK_DRIVER')
 
   // Loading skeleton state
   const [isLoading, setIsLoading] = useState(true)
@@ -129,7 +130,19 @@ export default function DriverDashboard() {
 
   // Load trips on mount
   useEffect(() => {
-    fetchTrips()
+    if (currentUser.role === 'TRUCK_DRIVER') {
+      const fetchTruckCargo = async () => {
+        try {
+          const data = await getTruckCargoAPI()
+          setCargo(data || [])
+        } catch (err) {
+          console.error('Lỗi khi lấy đơn vận tải:', err)
+        }
+      }
+      fetchTruckCargo()
+    } else {
+      fetchTrips()
+    }
   }, [])
 
   // Load passengers and cargo when selected trip changes
@@ -138,6 +151,9 @@ export default function DriverDashboard() {
       fetchPassengersAndCargo(selectedTripId)
     }
   }, [selectedTripId])
+
+  const activeTripForCargo = trips.find(t => t.id === selectedTripId)
+  const isTripStarted = activeTripForCargo && (activeTripForCargo.status === 'DEPARTED' || activeTripForCargo.status === 'IN_TRANSIT')
 
   // Handle active tab loading transition
   useEffect(() => {
@@ -204,7 +220,7 @@ export default function DriverDashboard() {
   // Filter cargo based on selected trip & search query
   const filteredCargo = useMemo(() => {
     return cargo.filter(c => {
-      const matchTrip = c.tripId === selectedTripId
+      const matchTrip = currentUser.role === 'TRUCK_DRIVER' ? true : c.tripId === selectedTripId
       const matchSearch = searchQuery ? (
         c.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -212,7 +228,7 @@ export default function DriverDashboard() {
       ) : true
       return matchTrip && matchSearch
     })
-  }, [cargo, selectedTripId, searchQuery])
+  }, [cargo, selectedTripId, searchQuery, currentUser.role])
 
   // Filter trips based on search query
   const filteredTrips = useMemo(() => {
@@ -232,7 +248,15 @@ export default function DriverDashboard() {
     setOnShift(willStartShift)
     
     if (willStartShift) {
-      toast.success('Bắt đầu ca làm việc thành công! Hệ thống sẵn sàng tiếp nhận lịch trình.')
+      if (currentUser.role === 'TRUCK_DRIVER') {
+        toast.success('Chuyển trạng thái sang: Sẵn sàng nhận đơn!')
+      } else {
+        toast.success('Bắt đầu ca làm việc thành công! Hệ thống sẵn sàng tiếp nhận lịch trình.')
+      }
+    } else {
+      if (currentUser.role === 'TRUCK_DRIVER') {
+        toast.error('Chuyển trạng thái sang: Đang bận.')
+      }
     }
   }
 
@@ -308,7 +332,7 @@ export default function DriverDashboard() {
 
   // Handle cargo status actions
   const handleCargoStatusUpdate = async (cargoId, currentStatus, dbId, isConsignment = false, imageFile = null) => {
-    let nextStatus = currentStatus
+    let nextStatus = 'PENDING'
     let successMsg = ''
 
     if (isConsignment) {
@@ -344,24 +368,9 @@ export default function DriverDashboard() {
     }
   }
 
-  const handleImageUpload = (e, cargoId, currentStatus, dbId, isConsignment) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      const base64Image = reader.result;
-      handleCargoStatusUpdate(cargoId, currentStatus, dbId, isConsignment, base64Image);
-    };
-    reader.onerror = () => {
-      toast.error('Lỗi khi đọc file ảnh');
-    };
-  }
-
   const handleCargoStatusFail = async (cargoId, dbId) => {
     try {
-      await updateCargoStatusAPI(dbId, 'FAILED')
+      await updateCargoStatusAPI(cargoId, 'FAILED')
       setCargo(prev => 
         prev.map(c => c.id === cargoId ? { ...c, status: 'FAILED' } : c)
       )
@@ -439,26 +448,15 @@ export default function DriverDashboard() {
   }
 
   // Get status details for Cargo
-  const getCargoStatusDetails = (status, isConsignment, paymentStatus) => {
-    if (isConsignment) {
-      switch (status) {
-        case 'PENDING': return { text: 'Chờ duyệt', variant: 'info' }
-        case 'APPROVED': 
-          if (paymentStatus === 'paid') return { text: 'Chờ nhận hàng', variant: 'warning' }
-          return { text: 'Đã duyệt (Chờ TT)', variant: 'outline' }
-        case 'SHIPPING': return { text: 'Đang vận chuyển', variant: 'warning' }
-        case 'DELIVERED': return { text: 'Đã giao', variant: 'success' }
-        case 'FAILED': return { text: 'Giao thất bại', variant: 'destructive' }
-        default: return { text: 'Chờ duyệt', variant: 'info' }
-      }
-    } else {
-      switch (status) {
-        case 'PENDING': return { text: 'Chờ nhận hàng', variant: 'info' }
-        case 'SHIPPING': return { text: 'Đang vận chuyển', variant: 'warning' }
-        case 'DELIVERED': return { text: 'Đã giao', variant: 'success' }
-        case 'FAILED': return { text: 'Giao thất bại', variant: 'destructive' }
-        default: return { text: 'Chờ nhận hàng', variant: 'info' }
-      }
+  const getCargoStatusDetails = (status) => {
+    switch (status) {
+      case 'PENDING': return { text: 'Chờ xác nhận', variant: 'info' }
+      case 'APPROVED': return { text: 'Đã duyệt (Chờ TT)', variant: 'secondary' }
+      case 'SHIPPING': return { text: 'Đang vận chuyển', variant: 'warning' }
+      case 'DELIVERED': return { text: 'Đã giao', variant: 'success' }
+      case 'FAILED': return { text: 'Giao thất bại', variant: 'destructive' }
+      case 'CANCELLED': return { text: 'Đã hủy', variant: 'destructive' }
+      default: return { text: 'Chờ xác nhận', variant: 'info' }
     }
   }
 
@@ -513,9 +511,13 @@ export default function DriverDashboard() {
           {/* Navigation Links */}
           <nav className="space-y-1.5">
             <SidebarItem tabId="overview" icon={Grid} label="Tổng quan" />
-            <SidebarItem tabId="trips" icon={Calendar} label="Chuyến xe của tôi" />
-            <SidebarItem tabId="passengers" icon={Users} label="Hành khách" />
-            <SidebarItem tabId="cargo" icon={Package} label="Hàng hóa đi kèm" />
+            {currentUser.role !== 'TRUCK_DRIVER' && (
+              <SidebarItem tabId="trips" icon={Calendar} label="Chuyến xe của tôi" />
+            )}
+            {currentUser.role !== 'TRUCK_DRIVER' && (
+              <SidebarItem tabId="passengers" icon={Users} label="Hành khách" />
+            )}
+            <SidebarItem tabId="cargo" icon={Package} label={currentUser.role === 'TRUCK_DRIVER' ? "Đơn hàng của tôi" : "Hàng hóa đi kèm"} />
             <SidebarItem tabId="profile" icon={User} label="Hồ sơ cá nhân" />
           </nav>
         </div>
@@ -682,22 +684,32 @@ export default function DriverDashboard() {
                             <p className="text-[10px] font-black text-sky-200 uppercase tracking-wider">Trạng thái làm việc</p>
                             <span className="text-sm font-extrabold flex items-center gap-2 mt-0.5 md:justify-end">
                               <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${onShift ? 'bg-green-400' : 'bg-slate-450'}`} />
-                              {onShift ? 'Đang hoạt động' : 'Nghỉ ca'}
+                              {currentUser.role === 'TRUCK_DRIVER'
+                                ? (onShift ? 'Rảnh (Sẵn sàng)' : 'Đang bận')
+                                : (onShift ? 'Đang hoạt động' : 'Nghỉ ca')
+                              }
                             </span>
                           </div>
                           
                           <Button
-                            variant={onShift ? 'destructive' : 'outline'}
+                            variant={onShift ? (currentUser.role === 'TRUCK_DRIVER' ? 'default' : 'destructive') : 'outline'}
                             onClick={handleShiftToggle}
-                            className={`rounded-xl px-5 h-10 text-xs font-black shadow-none border-none ${onShift ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-white hover:bg-slate-50 text-[#004b87]'}`}
+                            className={`rounded-xl px-5 h-10 text-xs font-black shadow-none border-none ${
+                              onShift 
+                                ? (currentUser.role === 'TRUCK_DRIVER' ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white')
+                                : 'bg-white hover:bg-slate-50 text-[#004b87]'
+                            }`}
                           >
-                            {onShift ? 'Kết thúc ca' : 'Bắt đầu ca làm'}
+                            {currentUser.role === 'TRUCK_DRIVER'
+                              ? (onShift ? 'Chuyển sang Bận' : 'Chuyển sang Rảnh')
+                              : (onShift ? 'Kết thúc ca' : 'Bắt đầu ca làm')
+                            }
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
 
-                    {onShift ? (
+                    {(currentUser.role === 'TRUCK_DRIVER' || onShift) ? (
                       <>
                         {/* KPI Cards Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -738,27 +750,31 @@ export default function DriverDashboard() {
                             </CardContent>
                           </Card>
 
-                          {/* Tổng hành khách */}
-                          <Card className="hover:shadow-md border-slate-100/80 transition-shadow">
-                            <CardContent className="p-6 flex items-center justify-between">
-                              <div className="space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Khách chuyến chọn</span>
-                                <h3 className="text-2xl font-black text-slate-800">{stats.totalPassengers} Khách</h3>
-                                <p className="text-xs font-semibold text-slate-400 flex items-center gap-1 mt-1">
-                                  {upcomingTrip ? `Chọn tuyến ${upcomingTrip.from} → ${upcomingTrip.to}` : 'Chưa chọn chuyến'}
-                                </p>
-                              </div>
-                              <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
-                                <Users className="h-6 w-6" />
-                              </div>
-                            </CardContent>
-                          </Card>
+                          {/* Tổng hành khách - HIDE FOR TRUCK DRIVER */}
+                          {currentUser.role !== 'TRUCK_DRIVER' && (
+                            <Card className="hover:shadow-md border-slate-100/80 transition-shadow">
+                              <CardContent className="p-6 flex items-center justify-between">
+                                <div className="space-y-1">
+                                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Khách chuyến chọn</span>
+                                  <h3 className="text-2xl font-black text-slate-800">{stats.totalPassengers} Khách</h3>
+                                  <p className="text-xs font-semibold text-slate-400 flex items-center gap-1 mt-1">
+                                    {upcomingTrip ? `Chọn tuyến ${upcomingTrip.from} → ${upcomingTrip.to}` : 'Chưa chọn chuyến'}
+                                  </p>
+                                </div>
+                                <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
+                                  <Users className="h-6 w-6" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
                           {/* Hàng hóa cần giao */}
                           <Card className="hover:shadow-md border-slate-100/80 transition-shadow">
                             <CardContent className="p-6 flex items-center justify-between">
                               <div className="space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hàng hóa cần giao</span>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                  {currentUser.role === 'TRUCK_DRIVER' ? 'Đơn vận tải' : 'Hàng hóa cần giao'}
+                                </span>
                                 <h3 className="text-2xl font-black text-slate-800">{stats.pendingCargo} Kiện</h3>
                                 <p className="text-xs font-semibold text-slate-400 flex items-center gap-1 mt-1">
                                   Chờ xác nhận & vận chuyển
@@ -1118,7 +1134,7 @@ export default function DriverDashboard() {
                             <option value="">-- Chọn chuyến xe --</option>
                             {trips.map(t => (
                               <option key={t.id} value={t.id}>
-                                [{t.departureTime}] {t.from} → {t.to} ({t.licensePlate})
+                                [{t.date} - {t.departureTime}] {t.from} → {t.to} ({t.licensePlate})
                               </option>
                             ))}
                           </select>
@@ -1235,37 +1251,46 @@ export default function DriverDashboard() {
 
                 {/* ==================== TAB: CARGO (HÀNG HÓA ĐI KÈM) ==================== */}
                 {activeTab === 'cargo' && (
-                  onShift ? (
+                  (currentUser.role === 'TRUCK_DRIVER' || onShift) ? (
                     <div className="space-y-6">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                          <h1 className="text-2xl font-black text-slate-800">Quản lý hàng hóa gửi theo chuyến</h1>
-                          <p className="text-slate-400 text-xs font-semibold mt-1">Quản lý việc nhận hàng gửi ký gửi, cập nhật hành trình vận chuyển hàng hóa ký gửi</p>
+                          <h1 className="text-2xl font-black text-slate-800">
+                            {currentUser.role === 'TRUCK_DRIVER' ? 'Quản lý đơn hàng vận tải' : 'Quản lý hàng hóa gửi theo chuyến'}
+                          </h1>
+                          <p className="text-slate-400 text-xs font-semibold mt-1">
+                            {currentUser.role === 'TRUCK_DRIVER' ? 'Tiếp nhận đơn hàng vận tải, cập nhật trạng thái lấy/giao hàng' : 'Quản lý việc nhận hàng gửi ký gửi, cập nhật hành trình vận chuyển hàng hóa ký gửi'}
+                          </p>
                         </div>
 
-                        {/* Select trip filter */}
-                        <div className="flex gap-2.5 flex-wrap items-center">
-                          <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Chuyến chọn:</span>
-                          <select 
-                            value={selectedTripId || ''} 
-                            onChange={(e) => setSelectedTripId(e.target.value ? Number(e.target.value) : null)}
-                            className="border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#004b87]"
-                          >
-                            <option value="">-- Chọn chuyến xe --</option>
-                            {trips.map(t => (
-                              <option key={t.id} value={t.id}>
-                                [{t.departureTime}] {t.from} → {t.to} ({t.licensePlate})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        {/* Select trip filter - HIDE FOR TRUCK DRIVER */}
+                        {currentUser.role !== 'TRUCK_DRIVER' && (
+                          <div className="flex gap-2.5 flex-wrap items-center">
+                            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Chuyến chọn:</span>
+                            <select 
+                              value={selectedTripId || ''} 
+                              onChange={(e) => setSelectedTripId(e.target.value ? Number(e.target.value) : null)}
+                              className="border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#004b87]"
+                            >
+                              <option value="">-- Chọn chuyến xe --</option>
+                              {trips.map(t => (
+                                <option key={t.id} value={t.id}>
+                                  [{t.date} - {t.departureTime}] {t.from} → {t.to} ({t.licensePlate})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
 
                       <Card className="border-slate-100">
                         <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 p-6 bg-slate-50/20">
                           <div>
                             <CardTitle className="text-sm font-black">
-                              Thông tin kiện hàng ký gửi: {trips.find(t => t.id === selectedTripId) ? `${trips.find(t => t.id === selectedTripId).from} → ${trips.find(t => t.id === selectedTripId).to}` : 'Chưa chọn chuyến'}
+                              {currentUser.role === 'TRUCK_DRIVER' 
+                                ? 'Thông tin đơn hàng nguyên chuyến'
+                                : `Thông tin kiện hàng ký gửi: ${trips.find(t => t.id === selectedTripId) ? `${trips.find(t => t.id === selectedTripId).from} → ${trips.find(t => t.id === selectedTripId).to}` : 'Chưa chọn chuyến'}`
+                              }
                             </CardTitle>
                             <CardDescription className="text-xs font-semibold mt-1">Tổng cộng có {filteredCargo.length} kiện hàng đang quản lý</CardDescription>
                           </div>
@@ -1285,7 +1310,7 @@ export default function DriverDashboard() {
                               </TableHeader>
                               <TableBody>
                                 {filteredCargo.map(item => {
-                                  const cargoStatus = getCargoStatusDetails(item.status, item.isConsignment, item.paymentStatus)
+                                  const cargoStatus = getCargoStatusDetails(item.status)
                                   return (
                                     <TableRow key={item.id}>
                                       <TableCell className="font-black text-slate-800 text-sm">{item.id}</TableCell>
@@ -1301,7 +1326,7 @@ export default function DriverDashboard() {
                                         </Badge>
                                       </TableCell>
                                       <TableCell className="text-right">
-                                        <div className="flex justify-end gap-1.5">
+                                        <div className="flex justify-end gap-1.5 flex-wrap">
                                           {item.status === 'PENDING' && (
                                             <Button
                                               variant="outline"
@@ -1313,62 +1338,53 @@ export default function DriverDashboard() {
                                               {item.isConsignment ? 'Duyệt đơn' : 'Nhận hàng'}
                                             </Button>
                                           )}
+                                          
                                           {item.status === 'APPROVED' && item.isConsignment && (
                                             item.paymentStatus === 'paid' ? (
-                                              <div className="flex flex-col items-end gap-1 w-full">
-                                                <input 
-                                                  type="file" 
-                                                  accept="image/*" 
-                                                  style={{ display: 'none' }} 
-                                                  id={`upload-cargo-${item.id}`} 
-                                                  onChange={(e) => handleImageUpload(e, item.id, 'APPROVED', item.dbId, true)}
-                                                />
-                                                <Button
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() => document.getElementById(`upload-cargo-${item.id}`).click()}
-                                                  className="border-amber-200 text-amber-700 hover:bg-amber-50 h-8 text-xs px-2.5 rounded-lg"
-                                                >
-                                                  <Camera className="h-3.5 w-3.5 mr-1" />
-                                                  Đã nhận
-                                                </Button>
-                                              </div>
-                                            ) : (
-                                              <span className="text-[10px] text-slate-500 font-bold italic mt-1 text-right block w-full">Chờ KH TT</span>
-                                            )
-                                          )}
-                                          {item.status === 'SHIPPING' && (
-                                            <>
-                                              {item.isConsignment ? (
+                                              (currentUser.role === 'TRUCK_DRIVER' || (onShift && isTripStarted)) ? (
                                                 <div className="flex flex-col items-end gap-1 w-full">
-                                                  <input 
-                                                    type="file" 
-                                                    accept="image/*" 
-                                                    style={{ display: 'none' }} 
-                                                    id={`upload-cargo-dropoff-${item.id}`} 
-                                                    onChange={(e) => handleImageUpload(e, item.id, 'SHIPPING', item.dbId, true)}
-                                                  />
+                                                  <span className="text-[10px] text-amber-600 font-bold block w-full text-right">Chờ đến nhận</span>
                                                   <Button
-                                                    variant="default"
+                                                    variant="outline"
                                                     size="sm"
-                                                    onClick={() => document.getElementById(`upload-cargo-dropoff-${item.id}`).click()}
-                                                    className="bg-[#004b87] hover:bg-[#003d70] h-8 text-xs px-2.5 rounded-lg border-none"
+                                                    onClick={() => {
+                                                      const fakeImage = prompt("Nhập URL hình ảnh xác nhận nhận hàng:", "https://example.com/pickup.jpg");
+                                                      if (fakeImage) {
+                                                        handleCargoStatusUpdate(item.id, 'APPROVED', item.dbId, true, fakeImage);
+                                                      }
+                                                    }}
+                                                    className="border-amber-200 text-amber-700 hover:bg-amber-50 h-8 text-xs px-2.5 rounded-lg"
                                                   >
                                                     <Camera className="h-3.5 w-3.5 mr-1" />
-                                                    Đã giao
+                                                    Đã nhận
                                                   </Button>
                                                 </div>
                                               ) : (
-                                                <Button
-                                                  variant="default"
-                                                  size="sm"
-                                                  onClick={() => handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, false)}
-                                                  className="bg-[#004b87] hover:bg-[#003d70] h-8 text-xs px-2.5 rounded-lg border-none"
-                                                >
-                                                  <Truck className="h-3.5 w-3.5 mr-1" />
-                                                  Đã giao
-                                                </Button>
-                                              )}
+                                                <span className="text-[10px] text-slate-500 font-bold block w-full text-right">{currentUser.role === 'TRUCK_DRIVER' ? 'Đã thanh toán (Sẵn sàng nhận hàng)' : 'Đã thanh toán (Chờ xuất phát)'}</span>
+                                              )
+                                            ) : (
+                                              <span className="text-[10px] text-slate-500 font-bold italic mt-1 text-right block w-full">Chờ KH thanh toán</span>
+                                            )
+                                          )}
+
+                                          {item.status === 'SHIPPING' && (
+                                            <>
+                                              <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={() => {
+                                                  if (item.isConsignment) {
+                                                    const fakeImage = prompt("Nhập URL hình ảnh xác nhận giao hàng:", "https://example.com/dropoff.jpg");
+                                                    if (fakeImage) handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, item.isConsignment, fakeImage);
+                                                  } else {
+                                                    handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, false);
+                                                  }
+                                                }}
+                                                className="bg-[#004b87] hover:bg-[#003d70] h-8 text-xs px-2.5 rounded-lg border-none"
+                                              >
+                                                {item.isConsignment ? <Camera className="h-3.5 w-3.5 mr-1" /> : <Truck className="h-3.5 w-3.5 mr-1" />}
+                                                {item.isConsignment ? 'Chụp ảnh giao' : 'Đã giao'}
+                                              </Button>
                                               <Button
                                                 variant="outline"
                                                 size="sm"
@@ -1388,6 +1404,11 @@ export default function DriverDashboard() {
                                           {item.status === 'FAILED' && (
                                             <span className="text-xs text-red-500 font-black flex items-center justify-end gap-1 py-1">
                                               <AlertTriangle className="h-4 w-4" /> Giao thất bại
+                                            </span>
+                                          )}
+                                          {item.status === 'CANCELLED' && (
+                                            <span className="text-xs text-slate-500 font-black flex items-center justify-end gap-1 py-1">
+                                              <X className="h-4 w-4" /> Khách hủy đơn
                                             </span>
                                           )}
                                         </div>
@@ -1412,8 +1433,12 @@ export default function DriverDashboard() {
                         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-350">
                           <Clock className="h-8 w-8 text-slate-400" />
                         </div>
-                        <h3 className="text-base font-extrabold text-[#004b87]">Ca làm việc của bạn đang đóng</h3>
-                        <p className="text-xs font-semibold text-slate-500 max-w-sm mx-auto">Vui lòng quay lại tab "Tổng quan" và nhấn nút "Bắt đầu ca làm" để quản lý hàng hóa ký gửi.</p>
+                        <h3 className="text-base font-extrabold text-[#004b87]">
+                          {currentUser.role === 'TRUCK_DRIVER' ? 'Chưa có dữ liệu' : 'Ca làm việc của bạn đang đóng'}
+                        </h3>
+                        <p className="text-xs font-semibold text-slate-500 max-w-sm mx-auto">
+                          {currentUser.role === 'TRUCK_DRIVER' ? 'Vui lòng kiểm tra lại sau.' : 'Vui lòng quay lại tab "Tổng quan" và nhấn nút "Bắt đầu ca làm" để quản lý hàng hóa ký gửi.'}
+                        </p>
                       </CardContent>
                     </Card>
                   )

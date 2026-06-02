@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FiCheckCircle, FiArrowRight, FiDownload, FiEdit2, FiAlertCircle, FiCamera, FiUpload, FiTrash2, FiPrinter, FiX, FiLock, FiInfo } from 'react-icons/fi'
 import { MdDirectionsBus, MdLocalShipping, MdCreditCard } from 'react-icons/md'
@@ -85,8 +85,8 @@ export default function CargoConsignmentPage() {
   }
 
   const TRUCK_TYPES = {
-    truck_10t: { label: 'Xe tải 10 tấn', pricePerKm: 15000, icon: '🚚' },
-    truck_20t: { label: 'Xe tải 20 tấn', pricePerKm: 25000, icon: '🚛' },
+    truck_5t: { label: 'Xe tải 5 tấn', pricePerKm: 10000, icon: '🚚' },
+    truck_10t: { label: 'Xe tải 10 tấn', pricePerKm: 15000, icon: '🚛' },
     truck_30t: { label: 'Xe tải 30 tấn', pricePerKm: 35000, icon: '🚒' }
   }
 
@@ -409,11 +409,13 @@ export default function CargoConsignmentPage() {
 
       if (response.ok) {
         console.log('Saved consignment to backend successfully')
+        const resData = await response.json()
+        const savedId = resData.consignmentId || newId
         
         // Cập nhật state thành công và chuyển sang bước chờ
         const fullConsignment = {
           ...consignmentData,
-          id: newId,
+          id: savedId,
           maTaiXe: null,
           driverInfo: null,
           trangThaiKyGui: serviceType === 'gui_kem' ? 'dang_cho_xac_nhan' : 'dang_tim_xe_trong',
@@ -427,7 +429,7 @@ export default function CargoConsignmentPage() {
         }
 
         setTimeout(() => {
-          setActiveConsignmentId(newId)
+          setActiveConsignmentId(savedId)
           setActiveConsignment(fullConsignment)
           setConsignmentStatus(fullConsignment.trangThaiKyGui)
           setConfirmLoading(false)
@@ -441,6 +443,27 @@ export default function CargoConsignmentPage() {
     } catch (err) {
       alert('Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.')
       setConfirmLoading(false)
+    }
+  }
+  
+  // Customer cancels consignment
+  const handleCancelConsignment = async () => {
+    if (!window.confirm("Bạn có chắc chắn muốn hủy yêu cầu ký gửi này?")) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/cargo/consignment/${activeConsignmentId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trangThaiKyGui: 'da_huy' })
+      });
+      if (response.ok) {
+        setConsignmentStatus('da_huy');
+        alert("Đã hủy đơn ký gửi thành công.");
+      } else {
+        alert("Không thể hủy đơn. Vui lòng thử lại sau.");
+      }
+    } catch(err) {
+       console.error("Lỗi hủy đơn:", err);
+       alert("Lỗi kết nối máy chủ khi hủy đơn.");
     }
   }
 
@@ -1451,19 +1474,27 @@ export default function CargoConsignmentPage() {
                         Yêu cầu gửi hàng của bạn đã gửi đi thành công với mã <strong>{activeConsignmentId}</strong>. 
                         Vui lòng chờ tài xế xác nhận nhận hàng trực tuyến trước khi thanh toán.
                       </p>
-                      <div className="alert alert-warning text-xs max-w-sm mx-auto">
+                      <div className="alert alert-warning text-xs max-w-sm mx-auto mb-3">
                         💡 **Để thử nghiệm nhanh**: Hãy mở file <strong>driver.html</strong> (nếu gửi xe khách) hoặc <strong>support.html</strong> (nếu thuê xe tải) ở tab khác và bấm **Duyệt nhận** đơn hàng này.
                       </div>
+                      <button 
+                        className="btn btn-outline-danger btn-sm text-xs font-bold px-4 mt-2"
+                        onClick={handleCancelConsignment}
+                      >
+                        Hủy yêu cầu
+                      </button>
                     </div>
                   )}
 
-                  {/* Status 2: Rejected */}
-                  {consignmentStatus === 'failed' && (
+                  {/* Status 2: Rejected or Cancelled */}
+                  {(consignmentStatus === 'failed' || consignmentStatus === 'da_huy') && (
                     <div className="py-5">
                       <span className="fs-1 text-danger block mb-3">❌</span>
-                      <h3 className="fw-black text-slate-800 fs-4 mb-2">Đơn Hàng Bị Từ Chối</h3>
+                      <h3 className="fw-black text-slate-800 fs-4 mb-2">{consignmentStatus === 'da_huy' ? 'Đơn Đã Hủy' : 'Đơn Hàng Bị Từ Chối'}</h3>
                       <p className="text-slate-500 text-sm max-w-md mx-auto mb-4">
-                        Rất tiếc, tài xế hoặc trạm điều hành đã từ chối nhận vận chuyển đơn hàng này do kích thước quá khổ hoặc nghi vấn hàng cấm.
+                        {consignmentStatus === 'da_huy' 
+                          ? 'Bạn đã hủy yêu cầu vận chuyển đơn hàng này.' 
+                          : 'Rất tiếc, tài xế hoặc trạm điều hành đã từ chối nhận vận chuyển đơn hàng này.'}
                       </p>
                       <button onClick={resetForm} className="btn btn-primary px-4 py-2 text-xs">
                         Tạo yêu cầu mới
@@ -1524,29 +1555,40 @@ export default function CargoConsignmentPage() {
                       </div>
 
                       {/* Pay button */}
-                      <div className="pt-3 border-top d-flex justify-content-between align-items-center">
+                      <div className="pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-3">
                         <div>
                           <span className="text-slate-400 text-[10px] font-bold block uppercase tracking-wider">Tổng số tiền cần thanh toán</span>
                           <strong className="text-success fs-4 fw-black">{formatVND(getTotalPrice())}</strong>
                         </div>
-                        <button
-                          type="button"
-                          className="btn btn-success px-5 py-2.5 font-bold text-xs d-flex align-items-center gap-2"
-                          disabled={paymentLoading}
-                          onClick={handlePaymentConfirm}
-                        >
-                          {paymentLoading ? (
-                            <>
-                              <span className="spinner-border spinner-border-sm" role="status"></span>
-                              Đang giao dịch...
-                            </>
-                          ) : (
-                            <>
-                              <MdCreditCard size={16} /> Thanh toán ngay
-                            </>
-                          )}
-                        </button>
+                        <div className="d-flex gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger px-3 py-2.5 font-bold text-xs"
+                            onClick={handleCancelConsignment}
+                            disabled={paymentLoading}
+                          >
+                            Hủy Đơn
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-success px-5 py-2.5 font-bold text-xs d-flex align-items-center gap-2"
+                            disabled={paymentLoading}
+                            onClick={handlePaymentConfirm}
+                          >
+                            {paymentLoading ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm" role="status"></span>
+                                Đang giao dịch...
+                              </>
+                            ) : (
+                              <>
+                                <MdCreditCard size={16} /> Thanh toán ngay
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
+
 
                     </div>
                   )}

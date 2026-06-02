@@ -135,8 +135,8 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
     setSelectedCargo(cargo);
     // Auto-select vehicle phù hợp loại yêu cầu
     const matchVehicle = vehicles.find(v =>
+      (cargo.loaiXeVanTai === 'truck_5t' && v.loaiXe === 'truck_5t') ||
       (cargo.loaiXeVanTai === 'truck_10t' && v.loaiXe === 'truck_10t') ||
-      (cargo.loaiXeVanTai === 'truck_20t' && v.loaiXe === 'truck_20t') ||
       (cargo.loaiXeVanTai === 'truck_30t' && v.loaiXe === 'truck_30t')
     );
     setSelectedVehicleId(matchVehicle?.maPhuongTien || vehicles[0]?.maPhuongTien || '');
@@ -159,8 +159,8 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
     const driverPhone = selectedDriver?.soDienThoai || '';
     const truckPlate = selectedVehicle?.bienSoXe || '';
     const truckType = {
+      truck_5t: 'Xe tải 5 Tấn',
       truck_10t: 'Xe tải 10 Tấn',
-      truck_20t: 'Xe tải 20 Tấn',
       truck_30t: 'Xe tải 30 Tấn'
     }[selectedVehicle?.loaiXe] || 'Xe tải';
 
@@ -383,7 +383,7 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
                                 <div className="text-xs text-slate-500">{cargo.trongLuong} kg • {cargo.soLuong} kiện</div>
                                 {isTruck && (
                                   <span className="badge bg-secondary text-white mt-1">
-                                    {cargo.loaiXeVanTai === 'truck_30t' ? '30 Tấn' : cargo.loaiXeVanTai === 'truck_20t' ? '20 Tấn' : '10 Tấn'}
+                                    {cargo.loaiXeVanTai === 'truck_30t' ? '30 Tấn' : cargo.loaiXeVanTai === 'truck_10t' ? '10 Tấn' : '5 Tấn'}
                                   </span>
                                 )}
                               </td>
@@ -671,7 +671,7 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
               <form onSubmit={handleAssignSubmit}>
                 <div className="modal-body p-4">
                   <div className="alert alert-info py-2 mb-3 text-sm">
-                    <strong>Yêu cầu:</strong> {selectedCargo.loaiXeVanTai === 'truck_30t' ? 'Xe tải 30 Tấn' : selectedCargo.loaiXeVanTai === 'truck_20t' ? 'Xe tải 20 Tấn' : 'Xe tải 10 Tấn'} •
+                    <strong>Yêu cầu:</strong> {selectedCargo.loaiXeVanTai === 'truck_30t' ? 'Xe tải 30 Tấn' : selectedCargo.loaiXeVanTai === 'truck_10t' ? 'Xe tải 10 Tấn' : 'Xe tải 5 Tấn'} •
                     Hành trình: {selectedCargo.diemGui} → {selectedCargo.diemNhan}
                   </div>
 
@@ -689,12 +689,16 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
                         if (matchDriver) setSelectedDriverId(String(matchDriver.maNguoiDung));
                       }} required>
                         <option value="">-- Chọn xe tải --</option>
-                        {vehicles.map(v => (
-                          <option key={v.maPhuongTien} value={v.maPhuongTien}>
-                            {v.bienSoXe} | {v.nhanHieu} | {v.loaiXe === 'truck_10t' ? '10 Tấn' : v.loaiXe === 'truck_20t' ? '20 Tấn' : '30 Tấn'}
-                            {v.tenTaiXe ? ` | Tài xế: ${v.tenTaiXe}` : ' | Chưa có tài xế'}
-                          </option>
-                        ))}
+                        {vehicles.filter(v => v.loaiXe === selectedCargo.loaiXeVanTai).length === 0 ? (
+                          <option disabled>Không có xe tải nào phù hợp tải trọng yêu cầu</option>
+                        ) : (
+                          vehicles.filter(v => v.loaiXe === selectedCargo.loaiXeVanTai).map(v => (
+                            <option key={v.maPhuongTien} value={v.maPhuongTien}>
+                              {v.bienSoXe} | {v.nhanHieu} | {v.loaiXe === 'truck_10t' ? '10 Tấn' : v.loaiXe === 'truck_5t' ? '5 Tấn' : '30 Tấn'}
+                              {v.tenTaiXe ? ` | Tài xế: ${v.tenTaiXe}` : ' | Chưa có tài xế'}
+                            </option>
+                          ))
+                        )}
                       </select>
                     )}
                   </div>

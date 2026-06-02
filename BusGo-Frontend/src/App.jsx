@@ -30,6 +30,10 @@ import ReportsPage from './admin/pages/ReportsPage'
 import DriverCargoPage from './admin/pages/DriverCargoPage'
 import SupportCargoPage from './admin/pages/SupportCargoPage'
 
+// Driver Components
+import DriverDashboard from './driver/pages/DriverDashboard'
+import { USER_ROLES } from './utils/constants'
+
 // Reset scroll lên đầu trang mỗi khi navigate sang route mới
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -37,6 +41,20 @@ function ScrollToTop() {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [pathname, search])
   return null
+}
+
+// Layout wrapper dùng chung
+function PageLayout({ children }) {
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <main className="flex-1">
+        {children}
+      </main>
+      <Footer />
+      <ChatBot />
+    </div>
+  )
 }
 
 function App() {
@@ -74,150 +92,28 @@ function App() {
         <Route path="/admin/support/lookup" element={<StaffProtectedRoute><SupportCargoPage defaultTab="lookup" /></StaffProtectedRoute>} />
         <Route path="/admin/support/refund" element={<StaffProtectedRoute><SupportCargoPage defaultTab="refund" /></StaffProtectedRoute>} />
 
-        {/* ==================== CLIENT ROUTES (No auth required) ==================== */}
+        {/* ==================== DRIVER ROUTES ==================== */}
         <Route
-          path="/"
+          path="/driver/dashboard"
           element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <HomePage />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
+            <RoleProtectedRoute allowedRoles={[USER_ROLES.DRIVER]}>
+              <DriverDashboard />
+            </RoleProtectedRoute>
           }
         />
-        <Route
-          path="/home"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <HomePage />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
-        <Route
-          path="/search"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <SearchResultsPage />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
-        <Route
-          path="/booking/:tripId"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <BookingPage />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
-        <Route
-          path="/payment"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <PaymentPage />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
-        <Route
-          path="/vnpay-return"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <VNPayReturnPage />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
-        <Route
-          path="/cargo-consignment"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <CargoConsignmentPage />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
-        <Route
-          path="/ticket/:bookingId"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <ETicketPage />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <UserHistory />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
-        <Route
-          path="/watchlist"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <WatchlistPage />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <div className="d-flex flex-column min-vh-100">
-              <Header />
-              <main className="flex-grow-1">
-                <UserProfile />
-              </main>
-              <Footer />
-              <ChatBot />
-            </div>
-          }
-        />
+
+        {/* ==================== CLIENT ROUTES ==================== */}
+        <Route path="/" element={<PageLayout><HomePage /></PageLayout>} />
+        <Route path="/home" element={<PageLayout><HomePage /></PageLayout>} />
+        <Route path="/search" element={<PageLayout><SearchResultsPage /></PageLayout>} />
+        <Route path="/booking/:tripId" element={<PageLayout><BookingPage /></PageLayout>} />
+        <Route path="/payment" element={<PageLayout><PaymentPage /></PageLayout>} />
+        <Route path="/vnpay-return" element={<PageLayout><VNPayReturnPage /></PageLayout>} />
+        <Route path="/cargo-consignment" element={<PageLayout><CargoConsignmentPage /></PageLayout>} />
+        <Route path="/ticket/:bookingId" element={<PageLayout><ETicketPage /></PageLayout>} />
+        <Route path="/history" element={<PageLayout><UserHistory /></PageLayout>} />
+        <Route path="/watchlist" element={<PageLayout><WatchlistPage /></PageLayout>} />
+        <Route path="/profile" element={<PageLayout><UserProfile /></PageLayout>} />
 
         {/* ==================== CATCH ALL ==================== */}
         <Route path="*" element={<Navigate to="/" replace />} />

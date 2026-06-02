@@ -958,6 +958,7 @@ END
 GO
 
 -- ============================================================================
+
 -- PHẦN CẬP NHẬT: THÊM TÀI XẾ XE TẢI VÀ SEED DỮ LIỆU KÝ GỬI HÀNG (KyGuiHang)
 -- ============================================================================
 
@@ -1134,3 +1135,124 @@ IF @driverBId IS NOT NULL
     WHERE maNhanVien IS NULL
     AND maTuyenDuong IN (SELECT maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Quảng Nam');
 GO
+
+-- PHẦN 12: GÁN TÀI XẾ 5 VÀ SEED DỮ LIỆU THỰC TẾ CHO TRANG DRIVER
+-- ============================================================================
+
+-- 1. Gán tài xế Nguyễn Văn A (maNhanVien = 5) cho các chuyến đi ngày hôm nay
+UPDATE ChuyenXe
+SET maNhanVien = 5
+WHERE maTuyenDuong IN (
+    SELECT maTuyenDuong FROM TuyenDuong 
+    WHERE (diemDi = N'Đà Nẵng' AND diemDen = N'Huế')
+       OR (diemDi = N'Đà Nẵng' AND diemDen = N'Quảng Nam')
+       OR (diemDi = N'Đà Nẵng' AND diemDen = N'Quảng Ngãi')
+       OR (diemDi = N'Đà Nẵng' AND diemDen = N'Quảng Trị')
+)
+AND CAST(thoiGianDi AS DATE) = CAST(GETDATE() AS DATE);
+GO
+
+-- 2. Tự động thêm Ghế ngồi, Vé điện tử và Hàng hóa cho các chuyến xe ngày hôm nay của tài xế 5
+DECLARE @maChuyenXe INT;
+DECLARE @maTuyenDuong INT;
+DECLARE @diemDi NVARCHAR(100);
+DECLARE @diemDen NVARCHAR(100);
+
+DECLARE ChuyenXeCursor CURSOR FOR
+SELECT cx.maChuyenXe, cx.maTuyenDuong, td.diemDi, td.diemDen
+FROM ChuyenXe cx
+INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
+WHERE cx.maNhanVien = 5
+  AND CAST(cx.thoiGianDi AS DATE) = CAST(GETDATE() AS DATE);
+
+OPEN ChuyenXeCursor;
+FETCH NEXT FROM ChuyenXeCursor INTO @maChuyenXe, @maTuyenDuong, @diemDi, @diemDen;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- Thêm sơ đồ ghế mẫu cho chuyến xe
+    IF NOT EXISTS (SELECT 1 FROM GheNgoi WHERE maChuyenXe = @maChuyenXe)
+    BEGIN
+        INSERT INTO GheNgoi (maChuyenXe, soGhe, loaiGhe, viTriGhe, giaSoGhe, trangThaiGhe)
+        VALUES 
+            (@maChuyenXe, 'A01', 'standard', 'front', 0, 'trong'),
+            (@maChuyenXe, 'A02', 'standard', 'front', 0, 'trong'),
+            (@maChuyenXe, 'B05', 'standard', 'middle', 0, 'trong'),
+            (@maChuyenXe, 'C02', 'standard', 'middle', 0, 'trong'),
+            (@maChuyenXe, 'D01', 'standard', 'middle', 0, 'trong'),
+            (@maChuyenXe, 'E03', 'standard', 'back', 0, 'trong'),
+            (@maChuyenXe, 'F04', 'standard', 'back', 0, 'trong'),
+            (@maChuyenXe, 'G02', 'standard', 'back', 0, 'trong');
+    END
+
+    -- Lấy ID các ghế vừa tạo
+    DECLARE @maGhe_A01 INT, @maGhe_A02 INT, @maGhe_B05 INT, @maGhe_C02 INT, @maGhe_D01 INT;
+    SELECT @maGhe_A01 = maGhe FROM GheNgoi WHERE maChuyenXe = @maChuyenXe AND soGhe = 'A01';
+    SELECT @maGhe_A02 = maGhe FROM GheNgoi WHERE maChuyenXe = @maChuyenXe AND soGhe = 'A02';
+    SELECT @maGhe_B05 = maGhe FROM GheNgoi WHERE maChuyenXe = @maChuyenXe AND soGhe = 'B05';
+    SELECT @maGhe_C02 = maGhe FROM GheNgoi WHERE maChuyenXe = @maChuyenXe AND soGhe = 'C02';
+    SELECT @maGhe_D01 = maGhe FROM GheNgoi WHERE maChuyenXe = @maChuyenXe AND soGhe = 'D01';
+
+    -- Thêm vé điện tử mẫu cho chuyến xe
+    IF NOT EXISTS (SELECT 1 FROM VeDienTu WHERE maChuyenXe = @maChuyenXe)
+    BEGIN
+        -- Khách hàng 1: Nguyễn Văn Hùng
+        INSERT INTO VeDienTu (maKhachHang, maChuyenXe, maGhe, hoTenHanhKhach, firstName, lastName, emailHanhKhach, soDienThoaiHanhKhach, diemDon, diemTra, maQR, maPhuongThuc, giaVe, giaHangHoa, giaThanhToan, trangThaiVe)
+        VALUES (2, @maChuyenXe, @maGhe_A01, N'Nguyễn Văn Hùng', N'Hùng', N'Nguyễn', 'hungnv@gmail.com', '0905123456', N'Bến xe Trung tâm ' + @diemDi, N'Ga ' + @diemDen, CAST(NEWID() AS VARCHAR(255)), 1, 120000, 0, 120000, 'da_thanh_toan');
+
+        -- Khách hàng 2: Lê Thị Mai
+        INSERT INTO VeDienTu (maKhachHang, maChuyenXe, maGhe, hoTenHanhKhach, firstName, lastName, emailHanhKhach, soDienThoaiHanhKhach, diemDon, diemTra, maQR, maPhuongThuc, giaVe, giaHangHoa, giaThanhToan, trangThaiVe)
+        VALUES (2, @maChuyenXe, @maGhe_A02, N'Lê Thị Mai', N'Mai', N'Lê', 'mailt@gmail.com', '0914987654', N'Nguyễn Văn Linh, ' + @diemDi, N'Trạm dừng ' + @diemDen, CAST(NEWID() AS VARCHAR(255)), 2, 120000, 0, 120000, 'da_thanh_toan');
+
+        -- Khách hàng 3: Trần Tuấn Anh
+        INSERT INTO VeDienTu (maKhachHang, maChuyenXe, maGhe, hoTenHanhKhach, firstName, lastName, emailHanhKhach, soDienThoaiHanhKhach, diemDon, diemTra, maQR, maPhuongThuc, giaVe, giaHangHoa, giaThanhToan, trangThaiVe)
+        VALUES (2, @maChuyenXe, @maGhe_B05, N'Trần Tuấn Anh', N'Anh', N'Trần', 'anhtt@gmail.com', '0935555666', N'Bến xe Trung tâm ' + @diemDi, N'Ga ' + @diemDen, CAST(NEWID() AS VARCHAR(255)), 1, 120000, 0, 120000, 'da_su_dung');
+
+        -- Khách hàng 4: Phạm Thanh Sơn
+        INSERT INTO VeDienTu (maKhachHang, maChuyenXe, maGhe, hoTenHanhKhach, firstName, lastName, emailHanhKhach, soDienThoaiHanhKhach, diemDon, diemTra, maQR, maPhuongThuc, giaVe, giaHangHoa, giaThanhToan, trangThaiVe)
+        VALUES (2, @maChuyenXe, @maGhe_C02, N'Phạm Thanh Sơn', N'Sơn', N'Phạm', 'sonpt@gmail.com', '0909111222', N'Sân bay ' + @diemDi, N'Hương Thủy, ' + @diemDen, CAST(NEWID() AS VARCHAR(255)), 3, 120000, 0, 120000, 'da_huy');
+
+        -- Khách hàng 5: Hoàng Minh Thu
+        INSERT INTO VeDienTu (maKhachHang, maChuyenXe, maGhe, hoTenHanhKhach, firstName, lastName, emailHanhKhach, soDienThoaiHanhKhach, diemDon, diemTra, maQR, maPhuongThuc, giaVe, giaHangHoa, giaThanhToan, trangThaiVe)
+        VALUES (2, @maChuyenXe, @maGhe_D01, N'Hoàng Minh Thu', N'Thu', N'Hoàng', 'thohm@gmail.com', '0982333444', N'Cầu Rồng, ' + @diemDi, N'Ga ' + @diemDen, CAST(NEWID() AS VARCHAR(255)), 1, 120000, 0, 120000, 'da_thanh_toan');
+
+        -- Cập nhật trạng thái ghế đã đặt
+        UPDATE GheNgoi SET trangThaiGhe = 'da_dat' WHERE maGhe IN (@maGhe_A01, @maGhe_A02, @maGhe_B05, @maGhe_D01);
+    END
+
+    -- Thêm hàng hóa ký gửi mẫu liên kết với các vé của chuyến xe
+    DECLARE @maVe_Hung INT, @maVe_Mai INT, @maVe_Thu INT;
+    SELECT @maVe_Hung = maVe FROM VeDienTu WHERE maChuyenXe = @maChuyenXe AND hoTenHanhKhach = N'Nguyễn Văn Hùng';
+    SELECT @maVe_Mai = maVe FROM VeDienTu WHERE maChuyenXe = @maChuyenXe AND hoTenHanhKhach = N'Lê Thị Mai';
+    SELECT @maVe_Thu = maVe FROM VeDienTu WHERE maChuyenXe = @maChuyenXe AND hoTenHanhKhach = N'Hoàng Minh Thu';
+
+    IF @maVe_Hung IS NOT NULL AND NOT EXISTS (SELECT 1 FROM HangHoa WHERE maVe = @maVe_Hung)
+    BEGIN
+        INSERT INTO HangHoa (maVe, loaiHangHoa, moTa, trongLuong, giaHangHoa, tenNguoiGui, soDienThoaiNguoiGui, tenNguoiNhan, soDienThoaiNguoiNhan, trangThaiVanChuyen)
+        VALUES (@maVe_Hung, N'light', N'Tài liệu & Hồ sơ giấy tờ', 1.0, 50000, N'Nguyễn Văn A', '0905222333', N'Trần Văn B', '0914888999', 'pending');
+    END
+
+    IF @maVe_Mai IS NOT NULL AND NOT EXISTS (SELECT 1 FROM HangHoa WHERE maVe = @maVe_Mai)
+    BEGIN
+        INSERT INTO HangHoa (maVe, loaiHangHoa, moTa, trongLuong, giaHangHoa, tenNguoiGui, soDienThoaiNguoiGui, tenNguoiNhan, soDienThoaiNguoiNhan, trangThaiVanChuyen)
+        VALUES (@maVe_Mai, N'heavy', N'Thùng trái cây sấy', 8.5, 80000, N'Lê Thị C', '0982444555', N'Phạm Văn D', '0905777888', 'in_transit');
+    END
+
+    IF @maVe_Thu IS NOT NULL AND NOT EXISTS (SELECT 1 FROM HangHoa WHERE maVe = @maVe_Thu)
+    BEGIN
+        INSERT INTO HangHoa (maVe, loaiHangHoa, moTa, trongLuong, giaHangHoa, tenNguoiGui, soDienThoaiNguoiGui, tenNguoiNhan, soDienThoaiNguoiNhan, trangThaiVanChuyen)
+        VALUES (@maVe_Thu, N'light', N'Đồ điện tử (Laptop Acer)', 2.5, 150000, N'Hoàng Văn E', '0911112222', N'Nguyễn Thị F', '0935444555', 'delivered');
+    END
+
+    -- Đồng bộ lại số lượng ghế đã đặt trên chuyến xe
+    UPDATE ChuyenXe
+    SET soLuongGheDat = (SELECT COUNT(*) FROM VeDienTu WHERE maChuyenXe = @maChuyenXe AND trangThaiVe != 'da_huy')
+    WHERE maChuyenXe = @maChuyenXe;
+
+    FETCH NEXT FROM ChuyenXeCursor INTO @maChuyenXe, @maTuyenDuong, @diemDi, @diemDen;
+END
+
+CLOSE ChuyenXeCursor;
+DEALLOCATE ChuyenXeCursor;
+GO
+

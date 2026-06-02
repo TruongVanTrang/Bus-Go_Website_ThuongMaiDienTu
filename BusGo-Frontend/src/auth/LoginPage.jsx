@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi'
 import { StorageUtil, ValidateUtil } from '@/utils/helpers'
 import { USER_ROLES, ERROR_MESSAGES } from '@/utils/constants'
@@ -8,52 +8,31 @@ import { toast } from '../utils/toastService'
 
 function LoginPage() {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    emailOrPhone: '',
-    password: ''
-  })
+  const [formData, setFormData] = useState({ emailOrPhone: '', password: '' })
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [generalError, setGeneralError] = useState('')
 
-  /**
-   * Xác thực form
-   */
   const validateForm = () => {
     const newErrors = {}
-
     if (!formData.emailOrPhone.trim()) {
-      newErrors.emailOrPhone = 'Email hoặc số điện thoại không được để trống'
-    } else if (!ValidateUtil.isEmailOrPhone(formData.emailOrPhone)) {
-      newErrors.emailOrPhone = 'Email hoặc số điện thoại không hợp lệ'
+      newErrors.emailOrPhone = 'Vui lòng nhập Email hoặc Số điện thoại'
     }
-
     if (!formData.password) {
-      newErrors.password = 'Mật khẩu không được để trống'
-    } else if (!ValidateUtil.isPassword(formData.password)) {
-      newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
+      newErrors.password = 'Vui lòng nhập Mật khẩu'
     }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  /**
-   * Xử lý đăng nhập
-   */
   const handleLogin = async (e) => {
     e.preventDefault()
     setGeneralError('')
-
-    if (!validateForm()) {
-      return
-    }
-
+    if (!validateForm()) return
     setIsLoading(true)
 
     try {
-      // Gọi API đăng nhập từ backend
       const data = await loginAPI(formData.emailOrPhone, formData.password)
 
       // ✅ Đăng nhập thành công
@@ -84,6 +63,8 @@ function LoginPage() {
         // Điều hướng theo role
         if (data.user.role === USER_ROLES.CUSTOMER) {
           navigate('/home')
+        } else if (data.user.role === USER_ROLES.DRIVER) {
+          navigate('/driver/dashboard')
         } else {
           navigate('/admin/dashboard')
         }
@@ -96,21 +77,11 @@ function LoginPage() {
     }
   }
 
-  /**
-   * Xử lý thay đổi input
-   */
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value
-    }))
-    // Xóa lỗi khi user bắt đầu nhập
+    setFormData(prev => ({ ...prev, [name]: value }))
     if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: ''
-      }))
+      setErrors(prev => ({ ...prev, [name]: '' }))
     }
   }
 

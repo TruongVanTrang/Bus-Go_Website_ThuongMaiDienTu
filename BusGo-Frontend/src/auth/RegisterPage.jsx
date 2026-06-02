@@ -9,20 +9,10 @@ export default function RegisterPage() {
   const navigate = useNavigate()
   const [formStep, setFormStep] = useState(1) // 1: Info, 2: Password, 3: Verify
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    password: '',
-    confirmPassword: '',
-    emailVerified: false,
-    phoneVerified: true
+    fullName: '', email: '', phone: '', password: '', confirmPassword: '', emailVerified: false, phoneVerified: true
   })
-  const [verificationCodes, setVerificationCodes] = useState({
-    email: ''
-  })
-  const [sentCodes, setSentCodes] = useState({
-    email: false
-  })
+  const [verificationCodes, setVerificationCodes] = useState({ email: '' })
+  const [sentCodes, setSentCodes] = useState({ email: false })
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -30,56 +20,28 @@ export default function RegisterPage() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }))
-    }
+    setFormData(prev => ({ ...prev, [name]: value }))
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }))
   }
 
   const validateStep1 = () => {
     const newErrors = {}
-    
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Vui lòng nhập họ tên'
-    }
-    if (!formData.email.trim()) {
-      newErrors.email = 'Vui lòng nhập email'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email không hợp lệ'
-    }
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Vui lòng nhập số điện thoại'
-    } else if (!/^[0-9]{10,11}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Số điện thoại không hợp lệ (10-11 chữ số)'
-    }
-
+    if (!formData.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ tên'
+    if (!formData.email.trim()) newErrors.email = 'Vui lòng nhập email'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Email không hợp lệ'
+    if (!formData.phone.trim()) newErrors.phone = 'Vui lòng nhập số điện thoại'
+    else if (!/^[0-9]{10,11}$/.test(formData.phone.replace(/\D/g, ''))) newErrors.phone = 'Số điện thoại không hợp lệ'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
   const validateStep2 = () => {
     const newErrors = {}
-    
-    if (!formData.password) {
-      newErrors.password = 'Vui lòng nhập mật khẩu'
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Mật khẩu phải có ít nhất 8 ký tự'
-    } else if (!/[A-Z]/.test(formData.password)) {
-      newErrors.password = 'Mật khẩu phải chứa chữ in hoa'
-    } else if (!/[0-9]/.test(formData.password)) {
-      newErrors.password = 'Mật khẩu phải chứa số'
-    }
-    
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
-    }
-
+    if (!formData.password) newErrors.password = 'Vui lòng nhập mật khẩu'
+    else if (formData.password.length < 8) newErrors.password = 'Ít nhất 8 ký tự'
+    else if (!/[A-Z]/.test(formData.password)) newErrors.password = 'Chứa chữ in hoa'
+    else if (!/[0-9]/.test(formData.password)) newErrors.password = 'Chứa số'
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -89,13 +51,8 @@ export default function RegisterPage() {
     setIsLoading(true)
     try {
       await sendOTPAPI(formData.email)
-      
-      setSentCodes(prev => ({
-        ...prev,
-        [type]: true
-      }))
-      
-      toast.info(`✓ Mã xác minh đã gửi đến ${formData.email}`, 4000)
+      setSentCodes(prev => ({ ...prev, [type]: true }))
+      toast.info(`✓ Mã xác minh đã gửi đến ${formData.email}`)
     } catch (error) {
       toast.error(error.message || 'Lỗi gửi mã xác minh. Vui lòng thử lại')
     } finally {
@@ -108,33 +65,19 @@ export default function RegisterPage() {
     setIsLoading(true)
     try {
       await verifyOTPAPI(formData.email, verificationCodes.email)
-      
-      setFormData(prev => ({
-        ...prev,
-        [`${type}Verified`]: true
-      }))
-      toast.success('✓ Email đã được xác minh', 3000)
-      setVerificationCodes(prev => ({
-        ...prev,
-        [type]: ''
-      }))
+      setFormData(prev => ({ ...prev, [`${type}Verified`]: true }))
+      toast.success('✓ Email đã được xác minh')
+      setVerificationCodes(prev => ({ ...prev, [type]: '' }))
     } catch (error) {
-      toast.error(error.message || 'Mã xác minh không chính xác hoặc đã hết hạn')
+      toast.error(error.message || 'Mã không chính xác hoặc đã hết hạn')
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleNextStep = () => {
-    if (formStep === 1) {
-      if (validateStep1()) {
-        setFormStep(2)
-      }
-    } else if (formStep === 2) {
-      if (validateStep2()) {
-        setFormStep(3)
-      }
-    }
+    if (formStep === 1 && validateStep1()) setFormStep(2)
+    else if (formStep === 2 && validateStep2()) setFormStep(3)
   }
 
   const handleRegister = async () => {
@@ -142,41 +85,20 @@ export default function RegisterPage() {
       toast.warning('Vui lòng xác minh email')
       return
     }
-
     setIsLoading(true)
     try {
-      // Gọi API đăng ký từ backend
       const data = await registerAPI({
-        fullName: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password
+        fullName: formData.fullName, email: formData.email, phone: formData.phone, password: formData.password
       })
-      
-      // Lưu thông tin xác thực sau khi đăng ký thành công
       StorageUtil.setToken(data.token)
       StorageUtil.setUser({
-        id: data.user.id,
-        name: data.user.name,
-        email: data.user.email,
-        phone: data.user.phone,
-        role: data.user.role
+        id: data.user.id, name: data.user.name, email: data.user.email, phone: data.user.phone, role: data.user.role
       })
       StorageUtil.setRole(data.user.role)
-      
-      // Lưu trữ định dạng cũ để tương thích với các component cũ khác
       localStorage.setItem('userInfo', JSON.stringify({
-        fullName: data.user.name,
-        email: data.user.email,
-        phone: data.user.phone,
-        emailVerified: true,
-        phoneVerified: true,
-        membershipLevel: 'bronze',
-        points: 0,
-        registeredAt: new Date().toISOString()
+        fullName: data.user.name, email: data.user.email, phone: data.user.phone, emailVerified: true, phoneVerified: true, membershipLevel: 'bronze', points: 0, registeredAt: new Date().toISOString()
       }))
-      
-      toast.success('✓ Đăng ký thành công!', 3000)
+      toast.success('✓ Đăng ký thành công!')
       setTimeout(() => navigate('/home'), 1500)
     } catch (error) {
       console.error('Register error:', error)

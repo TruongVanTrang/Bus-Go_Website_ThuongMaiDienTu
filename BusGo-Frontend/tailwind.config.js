@@ -6,7 +6,6 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // BusGo Brand Colors
         primary: {
           50: '#f0f9ff',
           100: '#e0f2fe',
@@ -49,46 +48,25 @@ module.exports = {
           900: '#111827',
         },
       },
-      spacing: {
-        xs: '0.25rem',
-        sm: '0.5rem',
-        md: '1rem',
-        lg: '1.5rem',
-        xl: '2rem',
-        '2xl': '3rem',
-        '3xl': '4rem',
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
-      fontSize: {
-        xs: '0.75rem',
-        sm: '0.875rem',
-        base: '1rem',
-        lg: '1.125rem',
-        xl: '1.25rem',
-        '2xl': '1.5rem',
-        '3xl': '1.875rem',
-        '4xl': '2.25rem',
+      animation: {
+        'fade-up': 'fadeUp 0.6s ease-out forwards',
+        'glow': 'glow 2s ease-in-out infinite alternate',
       },
-      borderRadius: {
-        none: '0',
-        sm: '0.25rem',
-        md: '0.375rem',
-        lg: '0.5rem',
-        xl: '0.75rem',
-        '2xl': '1rem',
-        full: '9999px',
-      },
-      boxShadow: {
-        sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-        md: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-        lg: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-        xl: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
-      },
-      transitionDuration: {
-        fast: '150ms',
-        base: '200ms',
-        slow: '300ms',
+      keyframes: {
+        fadeUp: {
+          '0%': { opacity: '0', transform: 'translateY(30px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        glow: {
+          '0%': { boxShadow: '0 0 20px rgba(14,165,233,0.3)' },
+          '100%': { boxShadow: '0 0 40px rgba(14,165,233,0.7)' },
+        },
       },
     },
   },
+  darkMode: 'class',
   plugins: [],
 }

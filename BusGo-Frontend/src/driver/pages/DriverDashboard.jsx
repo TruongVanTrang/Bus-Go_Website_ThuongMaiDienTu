@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Bus, User, Calendar, MapPin, Clock, AlertTriangle, CheckCircle, 
   Search, Bell, LogOut, Menu, Grid, Users, Package, ShieldAlert,
@@ -379,13 +378,11 @@ export default function DriverDashboard() {
           <Icon className={`h-5 w-5 ${isActive ? 'text-[#004b87]' : 'text-slate-400 group-hover:text-slate-600'}`} />
         </div>
         {!isSidebarCollapsed && (
-          <motion.span 
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
+          <span 
             className="ml-3 truncate"
           >
             {label}
-          </motion.span>
+          </span>
         )}
       </button>
     )
@@ -446,9 +443,7 @@ export default function DriverDashboard() {
                 {currentUser.name.charAt(0)}
               </div>
               {!isSidebarCollapsed && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                <div 
                   className="flex flex-col min-w-0"
                 >
                   <span className="text-sm font-black text-slate-800 truncate leading-tight">
@@ -457,7 +452,7 @@ export default function DriverDashboard() {
                   <span className="text-[10px] font-bold text-slate-400 mt-0.5">
                     Tài xế điều hành
                   </span>
-                </motion.div>
+                </div>
               )}
             </div>
             
@@ -502,13 +497,11 @@ export default function DriverDashboard() {
           >
             <LogOut className="h-5 w-5 flex-shrink-0" />
             {!isSidebarCollapsed && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+              <span
                 className="ml-3"
               >
                 Đăng xuất
-              </motion.span>
+              </span>
             )}
           </button>
         </div>
@@ -619,13 +612,9 @@ export default function DriverDashboard() {
               </div>
             </div>
           ) : (
-            <AnimatePresence mode="wait">
-              <motion.div
+            <div>
+              <div
                 key={activeTab}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.25 }}
                 className="space-y-8"
               >
 
@@ -1517,8 +1506,8 @@ export default function DriverDashboard() {
                   </div>
                 )}
 
-              </motion.div>
-            </AnimatePresence>
+              </div>
+            </div>
           )}
 
         </main>

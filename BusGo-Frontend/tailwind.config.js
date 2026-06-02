@@ -2,7 +2,6 @@ module.exports = {
   content: [
     "./index.html",
     "./src/**/*.{js,jsx}",
-    "./node_modules/@nextui-org/theme/dist/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
@@ -69,7 +68,5 @@ module.exports = {
     },
   },
   darkMode: 'class',
-  plugins: [
-    require('@nextui-org/react').nextui(),
-  ],
+  plugins: [],
 }

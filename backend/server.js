@@ -18,7 +18,8 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json()); // Parse JSON body
+app.use(express.json({ limit: '50mb' })); // Parse JSON body with increased limit for images
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Connect Database
 connectDB();

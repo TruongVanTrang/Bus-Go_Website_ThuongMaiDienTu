@@ -68,9 +68,12 @@ export const getTripCargoAPI = async (tripId) => {
 }
 
 // Cập nhật trạng thái kiện hàng
-export const updateCargoStatusAPI = async (cargoId, status) => {
+export const updateCargoStatusAPI = async (cargoId, status, imageUrl = null) => {
   try {
-    const response = await axios.put(`${API_BASE_URL}/driver/cargo/${cargoId}/status`, { status }, getAuthHeaders())
+    const payload = { status }
+    if (imageUrl) payload.imageUrl = imageUrl
+
+    const response = await axios.put(`${API_BASE_URL}/driver/cargo/${cargoId}/status`, payload, getAuthHeaders())
     return response.data
   } catch (error) {
     console.error('Lỗi API updateCargoStatus:', error)

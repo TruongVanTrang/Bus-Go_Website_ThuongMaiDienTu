@@ -233,7 +233,8 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
       received_at_station: { text: 'Đã nhận kho', class: 'bg-purple text-white' },
       in_transit: { text: 'Đang giao hàng', class: 'bg-indigo text-white' },
       delivered: { text: 'Đã giao hàng', class: 'bg-success text-white' },
-      failed: { text: 'Đã hủy/Từ chối', class: 'bg-danger text-white' }
+      failed: { text: 'Đã hủy/Từ chối', class: 'bg-danger text-white' },
+      da_huy: { text: 'Khách đã hủy', class: 'bg-danger text-white' }
     };
     const res = map[status] || { text: status, class: 'bg-secondary text-white' };
     return <span className={`badge ${res.class}`}>{res.text}</span>;

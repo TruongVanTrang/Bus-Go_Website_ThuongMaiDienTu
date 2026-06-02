@@ -102,65 +102,64 @@ exports.vnpayIpn = async (req, res) => {
             if (rspCode === '00') {
                 const pool = await sql.connect();
                 
-                // 1. Update the booking status
-                await pool.request()
-                    .input('bookingId', sql.VarChar, orderId + '%')
-                    .query("UPDATE VeDienTu SET trangThaiVe = 'da_thanh_toan' WHERE maQR LIKE @bookingId");
-
-                // 2. Fetch booking details to send the email
-                try {
-                    const bookingResult = await pool.request()
+                if (orderId.startsWith('CSM')) {
+                    await pool.request()
+                      .input('consignmentId', sql.VarChar, orderId)
+                      .query("UPDATE KyGuiHang SET trangThaiThanhToan = 'paid' WHERE consignmentId = @consignmentId");
+                } else {
+                    // 1. Update the booking status
+                    await pool.request()
                         .input('bookingId', sql.VarChar, orderId + '%')
-                        .query(`
-                            SELECT 
-                                vdt.maQR as bookingId, vdt.emailHanhKhach, vdt.hoTenHanhKhach,
-                                vdt.giaThanhToan, vdt.giaHangHoa,
-                                cx.thoiGianDi, cx.thoiGianDen, td.diemDi, td.diemDen,
-                                STRING_AGG(gh.soGhe, ', ') as seats
-                            FROM VeDienTu vdt
-                            INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
-                            INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-                            LEFT JOIN GheNgoi gh ON vdt.maGhe = gh.maGhe
-                            WHERE vdt.maQR LIKE @bookingId
-                            GROUP BY vdt.maQR, vdt.emailHanhKhach, vdt.hoTenHanhKhach, vdt.giaThanhToan, vdt.giaHangHoa, cx.thoiGianDi, cx.thoiGianDen, td.diemDi, td.diemDen
-                        `);
+                        .query("UPDATE VeDienTu SET trangThaiVe = 'da_thanh_toan' WHERE maQR LIKE @bookingId");
 
-                    if (bookingResult.recordset.length > 0) {
-                        const bData = bookingResult.recordset[0];
-                        
-                        // Total price from all matching tickets in this booking
-                        // Note: If multiple tickets have the same booking ID, giaThanhToan is per ticket.
-                        // We might need to sum them, but for now we take the first one or sum them up.
-                        // Actually, the above query groups by maQR, but giaThanhToan is included in grouping.
-                        // Let's just send the email using the aggregated seats.
-                        
-                        // Calculate total sum of this booking group
-                        const totalSumResult = await pool.request()
+                    // 2. Fetch booking details to send the email
+                    try {
+                        const bookingResult = await pool.request()
                             .input('bookingId', sql.VarChar, orderId + '%')
-                            .query('SELECT SUM(giaThanhToan + ISNULL(giaHangHoa, 0)) as total FROM VeDienTu WHERE maQR LIKE @bookingId');
-                        const totalAmount = totalSumResult.recordset[0].total;
+                            .query(`
+                                SELECT 
+                                    vdt.maQR as bookingId, vdt.emailHanhKhach, vdt.hoTenHanhKhach,
+                                    vdt.giaThanhToan, vdt.giaHangHoa,
+                                    cx.thoiGianDi, cx.thoiGianDen, td.diemDi, td.diemDen,
+                                    STRING_AGG(gh.soGhe, ', ') as seats
+                                FROM VeDienTu vdt
+                                INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
+                                INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
+                                LEFT JOIN GheNgoi gh ON vdt.maGhe = gh.maGhe
+                                WHERE vdt.maQR LIKE @bookingId
+                                GROUP BY vdt.maQR, vdt.emailHanhKhach, vdt.hoTenHanhKhach, vdt.giaThanhToan, vdt.giaHangHoa, cx.thoiGianDi, cx.thoiGianDen, td.diemDi, td.diemDen
+                            `);
 
-                        const dDate = new Date(bData.thoiGianDi);
-                        const departureDateFormatted = `${String(dDate.getUTCDate()).padStart(2, '0')}/${String(dDate.getUTCMonth() + 1).padStart(2, '0')}/${dDate.getUTCFullYear()}`;
-                        const departureTimeFormatted = formatTime(bData.thoiGianDi);
-                        const arrivalTimeFormatted = formatTime(bData.thoiGianDen);
+                        if (bookingResult.recordset.length > 0) {
+                            const bData = bookingResult.recordset[0];
+                            
+                            const totalSumResult = await pool.request()
+                                .input('bookingId', sql.VarChar, orderId + '%')
+                                .query('SELECT SUM(giaThanhToan + ISNULL(giaHangHoa, 0)) as total FROM VeDienTu WHERE maQR LIKE @bookingId');
+                            const totalAmount = totalSumResult.recordset[0].total;
 
-                        await sendTicketEmail({
-                            email: bData.emailHanhKhach,
-                            passengerName: bData.hoTenHanhKhach,
-                            bookingId: orderId,
-                            from: bData.diemDi,
-                            to: bData.diemDen,
-                            departureTime: departureTimeFormatted,
-                            arrivalTime: arrivalTimeFormatted,
-                            date: departureDateFormatted,
-                            seats: bData.seats ? bData.seats.split(',').map(s => `Ghế ${s.trim()}`).join(', ') : '',
-                            totalPrice: totalAmount,
-                            paymentMethod: 'VNPay'
-                        });
+                            const dDate = new Date(bData.thoiGianDi);
+                            const departureDateFormatted = `${String(dDate.getUTCDate()).padStart(2, '0')}/${String(dDate.getUTCMonth() + 1).padStart(2, '0')}/${dDate.getUTCFullYear()}`;
+                            const departureTimeFormatted = formatTime(bData.thoiGianDi);
+                            const arrivalTimeFormatted = formatTime(bData.thoiGianDen);
+
+                            await sendTicketEmail({
+                                email: bData.emailHanhKhach,
+                                passengerName: bData.hoTenHanhKhach,
+                                bookingId: orderId,
+                                from: bData.diemDi,
+                                to: bData.diemDen,
+                                departureTime: departureTimeFormatted,
+                                arrivalTime: arrivalTimeFormatted,
+                                date: departureDateFormatted,
+                                seats: bData.seats ? bData.seats.split(',').map(s => `Ghế ${s.trim()}`).join(', ') : '',
+                                totalPrice: totalAmount,
+                                paymentMethod: 'VNPay'
+                            });
+                        }
+                    } catch (emailErr) {
+                        console.error('Error sending VNPay ticket email:', emailErr);
                     }
-                } catch (emailErr) {
-                    console.error('Error sending VNPay ticket email:', emailErr);
                 }
 
                 res.status(200).json({ RspCode: '00', Message: 'Success' });

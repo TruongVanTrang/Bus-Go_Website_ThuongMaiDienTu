@@ -100,6 +100,7 @@ CREATE TABLE PhuongTien (
     namSanXuat INT,
     tongSoGhe INT NOT NULL, -- 16 hoặc 35
     loaiXe NVARCHAR(50), -- '16-seater' hoặc '35-seater'
+    phanLoaiXe NVARCHAR(20) DEFAULT 'xe_khach', -- xe_khach hoặc xe_tai
     trangThaiXe NVARCHAR(50) DEFAULT 'san_sang', -- san_sang, bao_tri, ngoai_hoat_dong
     tienIch NVARCHAR(MAX), -- JSON: ['AC', 'Wifi', 'Phone Charger']
     ngayMuaVao DATE,
@@ -175,7 +176,7 @@ CREATE TABLE VeDienTu (
 -- 12. Bảng Hàng hóa - CẬP NHẬT: Thêm thông tin người gửi/nhận, giá trị, bảo hiểm, trạng thái
 CREATE TABLE HangHoa (
     maHangHoa INT IDENTITY(1,1) PRIMARY KEY,
-    maVe INT NOT NULL FOREIGN KEY REFERENCES VeDienTu(maVe),
+    maVe INT NULL FOREIGN KEY REFERENCES VeDienTu(maVe),
     loaiHangHoa NVARCHAR(50) NOT NULL, -- none, light, heavy, scooter, maxi_scooter, motorcycle
     moTa NVARCHAR(255),
     trongLuong FLOAT, -- Cân nặng (kg) - cho hàng nặng
@@ -259,18 +260,40 @@ CREATE TABLE KyGuiHang (
     maKhachHang INT NOT NULL FOREIGN KEY REFERENCES KhachHang(maKhachHang),
     maHangHoa INT FOREIGN KEY REFERENCES HangHoa(maHangHoa),
     consignmentId VARCHAR(50) UNIQUE, -- CSM + timestamp
+    loaiDichVu NVARCHAR(20) NOT NULL, -- 'gui_kem' hoặc 'van_tai'
+    diemGui NVARCHAR(100) NOT NULL, -- Ví dụ: Đà Nẵng
+    diemNhan NVARCHAR(100) NOT NULL, -- Ví dụ: Huế
+    ngayGui DATE NOT NULL, -- Ngày gửi
+    diaChiGuiChiTiet NVARCHAR(255) NOT NULL, -- Vị trí gửi hàng chi tiết
+    diaChiNhanChiTiet NVARCHAR(255) NOT NULL, -- Vị trí nhận hàng chi tiết
     tenNguoiGui NVARCHAR(100) NOT NULL,
     soDienThoaiNguoiGui VARCHAR(15) NOT NULL,
+    soCCCD VARCHAR(20) NULL, -- Số CCCD người gửi để xác minh danh tính
+    emailNguoiGui VARCHAR(100) NULL, -- Email người gửi (để gửi hợp đồng Word)
     tenNguoiNhan NVARCHAR(100) NOT NULL,
     soDienThoaiNguoiNhan VARCHAR(15) NOT NULL,
-    trangThaiKyGui NVARCHAR(50) DEFAULT 'pending', -- pending, confirmed, in_transit, delivered, failed
+    trangThaiKyGui NVARCHAR(50) DEFAULT 'dang_cho_xac_nhan', -- dang_cho_xac_nhan, dang_tim_xe_trong, da_xac_nhan, received_at_station, in_transit, delivered, failed
+    trangThaiThanhToan NVARCHAR(50) DEFAULT 'cho_thanh_toan', -- cho_thanh_toan, paid, pending
+    soLuong INT DEFAULT 1, -- Số lượng kiện hàng
+    trongLuong FLOAT, -- Trọng lượng (kg)
+    loaiHangHoa NVARCHAR(50), -- Loại hàng hóa (documents, fragile, bulky, motorcycle)
+    maChuyenXe INT NULL FOREIGN KEY REFERENCES ChuyenXe(maChuyenXe), -- Mã chuyến xe (nếu gửi kèm xe khách)
+    loaiXeVanTai VARCHAR(50) NULL, -- Loại xe tải yêu cầu (nếu thuê xe riêng, vd: truck_10t)
+    maTaiXe INT NULL FOREIGN KEY REFERENCES NhanVien(maNhanVien), -- Tài xế phụ trách (được gán hoặc tài xế chuyến xe)
+    driverInfo NVARCHAR(255) NULL, -- Thông tin tài xế và biển số xe (lưu vết nhanh)
+    giaCuoc DECIMAL(18, 2), -- Cước phí vận chuyển
     giaTrucDeclare DECIMAL(18, 2), -- Giá trị khai báo
-    giaBAO_HIEM DECIMAL(18, 2), -- Phí bảo hiểm
+    giaBAO_HIEM DECIMAL(18, 2), -- Phí bảo hiểm hàng hóa
+    tongTien DECIMAL(18, 2), -- Tổng thanh toán
     chieKySo NVARCHAR(MAX), -- Digital signature (base64)
     trangThaiKySo BIT DEFAULT 0, -- eSignatureAccepted
     viTriHienTai NVARCHAR(255), -- Vị trí hiện tại (tracking)
+    hinhAnh NVARCHAR(MAX), -- Danh sách ảnh đính kèm (dạng chuỗi JSON hoặc text)
     ngayTao DATETIME DEFAULT GETDATE(),
-    ngayCapNhat DATETIME DEFAULT GETDATE()
+    ngayCapNhat DATETIME DEFAULT GETDATE(),
+    lyDoHuy NVARCHAR(MAX) NULL,
+    yeuCauHuy NVARCHAR(20) NULL DEFAULT NULL,
+    maPhuongTienGan INT NULL FOREIGN KEY REFERENCES PhuongTien(maPhuongTien)
 );
 
 -- 18. Bảng Đánh giá chi tiết - THÊM MỚI (dùng khi cần phân tích chi tiết rating)
@@ -470,6 +493,7 @@ GO
 CREATE VIEW vw_ChuyenXeChiTiet AS
 SELECT 
     cx.maChuyenXe,
+    cx.maNhanVien,
     td.diemDi,
     td.diemDen,
     td.loaiDichVu,
@@ -480,12 +504,16 @@ SELECT
     cx.soLuongGheDat,
     pt.tongSoGhe,
     pt.loaiXe,
+    pt.phanLoaiXe,
+    pt.bienSoXe,
     cx.diemDanhGia,
     cx.soLuotDanhGia,
-    cx.trangThaiChuyen
+    cx.trangThaiChuyen,
+    nd.tenNguoiDung AS tenTaiXe
 FROM ChuyenXe cx
 INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien;
+INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien
+LEFT JOIN NguoiDung nd ON cx.maNhanVien = nd.maNguoiDung;
 GO
 
 -- 33. View: Danh sách vé với thông tin chi tiết
@@ -642,12 +670,33 @@ BEGIN
     SELECT 
         kg.maKyGui,
         kg.consignmentId,
+        kg.loaiDichVu,
+        kg.diemGui,
+        kg.diemNhan,
+        kg.ngayGui,
+        kg.diaChiGuiChiTiet,
+        kg.diaChiNhanChiTiet,
         kg.tenNguoiGui,
+        kg.soDienThoaiNguoiGui,
+        kg.soCCCD,
+        kg.emailNguoiGui,
         kg.tenNguoiNhan,
+        kg.soDienThoaiNguoiNhan,
         kg.trangThaiKyGui,
+        kg.soLuong,
+        kg.trongLuong,
+        kg.loaiHangHoa,
+        kg.maChuyenXe,
+        kg.loaiXeVanTai,
+        kg.maTaiXe,
+        kg.driverInfo,
+        kg.giaCuoc,
         kg.giaTrucDeclare,
         kg.giaBAO_HIEM,
+        kg.tongTien,
         kg.viTriHienTai,
+        kg.chieKySo,
+        kg.hinhAnh,
         kg.ngayTao,
         kg.ngayCapNhat
     FROM KyGuiHang kg
@@ -906,4 +955,182 @@ BEGIN
     INSERT INTO GheNgoi (maChuyenXe, soGhe, trangThaiGhe) VALUES (@maChuyenXeSleeper, '19', 'da_dat');
     INSERT INTO GheNgoi (maChuyenXe, soGhe, trangThaiGhe) VALUES (@maChuyenXeSleeper, '36', 'da_dat');
 END
+GO
+
+-- ============================================================================
+-- PHẦN CẬP NHẬT: THÊM TÀI XẾ XE TẢI VÀ SEED DỮ LIỆU KÝ GỬI HÀNG (KyGuiHang)
+-- ============================================================================
+
+-- 1. Thêm Người dùng cho Tài xế xe tải B & C (nếu chưa có)
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE email = 'driver_b@busgo.com')
+BEGIN
+    INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail)
+    VALUES (N'Lê Hoàng B', 'driver_b@busgo.com', '0987654321', '$2b$10$zbDMul9Z/FsZAUY/wKQb7u/lKSZCbkZh8arB46d.ZvyeznWNsppdK', 1);
+    
+    DECLARE @maDriverB INT = SCOPE_IDENTITY();
+    INSERT INTO NhanVien (maNhanVien, vaiTro, lichLamViec) VALUES (@maDriverB, N'DRIVER', N'Hành chính');
+END;
+
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE email = 'driver_c@busgo.com')
+BEGIN
+    INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail)
+    VALUES (N'Phạm Minh C', 'driver_c@busgo.com', '0905111222', '$2b$10$zbDMul9Z/FsZAUY/wKQb7u/lKSZCbkZh8arB46d.ZvyeznWNsppdK', 1);
+    
+    DECLARE @maDriverC INT = SCOPE_IDENTITY();
+    INSERT INTO NhanVien (maNhanVien, vaiTro, lichLamViec) VALUES (@maDriverC, N'DRIVER', N'Hành chính');
+END;
+GO
+
+-- 2. Thêm dữ liệu mẫu vào bảng KyGuiHang
+-- Lấy mã Khách Hàng mẫu (Khách hàng Trương Trạng có maKhachHang = 3)
+DECLARE @maKH INT = 3;
+DECLARE @maChuyenXe1 INT;
+SELECT TOP 1 @maChuyenXe1 = maChuyenXe FROM ChuyenXe 
+INNER JOIN TuyenDuong ON ChuyenXe.maTuyenDuong = TuyenDuong.maTuyenDuong 
+WHERE TuyenDuong.diemDi = N'Đà Nẵng' AND TuyenDuong.diemDen = N'Huế';
+
+-- Đơn 1: Gửi kèm xe khách - Chờ xác nhận từ tài xế (Chưa thanh toán)
+IF NOT EXISTS (SELECT 1 FROM KyGuiHang WHERE consignmentId = 'CSM1717280001')
+    INSERT INTO KyGuiHang (
+        maKhachHang, consignmentId, loaiDichVu, diemGui, diemNhan, ngayGui, 
+        diaChiGuiChiTiet, diaChiNhanChiTiet, tenNguoiGui, soDienThoaiNguoiGui, soCCCD, emailNguoiGui, 
+        tenNguoiNhan, soDienThoaiNguoiNhan, trangThaiKyGui, trangThaiThanhToan, soLuong, trongLuong, 
+        loaiHangHoa, maChuyenXe, giaCuoc, giaTrucDeclare, giaBAO_HIEM, tongTien, chieKySo, trangThaiKySo, viTriHienTai
+    ) VALUES (
+        @maKH, 'CSM1717280001', N'gui_kem', N'Đà Nẵng', N'Huế', CAST(DATEADD(day, 1, GETDATE()) AS DATE),
+        N'104 Nguyễn Văn Linh, Q. Hải Châu', N'Số 5 Lê Lợi, TP. Huế', N'Trương Trạng', '0372575316', '201538374829', 'vantrang04042005@gmail.com',
+        N'Nguyễn Văn Nhận', '0905999888', N'dang_cho_xac_nhan', N'cho_thanh_toan', 1, 5.0,
+        N'bulky', @maChuyenXe1, 150000, 1000000, 20000, 170000, 'data:image/svg+xml;utf8,...', 1, N'Chờ tài xế xác nhận tại điểm xuất phát'
+    );
+
+-- Đơn 2: Thuê xe riêng - Chờ gán xe tải (Chưa thanh toán)
+IF NOT EXISTS (SELECT 1 FROM KyGuiHang WHERE consignmentId = 'CSM1717280002')
+    INSERT INTO KyGuiHang (
+        maKhachHang, consignmentId, loaiDichVu, diemGui, diemNhan, ngayGui, 
+        diaChiGuiChiTiet, diaChiNhanChiTiet, tenNguoiGui, soDienThoaiNguoiGui, soCCCD, emailNguoiGui, 
+        tenNguoiNhan, soDienThoaiNguoiNhan, trangThaiKyGui, trangThaiThanhToan, soLuong, trongLuong, 
+        loaiHangHoa, loaiXeVanTai, giaCuoc, giaTrucDeclare, giaBAO_HIEM, tongTien, chieKySo, trangThaiKySo, viTriHienTai
+    ) VALUES (
+        @maKH, 'CSM1717280002', N'van_tai', N'Đà Nẵng', N'Quảng Nam', CAST(DATEADD(day, 2, GETDATE()) AS DATE),
+        N'Khu công nghiệp Hòa Khánh, Đà Nẵng', N'Khu công nghiệp Điện Nam - Điện Ngọc, Quảng Nam', N'Trương Trạng', '0372575316', '201538374829', 'vantrang04042005@gmail.com',
+        N'Trần Văn Thụ', '0914222333', N'dang_tim_xe_trong', N'cho_thanh_toan', 10, 500.0,
+        N'bulky', 'truck_10t', 2000000, 5000000, 100000, 2100000, 'data:image/svg+xml;utf8,...', 1, N'Chờ phân phối xe tải từ trạm điều hành'
+    );
+
+-- Đơn 3: Gửi kèm xe khách - Đã xác nhận & Đã thanh toán
+DECLARE @maTaiXeBus INT = 5; -- Nguyễn Văn A
+IF NOT EXISTS (SELECT 1 FROM KyGuiHang WHERE consignmentId = 'CSM1717280003')
+    INSERT INTO KyGuiHang (
+        maKhachHang, consignmentId, loaiDichVu, diemGui, diemNhan, ngayGui, 
+        diaChiGuiChiTiet, diaChiNhanChiTiet, tenNguoiGui, soDienThoaiNguoiGui, soCCCD, emailNguoiGui, 
+        tenNguoiNhan, soDienThoaiNguoiNhan, trangThaiKyGui, trangThaiThanhToan, soLuong, trongLuong, 
+        loaiHangHoa, maChuyenXe, maTaiXe, driverInfo, giaCuoc, giaTrucDeclare, giaBAO_HIEM, tongTien, chieKySo, trangThaiKySo, viTriHienTai
+    ) VALUES (
+        @maKH, 'CSM1717280003', N'gui_kem', N'Đà Nẵng', N'Huế', CAST(GETDATE() AS DATE),
+        N'Bến xe trung tâm Đà Nẵng', N'Bến xe phía Nam Huế', N'Trương Trạng', '0372575316', '201538374829', 'vantrang04042005@gmail.com',
+        N'Phan Văn Phát', '0983123456', N'da_xac_nhan', N'paid', 2, 12.0,
+        N'fragile', @maChuyenXe1, @maTaiXeBus, N'Nguyễn Văn A (SĐT: 0912345678 • Biển số: 43B-999.99)', 80000, 2000000, 40000, 120000, 'data:image/svg+xml;utf8,...', 1, N'Đã xác nhận, chờ xếp lên xe chạy tuyến'
+    );
+
+-- Đơn 4: Thuê xe riêng - Đang vận chuyển (Gán tài xế xe tải B & Đã thanh toán)
+DECLARE @maTaiXeTruckB INT;
+SELECT @maTaiXeTruckB = maNguoiDung FROM NguoiDung WHERE email = 'driver_b@busgo.com';
+IF NOT EXISTS (SELECT 1 FROM KyGuiHang WHERE consignmentId = 'CSM1717280004') AND @maTaiXeTruckB IS NOT NULL
+    INSERT INTO KyGuiHang (
+        maKhachHang, consignmentId, loaiDichVu, diemGui, diemNhan, ngayGui, 
+        diaChiGuiChiTiet, diaChiNhanChiTiet, tenNguoiGui, soDienThoaiNguoiGui, soCCCD, emailNguoiGui, 
+        tenNguoiNhan, soDienThoaiNguoiNhan, trangThaiKyGui, trangThaiThanhToan, soLuong, trongLuong, 
+        loaiHangHoa, loaiXeVanTai, maTaiXe, driverInfo, giaCuoc, giaTrucDeclare, giaBAO_HIEM, tongTien, chieKySo, trangThaiKySo, viTriHienTai
+    ) VALUES (
+        @maKH, 'CSM1717280004', N'van_tai', N'Đà Nẵng', N'Quảng Ngãi', CAST(GETDATE() AS DATE),
+        N'35 Chu Văn An, Hải Châu, Đà Nẵng', N'120 Hùng Vương, TP. Quảng Ngãi', N'Trương Trạng', '0372575316', '201538374829', 'vantrang04042005@gmail.com',
+        N'Nguyễn Hữu Quốc', '0905333555', N'in_transit', N'paid', 1, 80.0,
+        N'bulky', 'truck_20t', @maTaiXeTruckB, N'Lê Hoàng B (SĐT: 0987654321 • Biển số: 43C-678.90 • Xe tải 20 tấn)', 4000000, 10000000, 200000, 4200000, 'data:image/svg+xml;utf8,...', 1, N'Đang vận chuyển qua địa phận Quảng Nam'
+    );
+
+-- Đơn 5: Gửi kèm xe khách - Đã hoàn thành bàn giao
+IF NOT EXISTS (SELECT 1 FROM KyGuiHang WHERE consignmentId = 'CSM1717280005')
+    INSERT INTO KyGuiHang (
+        maKhachHang, consignmentId, loaiDichVu, diemGui, diemNhan, ngayGui, 
+        diaChiGuiChiTiet, diaChiNhanChiTiet, tenNguoiGui, soDienThoaiNguoiGui, soCCCD, emailNguoiGui, 
+        tenNguoiNhan, soDienThoaiNguoiNhan, trangThaiKyGui, trangThaiThanhToan, soLuong, trongLuong, 
+        loaiHangHoa, maChuyenXe, maTaiXe, driverInfo, giaCuoc, giaTrucDeclare, giaBAO_HIEM, tongTien, chieKySo, trangThaiKySo, viTriHienTai
+    ) VALUES (
+        @maKH, 'CSM1717280005', N'gui_kem', N'Đà Nẵng', N'Huế', CAST(DATEADD(day, -2, GETDATE()) AS DATE),
+        N'Đại học Bách Khoa Đà Nẵng', N'Đại học Khoa học Huế', N'Trương Trạng', '0372575316', '201538374829', 'vantrang04042005@gmail.com',
+        N'Ngô Minh Triết', '0977222111', N'delivered', N'paid', 1, 2.0,
+        N'documents', @maChuyenXe1, @maTaiXeBus, N'Nguyễn Văn A (SĐT: 0912345678 • Biển số: 43B-999.99)', 40000, 0, 0, 40000, 'data:image/svg+xml;utf8,...', 1, N'Đã giao tận tay người nhận thành công'
+    );
+GO
+GO
+-- ============================================================================
+-- PHẦN CẬP NHẬT TỪ PATCH: Thêm xe tải, tài xế xe tải và gán tài xế vào chuyến xe
+-- ============================================================================
+
+-- Cập nhật xe hiện có: xe khách (bus, coach, mini)
+UPDATE PhuongTien SET phanLoaiXe = 'xe_khach'
+WHERE loaiXe IN ('mini_16','city_small','mini_9','mini_7','coach_29_35','coach_suburb','coach_16','sleeper_36')
+AND (phanLoaiXe IS NULL OR phanLoaiXe != 'xe_khach');
+
+-- Thêm các phương tiện xe tải (nếu chưa có)
+IF NOT EXISTS (SELECT 1 FROM PhuongTien WHERE bienSoXe = '43D-111.11')
+    INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, phanLoaiXe, trangThaiXe, tienIch)
+    VALUES ('43D-111.11', N'Hyundai HD65', N'Trắng', 2022, 2, 'truck_10t', 'xe_tai', 'san_sang', N'["Điều hòa", "GPS"]');
+
+IF NOT EXISTS (SELECT 1 FROM PhuongTien WHERE bienSoXe = '43D-222.22')
+    INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, phanLoaiXe, trangThaiXe, tienIch)
+    VALUES ('43D-222.22', N'Dongfeng 20T', N'Vàng', 2021, 2, 'truck_20t', 'xe_tai', 'san_sang', N'["Điều hòa", "GPS"]');
+
+IF NOT EXISTS (SELECT 1 FROM PhuongTien WHERE bienSoXe = '43D-333.33')
+    INSERT INTO PhuongTien (bienSoXe, nhanHieu, mauSac, namSanXuat, tongSoGhe, loaiXe, phanLoaiXe, trangThaiXe, tienIch)
+    VALUES ('43D-333.33', N'Howo 375 30T', N'Đỏ', 2023, 2, 'truck_30t', 'xe_tai', 'san_sang', N'["Điều hòa", "GPS", "Máy lạnh kho"]');
+GO
+
+-- Thêm tài xế xe tải (mật khẩu: staff123)
+DECLARE @maDriverD INT, @maDriverE INT, @maDriverF INT;
+
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE email = 'truck_d@busgo.com')
+BEGIN
+    INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail, trangThaiTaiKhoan)
+    VALUES (N'Trần Mạnh D (Tài xế 10T)', 'truck_d@busgo.com', '0933111222', 
+            '/FsZAUY/wKQb7u/lKSZCbkZh8arB46d.ZvyeznWNsppdK', 1, 'active');
+    SET @maDriverD = SCOPE_IDENTITY();
+    INSERT INTO NhanVien (maNhanVien, vaiTro, lichLamViec) VALUES (@maDriverD, N'DRIVER', N'Hành chính');
+    UPDATE PhuongTien SET maTaiXeChinh = @maDriverD WHERE bienSoXe = '43D-111.11';
+END;
+
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE email = 'truck_e@busgo.com')
+BEGIN
+    INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail, trangThaiTaiKhoan)
+    VALUES (N'Hoàng Văn E (Tài xế 20T)', 'truck_e@busgo.com', '0933333444', 
+            '/FsZAUY/wKQb7u/lKSZCbkZh8arB46d.ZvyeznWNsppdK', 1, 'active');
+    SET @maDriverE = SCOPE_IDENTITY();
+    INSERT INTO NhanVien (maNhanVien, vaiTro, lichLamViec) VALUES (@maDriverE, N'DRIVER', N'Hành chính');
+    UPDATE PhuongTien SET maTaiXeChinh = @maDriverE WHERE bienSoXe = '43D-222.22';
+END;
+
+IF NOT EXISTS (SELECT 1 FROM NguoiDung WHERE email = 'truck_f@busgo.com')
+BEGIN
+    INSERT INTO NguoiDung (tenNguoiDung, email, soDienThoai, matKhau, daXacThucEmail, trangThaiTaiKhoan)
+    VALUES (N'Phạm Thị F (Tài xế 30T)', 'truck_f@busgo.com', '0933555666', 
+            '/FsZAUY/wKQb7u/lKSZCbkZh8arB46d.ZvyeznWNsppdK', 1, 'active');
+    SET @maDriverF = SCOPE_IDENTITY();
+    INSERT INTO NhanVien (maNhanVien, vaiTro, lichLamViec) VALUES (@maDriverF, N'DRIVER', N'Hành chính');
+    UPDATE PhuongTien SET maTaiXeChinh = @maDriverF WHERE bienSoXe = '43D-333.33';
+END;
+GO
+
+-- Gán tài xế chính (maNhanVien) vào ChuyenXe mẫu
+UPDATE TOP(5) ChuyenXe 
+SET maNhanVien = 5
+WHERE maNhanVien IS NULL
+AND maTuyenDuong IN (SELECT maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Huế');
+
+DECLARE @driverBId INT;
+SELECT @driverBId = maNguoiDung FROM NguoiDung WHERE email = 'driver_b@busgo.com';
+IF @driverBId IS NOT NULL
+    UPDATE TOP(5) ChuyenXe 
+    SET maNhanVien = @driverBId
+    WHERE maNhanVien IS NULL
+    AND maTuyenDuong IN (SELECT maTuyenDuong FROM TuyenDuong WHERE diemDi = N'Đà Nẵng' AND diemDen = N'Quảng Nam');
 GO

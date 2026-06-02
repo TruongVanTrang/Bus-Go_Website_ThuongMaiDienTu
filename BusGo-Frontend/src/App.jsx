@@ -27,6 +27,8 @@ import VehiclesPage from './admin/pages/VehiclesPage'
 import RoutesPage from './admin/pages/RoutesPage'
 import SchedulesPage from './admin/pages/SchedulesPage'
 import ReportsPage from './admin/pages/ReportsPage'
+import DriverCargoPage from './admin/pages/DriverCargoPage'
+import SupportCargoPage from './admin/pages/SupportCargoPage'
 
 // Reset scroll lên đầu trang mỗi khi navigate sang route mới
 function ScrollToTop() {
@@ -61,6 +63,16 @@ function App() {
         <Route path="/admin/routes" element={<StaffProtectedRoute><RoutesPage /></StaffProtectedRoute>} />
         <Route path="/admin/schedules" element={<StaffProtectedRoute><SchedulesPage /></StaffProtectedRoute>} />
         <Route path="/admin/reports" element={<StaffProtectedRoute><ReportsPage /></StaffProtectedRoute>} />
+
+        {/* DRIVER ROUTES */}
+        <Route path="/admin/driver/cargo" element={<StaffProtectedRoute><DriverCargoPage defaultTab="cargo" /></StaffProtectedRoute>} />
+        <Route path="/admin/driver/schedule" element={<StaffProtectedRoute><DriverCargoPage defaultTab="schedule" /></StaffProtectedRoute>} />
+        <Route path="/admin/driver/trip-status" element={<StaffProtectedRoute><DriverCargoPage defaultTab="trip-status" /></StaffProtectedRoute>} />
+
+        {/* SUPPORT STAFF ROUTES */}
+        <Route path="/admin/support/cargo-assign" element={<StaffProtectedRoute><SupportCargoPage defaultTab="cargo-assign" /></StaffProtectedRoute>} />
+        <Route path="/admin/support/lookup" element={<StaffProtectedRoute><SupportCargoPage defaultTab="lookup" /></StaffProtectedRoute>} />
+        <Route path="/admin/support/refund" element={<StaffProtectedRoute><SupportCargoPage defaultTab="refund" /></StaffProtectedRoute>} />
 
         {/* ==================== CLIENT ROUTES (No auth required) ==================== */}
         <Route

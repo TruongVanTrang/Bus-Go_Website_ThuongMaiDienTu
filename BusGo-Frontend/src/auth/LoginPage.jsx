@@ -56,7 +56,8 @@ function LoginPage() {
       // Gọi API đăng nhập từ backend
       const data = await loginAPI(formData.emailOrPhone, formData.password)
 
-      // ✅ Đăng nhập thành công
+      // ✅ Đăng nhập thành công - XÓA dữ liệu cũ trước khi ghi mới (tránh lỗi stale cache)
+      StorageUtil.clearAuth()
       StorageUtil.setToken(data.token)
       StorageUtil.setUser({
         id: data.user.id,
@@ -65,7 +66,8 @@ function LoginPage() {
         phone: data.user.phone,
         role: data.user.role
       })
-      StorageUtil.setRole(data.user.role)
+      // Lưu role chuẩn hóa (toUpperCase, '-' -> '_') để tránh lỗi nhận diện vai trò
+      StorageUtil.setRole(data.user.role.toUpperCase().replace(/-/g, '_'))
 
       localStorage.setItem('userInfo', JSON.stringify({
         fullName: data.user.name,

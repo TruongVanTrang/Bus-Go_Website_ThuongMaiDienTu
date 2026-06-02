@@ -3,6 +3,8 @@
  */
 
 export { default as Dashboard } from './Dashboard'
+export { default as DriverCargoPage } from './DriverCargoPage'
+export { default as SupportCargoPage } from './SupportCargoPage'
 
 // Vehicle Management Pages
 // export { default as VehicleManagement } from './vehicles/VehicleManagement'

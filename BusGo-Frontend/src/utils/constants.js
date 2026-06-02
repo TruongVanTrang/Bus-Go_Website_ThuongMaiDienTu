@@ -228,6 +228,7 @@ export const ROLE_MENU = {
     { id: 'reports', label: 'Thống kê & Báo cáo', icon: 'chart', path: '/admin/reports' }
   ],
   [USER_ROLES.DRIVER]: [
+    { id: 'cargo', label: 'Xác nhận ký gửi hàng', icon: 'bus', path: '/admin/driver/cargo' },
     { id: 'schedule', label: 'Tiếp nhận lịch trình chạy', icon: 'calendar', path: '/admin/driver/schedule' },
     { id: 'trip-status', label: 'Cập nhật trạng thái hành trình', icon: 'road', path: '/admin/driver/trip-status' }
   ],
@@ -236,6 +237,7 @@ export const ROLE_MENU = {
     { id: 'passengers', label: 'Danh sách hành khách', icon: 'users', path: '/admin/staff/passengers' }
   ],
   [USER_ROLES.SUPPORT_STAFF]: [
+    { id: 'cargo-assign', label: 'Phân phối xe ký gửi', icon: 'bus', path: '/admin/support/cargo-assign' },
     { id: 'ticket-lookup', label: 'Tra cứu vé', icon: 'search', path: '/admin/support/lookup' },
     { id: 'refund', label: 'Xử lý yêu cầu hoàn/hủy', icon: 'undo', path: '/admin/support/refund' }
   ],

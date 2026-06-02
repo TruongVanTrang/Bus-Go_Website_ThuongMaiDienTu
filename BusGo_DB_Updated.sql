@@ -298,6 +298,20 @@ CREATE TABLE ThongBaoTheoDoiHang (
     thoiGianTao DATETIME DEFAULT GETDATE()
 );
 
+-- 19.5. Bảng Nhật ký hành trình - THÊM MỚI (dùng cho hành trình di chuyển của tài xế)
+CREATE TABLE NhatKyHanhTrinh (
+    maNhatKy INT IDENTITY(1,1) PRIMARY KEY,
+    maChuyenXe INT NOT NULL FOREIGN KEY REFERENCES ChuyenXe(maChuyenXe),
+    kieuCapNhat NVARCHAR(50) NOT NULL, -- START, END, INCIDENT, CHECKPOINT
+    thoiGian DATETIME DEFAULT GETDATE(),
+    viTri NVARCHAR(255) NOT NULL,
+    soKm INT NOT NULL,
+    tinhTrangXe NVARCHAR(255),
+    anhMinhChung NVARCHAR(MAX),   -- Ảnh đồng hồ km / minh chứng chính
+    anhXeSauChuyen NVARCHAR(MAX), -- Ảnh xe sau chuyến (chỉ dùng khi END)
+    ghiChu NVARCHAR(MAX)
+);
+
 -- ============================================================================
 -- PHẦN 7: INDEX VÀ TRIGGER
 -- ============================================================================

@@ -104,20 +104,62 @@ const getDriverTrips = async (req, res) => {
         ORDER BY cx.thoiGianDi ASC
       `);
 
-    const trips = tripsResult.recordset.map(row => ({
-      id: row.maChuyenXe,
-      date: new Date(row.thoiGianDi).toLocaleDateString('vi-VN'),
-      from: row.diemDi,
-      to: row.diemDen,
-      departureTime: formatTime(row.thoiGianDi),
-      arrivalTime: formatTime(row.thoiGianDen),
-      licensePlate: row.bienSoXe,
-      busType: row.loaiXe === '16-seater' ? 'Xe ghế ngồi 16 chỗ' : 'Xe giường nằm 35 chỗ',
-      passengerCount: row.soLuongGheDat || 0,
-      maxPassengers: row.tongSoGhe,
-      status: mapStatusToClient(row.trangThaiChuyen),
-      incidentDetails: row.ghiChu && row.ghiChu.startsWith('{') ? JSON.parse(row.ghiChu) : null
-    }));
+    // Lấy toàn bộ nhật ký hành trình của các chuyến xe thuộc tài xế này
+    const logsResult = await pool.request()
+      .input('driverId', sql.Int, driverId)
+      .query(`
+        SELECT * FROM NhatKyHanhTrinh
+        WHERE maChuyenXe IN (SELECT maChuyenXe FROM ChuyenXe WHERE maNhanVien = @driverId)
+        ORDER BY thoiGian ASC
+      `);
+
+    // Nhóm nhật ký hành trình theo maChuyenXe
+    const logsByTrip = {};
+    logsResult.recordset.forEach(log => {
+      const tripId = log.maChuyenXe;
+      if (!logsByTrip[tripId]) {
+        logsByTrip[tripId] = [];
+      }
+      logsByTrip[tripId].push({
+        id: log.maNhatKy,
+        type: log.kieuCapNhat,
+        time: log.thoiGian,
+        location: log.viTri,
+        km: log.soKm,
+        vehicleStatus: log.tinhTrangXe,
+        proofImage: log.anhMinhChung,
+        vehiclePhoto: log.anhXeSauChuyen || null,
+        notes: log.ghiChu
+      });
+    });
+
+    const trips = tripsResult.recordset.map(row => {
+      const tripLogs = logsByTrip[row.maChuyenXe] || [];
+      // Tạo incidentDetails động từ NhatKyHanhTrinh cho FE hiển thị
+      const latestIncident = [...tripLogs].reverse().find(log => log.type === 'INCIDENT');
+      let incidentDetails = null;
+      if (latestIncident && latestIncident.notes && latestIncident.notes.startsWith('{')) {
+        try {
+          incidentDetails = JSON.parse(latestIncident.notes);
+        } catch (e) {}
+      }
+
+      return {
+        id: row.maChuyenXe,
+        date: new Date(row.thoiGianDi).toLocaleDateString('vi-VN'),
+        from: row.diemDi,
+        to: row.diemDen,
+        departureTime: formatTime(row.thoiGianDi),
+        arrivalTime: formatTime(row.thoiGianDen),
+        licensePlate: row.bienSoXe,
+        busType: row.loaiXe === '16-seater' ? 'Xe ghế ngồi 16 chỗ' : 'Xe giường nằm 35 chỗ',
+        passengerCount: row.soLuongGheDat || 0,
+        maxPassengers: row.tongSoGhe,
+        status: mapStatusToClient(row.trangThaiChuyen),
+        incidentDetails: incidentDetails,
+        journeyLogs: tripLogs
+      };
+    });
 
     res.json(trips);
   } catch (error) {
@@ -131,29 +173,85 @@ const getDriverTrips = async (req, res) => {
 // @access  Private (Driver only)
 const updateTripStatus = async (req, res) => {
   const { tripId } = req.params;
-  const { status, incidentType, incidentDesc, incidentLoc } = req.body;
+  const { 
+    status, 
+    updateType,
+    incidentType, 
+    incidentDesc, 
+    incidentLoc, 
+    startLocation, 
+    startKm, 
+    vehicleStatus, 
+    proofImage, 
+    notes,
+    viTri,
+    soKm,
+    tinhTrangXe,
+    anhMinhChung,
+    anhXeSauChuyen,
+    ghiChu
+  } = req.body;
 
   try {
     const pool = await sql.connect();
-    const dbStatus = mapStatusToDb(status === 'INCIDENT' ? 'DEPARTED' : status);
-    
-    let note = null;
-    if (status === 'INCIDENT') {
-      note = JSON.stringify({ type: incidentType, desc: incidentDesc, location: incidentLoc });
+
+    // Xác định kiểu cập nhật nhật ký hành trình
+    let kieuCapNhat = updateType;
+    if (!kieuCapNhat) {
+      if (status === 'DEPARTED') kieuCapNhat = 'START';
+      else if (status === 'COMPLETED') kieuCapNhat = 'END';
+      else if (status === 'INCIDENT') kieuCapNhat = 'INCIDENT';
+      else kieuCapNhat = 'CHECKPOINT';
     }
 
+    // Xử lý các giá trị đầu vào có dự phòng (fallbacks)
+    const finalViTri = viTri || startLocation || incidentLoc || 'Chưa xác định';
+    const finalSoKm = Number(soKm !== undefined ? soKm : (startKm !== undefined ? startKm : 0));
+    const finalTinhTrang = tinhTrangXe || vehicleStatus || 'Bình thường';
+    const finalAnh = anhMinhChung || proofImage || '';
+    
+    let finalGhiChu = ghiChu || notes || '';
+    if (kieuCapNhat === 'INCIDENT' && incidentType) {
+      finalGhiChu = JSON.stringify({ type: incidentType, desc: incidentDesc || finalGhiChu, location: incidentLoc || finalViTri });
+    }
+
+    // 1. Thêm dòng nhật ký mới vào bảng NhatKyHanhTrinh
+    const finalAnhXe = anhXeSauChuyen || '';
     await pool.request()
-      .input('tripId', sql.Int, tripId)
+      .input('tripId', sql.Int, parseInt(tripId, 10))
+      .input('kieuCapNhat', sql.NVarChar, kieuCapNhat)
+      .input('viTri', sql.NVarChar, finalViTri)
+      .input('soKm', sql.Int, finalSoKm)
+      .input('tinhTrangXe', sql.NVarChar, finalTinhTrang)
+      .input('anhMinhChung', sql.NVarChar, finalAnh)
+      .input('anhXeSauChuyen', sql.NVarChar, finalAnhXe)
+      .input('ghiChu', sql.NVarChar, finalGhiChu)
+      .query(`
+        INSERT INTO NhatKyHanhTrinh (maChuyenXe, kieuCapNhat, viTri, soKm, tinhTrangXe, anhMinhChung, anhXeSauChuyen, ghiChu, thoiGian)
+        VALUES (@tripId, @kieuCapNhat, @viTri, @soKm, @tinhTrangXe, @anhMinhChung, @anhXeSauChuyen, @ghiChu, GETDATE())
+      `);
+
+    // 2. Xác định trạng thái của chuyến xe tương ứng
+    let dbStatus;
+    if (kieuCapNhat === 'START') {
+      dbStatus = 'dang_khoi_hanh'; // DEPARTED
+    } else if (kieuCapNhat === 'END') {
+      dbStatus = 'da_hoan_thanh'; // COMPLETED
+    } else {
+      dbStatus = 'dang_khoi_hanh'; // CHECKPOINT và INCIDENT vẫn giữ dang_khoi_hanh
+    }
+
+    // 3. Cập nhật trạng thái mới nhất trên bảng ChuyenXe (Không cập nhật cột ghiChu vì không tồn tại trong DB của bạn!)
+    await pool.request()
+      .input('tripId', sql.Int, parseInt(tripId, 10))
       .input('status', sql.NVarChar, dbStatus)
-      .input('note', sql.NVarChar, note)
       .query(`
         UPDATE ChuyenXe
-        SET trangThaiChuyen = @status,
-            ghiChu = ISNULL(@note, ghiChu)
+        SET trangThaiChuyen = @status
         WHERE maChuyenXe = @tripId
       `);
 
-    res.json({ message: 'Cập nhật trạng thái chuyến xe thành công' });
+    res.json({ message: 'Cập nhật hành trình chuyến xe thành công' });
   } catch (error) {
     console.error('Lỗi khi cập nhật trạng thái chuyến xe:', error);
     res.status(500).json({ message: 'Lỗi máy chủ' });

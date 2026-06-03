@@ -346,7 +346,14 @@ const getTripCargo = async (req, res) => {
       receiver: row.tenNguoiNhan,
       phone: row.soDienThoaiNguoiNhan,
       status: mapCargoStatusToClient(row.trangThaiVanChuyen),
-      isConsignment: false
+      isConsignment: false,
+      quantity: 1,
+      weight: row.trongLuong,
+      totalPrice: row.giaHangHoa,
+      senderPhone: row.soDienThoaiNguoiGui,
+      senderAddress: null,
+      receiverAddress: null,
+      images: []
     }));
 
     // 2. Truy vấn đơn ký gửi độc lập (KyGuiHang - Gửi Kèm Xe Khách)
@@ -368,7 +375,14 @@ const getTripCargo = async (req, res) => {
       phone: row.soDienThoaiNguoiNhan,
       status: mapKyGuiStatusToClient(row.trangThaiKyGui),
       isConsignment: true,
-      paymentStatus: row.trangThaiThanhToan
+      paymentStatus: row.trangThaiThanhToan,
+      quantity: row.soLuong,
+      weight: row.trongLuong,
+      totalPrice: row.tongTien,
+      senderPhone: row.soDienThoaiNguoiGui,
+      senderAddress: row.diaChiGuiChiTiet || row.diemGui,
+      receiverAddress: row.diaChiNhanChiTiet || row.diemNhan,
+      images: row.hinhAnh ? row.hinhAnh.split(',') : []
     }));
 
     // Trả về danh sách gộp
@@ -412,7 +426,14 @@ const getTruckCargo = async (req, res) => {
       to: row.diemNhan,
       pickupLocation: row.diaChiGuiChiTiet,
       deliveryLocation: row.diaChiNhanChiTiet,
-      date: row.ngayGui
+      date: row.ngayGui,
+      quantity: row.soLuong,
+      weight: row.trongLuong,
+      totalPrice: row.tongTien,
+      senderPhone: row.soDienThoaiNguoiGui,
+      senderAddress: row.diaChiGuiChiTiet || row.diemGui,
+      receiverAddress: row.diaChiNhanChiTiet || row.diemNhan,
+      images: row.hinhAnh ? row.hinhAnh.split(',') : []
     }));
 
     res.json(cargoList);

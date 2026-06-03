@@ -339,6 +339,10 @@ const getMyTickets = async (req, res) => {
       } else {
         bookingsMap[bId].seats.push(t.soGhe);
         bookingsMap[bId].price += Number(t.giaVe);
+        // Cộng giá hàng hóa từ vé đầu tiên (nếu có)
+        if (t.giaHangHoa) {
+          bookingsMap[bId].price += Number(t.giaHangHoa);
+        }
       }
     }
 

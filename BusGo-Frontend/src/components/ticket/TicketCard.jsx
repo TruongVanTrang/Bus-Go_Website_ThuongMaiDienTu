@@ -3,12 +3,8 @@ import { FiClock } from 'react-icons/fi'
 import './TicketCard.css'
 
 export default function TicketCard({ bookingId, ticketData }) {
-  const qrValue = JSON.stringify({
-    bookingId,
-    trip: ticketData.trip,
-    seats: ticketData.selectedSeats,
-    passenger: ticketData.passengerInfo
-  })
+  // Sử dụng bookingId đơn giản để tạo QR code - dễ quét và có thể dùng lại
+  const qrValue = bookingId
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -97,7 +93,7 @@ export default function TicketCard({ bookingId, ticketData }) {
               size={140}
               level="H"
               includeMargin={false}
-              fgColor="#0284c7"
+              fgColor="#000000"
               bgColor="#ffffff"
             />
           </div>

@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { sql } = require('../config/db');
+const { sql, getPool } = require('../config/db');
 const emailService = require('../utils/emailService');
 
 const otpStore = {}; // Lưu trữ OTP tạm thời: { [email]: { code, expiresAt } }
@@ -23,7 +23,7 @@ const register = async (req, res) => {
   }
 
   try {
-    const pool = await sql.connect();
+    const pool = getPool();
     
     // Kiểm tra xem email hoặc sđt đã tồn tại chưa
     const userExists = await pool.request()
@@ -105,7 +105,7 @@ const login = async (req, res) => {
   }
 
   try {
-    const pool = await sql.connect();
+    const pool = getPool();
 
     // Lấy thông tin user
     const userResult = await pool.request()

@@ -105,10 +105,14 @@ export default function UserProfile() {
         const dbLevel = (profile.capDoThanhVien || 'bronze').toLowerCase()
         const mappedLevel = ['bronze', 'silver', 'gold'].includes(dbLevel) ? dbLevel : 'bronze'
 
-        // Tính tổng chi tiêu từ các vé đã thanh toán thành công
+        // Tính tổng chi tiêu từ các vé đã thanh toán thành công (bao gồm cả hàng hóa)
         const totalSpentFromTickets = tickets
           .filter(ticket => ticket.status === 'Da thanh toan')
-          .reduce((sum, ticket) => sum + (ticket.price || 0), 0)
+          .reduce((sum, ticket) => {
+            const ticketPrice = ticket.price || 0;
+            const cargoPrice = ticket.cargoInfo?.price || 0;
+            return sum + ticketPrice + cargoPrice;
+          }, 0)
 
         setUserInfo({
           name: profile.name || '',

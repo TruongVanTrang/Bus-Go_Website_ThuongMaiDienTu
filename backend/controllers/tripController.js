@@ -133,7 +133,7 @@ const releaseExpiredSeats = async (pool) => {
 // @route   GET /api/trips/search
 // @access  Public
 const searchTrips = async (req, res) => {
-  const { diemDi, diemDen, date, category } = req.query;
+  const { diemDi, diemDen, date, category, busType } = req.query;
 
   try {
     const pool = await sql.connect();
@@ -177,6 +177,10 @@ const searchTrips = async (req, res) => {
     if (category) {
       request.input('category', sql.NVarChar, category);
       conditions.push('cx.loaiDichVu = @category');
+    }
+    if (busType) {
+      request.input('busType', sql.NVarChar, busType);
+      conditions.push('cx.loaiXe = @busType');
     }
 
     if (conditions.length > 0) {

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode.react'
 import { StorageUtil } from '../../utils/helpers'
 import { getMyTicketsAPI, cancelBookingAPI, submitFeedbackAPI, getFeedbackAPI } from '../../services/bookingService'
-import { getMyConsignmentsAPI } from '../../services/cargoService'
+import { getMyConsignmentsAPI, cancelConsignmentAPI } from '../../services/cargoService'
 import './UserHistory.css'
 
 export default function UserHistory() {
@@ -344,6 +344,28 @@ export default function UserHistory() {
     }
     
     return { ...baseStyle, backgroundColor: '#10b981', text: 'Đã hoàn thành', icon: <FiCheckCircle size={14} /> }
+  }
+
+  const handleCancelConsignment = async (consignmentId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?')) return;
+    
+    try {
+      const token = StorageUtil.getToken()
+      if (!token) {
+        navigate('/login')
+        return
+      }
+      
+      await cancelConsignmentAPI(consignmentId, token)
+      
+      // Update local state
+      updateConsignmentStatus(consignmentId, 'da_huy')
+      alert('Hủy đơn hàng thành công!')
+      setShowConsignmentDetailModal(false)
+    } catch (err) {
+      console.error('Lỗi khi hủy đơn hàng:', err)
+      alert(err.message || 'Lỗi khi hủy đơn hàng. Vui lòng thử lại.')
+    }
   }
 
   if (loading) {
@@ -1394,6 +1416,15 @@ export default function UserHistory() {
             </div>
 
             <div className="modal-footer">
+              {selectedConsignment.cargoStatus === 'pending' && (
+                <button
+                  onClick={() => handleCancelConsignment(selectedConsignment.id)}
+                  className="btn"
+                  style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '0.75rem 1.5rem' }}
+                >
+                  Hủy đơn hàng
+                </button>
+              )}
               <button
                 onClick={() => setShowConsignmentDetailModal(false)}
                 className="btn"

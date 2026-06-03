@@ -181,10 +181,19 @@ export default function DriverDashboard() {
 
   // KPI Calculations
   const stats = useMemo(() => {
-    const todayTrips = trips.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length
-    const runningTrips = trips.filter(t => t.status === 'DEPARTED').length
+    let todayTrips = 0;
+    let runningTrips = 0;
+
+    if (currentUser.role === 'TRUCK_DRIVER') {
+      todayTrips = cargo.filter(c => c.status === 'PENDING' || c.status === 'APPROVED').length
+      runningTrips = cargo.filter(c => c.status === 'SHIPPING').length
+    } else {
+      todayTrips = trips.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length
+      runningTrips = trips.filter(t => t.status === 'DEPARTED').length
+    }
+
     const totalPassengers = passengers.filter(p => p.tripId === selectedTripId && p.status !== 'CANCELLED').length
-    const pendingCargo = cargo.filter(c => c.status !== 'DELIVERED' && c.status !== 'FAILED').length
+    const pendingCargo = cargo.filter(c => c.status !== 'DELIVERED' && c.status !== 'FAILED' && c.status !== 'CANCELLED').length
 
     return {
       todayTrips,
@@ -192,7 +201,7 @@ export default function DriverDashboard() {
       totalPassengers,
       pendingCargo
     }
-  }, [trips, passengers, cargo, selectedTripId])
+  }, [trips, passengers, cargo, selectedTripId, currentUser.role])
 
   // Get current active/upcoming trip (The highlighted trip)
   const upcomingTrip = useMemo(() => {
@@ -717,15 +726,19 @@ export default function DriverDashboard() {
                       <>
                         {/* KPI Cards Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                          {/* Chuyến hôm nay */}
+                          {/* Chuyến hôm nay / Đơn chờ xử lý */}
                           <Card className="hover:shadow-md border-slate-100/80 transition-shadow">
                             <CardContent className="p-6 flex items-center justify-between">
                               <div className="space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Chuyến hôm nay</span>
-                                <h3 className="text-2xl font-black text-slate-800">{stats.todayTrips} Chuyến</h3>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                  {currentUser.role === 'TRUCK_DRIVER' ? 'Đơn chờ xử lý' : 'Chuyến hôm nay'}
+                                </span>
+                                <h3 className="text-2xl font-black text-slate-800">
+                                  {stats.todayTrips} {currentUser.role === 'TRUCK_DRIVER' ? 'Đơn' : 'Chuyến'}
+                                </h3>
                                 <p className="text-xs font-semibold text-slate-400 flex items-center gap-1 mt-1">
                                   <TrendingUp className="h-3 w-3 text-green-500" />
-                                  Lịch trình cố định
+                                  {currentUser.role === 'TRUCK_DRIVER' ? 'Cần tiếp nhận' : 'Lịch trình cố định'}
                                 </p>
                               </div>
                               <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#004b87] flex items-center justify-center">
@@ -734,18 +747,22 @@ export default function DriverDashboard() {
                             </CardContent>
                           </Card>
 
-                          {/* Chuyến đang chạy */}
+                          {/* Chuyến đang chạy / Đơn đang giao */}
                           <Card className="hover:shadow-md border-slate-100/80 transition-shadow">
                             <CardContent className="p-6 flex items-center justify-between">
                               <div className="space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Chuyến đang chạy</span>
-                                <h3 className="text-2xl font-black text-slate-800">{stats.runningTrips} Chuyến</h3>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                  {currentUser.role === 'TRUCK_DRIVER' ? 'Đơn đang giao' : 'Chuyến đang chạy'}
+                                </span>
+                                <h3 className="text-2xl font-black text-slate-800">
+                                  {stats.runningTrips} {currentUser.role === 'TRUCK_DRIVER' ? 'Đơn' : 'Chuyến'}
+                                </h3>
                                 <p className="text-xs font-semibold text-slate-400 flex items-center gap-1 mt-1">
                                   <span className="relative flex h-2 w-2">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                                     <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
                                   </span>
-                                  Đang di chuyển trên tuyến
+                                  {currentUser.role === 'TRUCK_DRIVER' ? 'Đang trên đường' : 'Đang di chuyển trên tuyến'}
                                 </p>
                               </div>
                               <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center animate-pulse">

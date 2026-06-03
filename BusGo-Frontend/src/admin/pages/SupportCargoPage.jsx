@@ -139,8 +139,16 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
       (cargo.loaiXeVanTai === 'truck_10t' && v.loaiXe === 'truck_10t') ||
       (cargo.loaiXeVanTai === 'truck_30t' && v.loaiXe === 'truck_30t')
     );
-    setSelectedVehicleId(matchVehicle?.maPhuongTien || vehicles[0]?.maPhuongTien || '');
-    setSelectedDriverId(drivers[0]?.maNguoiDung || '');
+    
+    const vehicleId = matchVehicle?.maPhuongTien || vehicles[0]?.maPhuongTien || '';
+    setSelectedVehicleId(vehicleId);
+
+    // Auto-select tài xế chính của chiếc xe vừa được chọn
+    const v = vehicles.find(vv => String(vv.maPhuongTien) === String(vehicleId));
+    const matchDriver = drivers.find(d => d.bienSoXe === v?.bienSoXe);
+    
+    setSelectedDriverId(matchDriver ? String(matchDriver.maNguoiDung) : (drivers[0]?.maNguoiDung || ''));
+    
     setShowAssignModal(true);
   };
 

@@ -98,6 +98,26 @@ export default function DriverDashboard() {
   const [incidentDesc, setIncidentDesc] = useState('')
   const [incidentLoc, setIncidentLoc] = useState('')
 
+  // New Dedicated Incident Dialog States
+  const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false)
+  const [incidentTrip, setIncidentTrip] = useState(null)
+  const [incidentSeverity, setIncidentSeverity] = useState('Trung bình')
+  const [incidentImage, setIncidentImage] = useState('')
+  const [incidentNotes, setIncidentNotes] = useState('')
+  const [changeStatusToIncident, setChangeStatusToIncident] = useState(true)
+
+  const openIncidentDialog = (trip) => {
+    setIncidentTrip(trip)
+    setIncidentType('Xe hỏng')
+    setIncidentSeverity('Trung bình')
+    setIncidentLoc('')
+    setIncidentDesc('')
+    setIncidentImage('')
+    setIncidentNotes('')
+    setChangeStatusToIncident(true)
+    setIsIncidentDialogOpen(true)
+  }
+
   // Completed Trip Detail Dialog
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [detailTrip, setDetailTrip] = useState(null)
@@ -152,6 +172,8 @@ export default function DriverDashboard() {
             setStartTripData(prev => ({ ...prev, startLocation: locStr }))
           } else if (targetForm === 'end') {
             setEndTripData(prev => ({ ...prev, location: locStr }))
+          } else if (targetForm === 'incident') {
+            setIncidentLoc(locStr)
           }
           toast.success('Lấy vị trí hiện tại thành công!')
         } catch (err) {
@@ -161,6 +183,8 @@ export default function DriverDashboard() {
             setStartTripData(prev => ({ ...prev, startLocation: fallbackLoc }))
           } else if (targetForm === 'end') {
             setEndTripData(prev => ({ ...prev, location: fallbackLoc }))
+          } else if (targetForm === 'incident') {
+            setIncidentLoc(fallbackLoc)
           }
           toast.success('Định vị thành công bằng tọa độ GPS!')
         } finally {
@@ -285,6 +309,14 @@ export default function DriverDashboard() {
     }
   }, [selectedTripId])
 
+  // Auto-select running trip when trips change
+  useEffect(() => {
+    const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
+    if (runningTrip && selectedTripId !== runningTrip.id) {
+      setSelectedTripId(runningTrip.id)
+    }
+  }, [trips, selectedTripId])
+
   // Handle active tab loading transition
   useEffect(() => {
     setIsLoading(true)
@@ -296,7 +328,7 @@ export default function DriverDashboard() {
 
   // Watch current coordinates of driver whenever there is a running trip
   useEffect(() => {
-    const runningTrip = trips.find(t => t.status === 'DEPARTED')
+    const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
     if (!runningTrip || !onShift) return
 
     if (!navigator.geolocation) {
@@ -329,7 +361,7 @@ export default function DriverDashboard() {
   // Stopwatch timer for running trip starting from the START log
   useEffect(() => {
     let intervalId = null
-    const runningTrip = trips.find(t => t.status === 'DEPARTED')
+    const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
     const startLog = runningTrip?.journeyLogs?.find(l => l.type === 'START')
 
     if (runningTrip && startLog) {
@@ -366,6 +398,19 @@ export default function DriverDashboard() {
     }
   }, [trips])
 
+  // Auto-poll trip status when there is an active INCIDENT trip
+  // This ensures the driver sees the status revert to DEPARTED once Admin resolves the incident
+  useEffect(() => {
+    const hasIncidentTrip = trips.some(t => t.status === 'INCIDENT')
+    if (!hasIncidentTrip) return
+
+    const pollInterval = setInterval(() => {
+      fetchTrips(true) // silent refresh (no loading spinner)
+    }, 10000) // poll every 10 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [trips])
+
   // Get current user (driver information)
   const currentUser = useMemo(() => {
     const user = AuthUtil.getCurrentUser()
@@ -381,7 +426,7 @@ export default function DriverDashboard() {
   // KPI Calculations
   const stats = useMemo(() => {
     const todayTrips = trips.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length
-    const runningTrips = trips.filter(t => t.status === 'DEPARTED').length
+    const runningTrips = trips.filter(t => t.status === 'DEPARTED' || t.status === 'INCIDENT').length
     const totalPassengers = passengers.filter(p => p.tripId === selectedTripId && p.status !== 'CANCELLED').length
     const pendingCargo = cargo.filter(c => c.status !== 'DELIVERED' && c.status !== 'FAILED').length
 
@@ -397,7 +442,7 @@ export default function DriverDashboard() {
   const upcomingTrip = useMemo(() => {
     if (!trips || trips.length === 0) return null
     // Find the active running trip first
-    const running = trips.find(t => t.status === 'DEPARTED')
+    const running = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
     if (running) return running
     // Otherwise find the next scheduled trip
     const scheduled = trips.find(t => t.status === 'SCHEDULED')
@@ -535,6 +580,34 @@ export default function DriverDashboard() {
     }
   }
 
+  // Handle send incident report
+  const handleSendIncidentReport = async () => {
+    if (!incidentTrip) return
+
+    try {
+      const statusData = {
+        status: 'INCIDENT',
+        updateType: 'INCIDENT',
+        incidentType,
+        incidentDesc,
+        incidentLoc,
+        incidentSeverity,
+        proofImage: incidentImage,
+        notes: incidentNotes,
+        changeStatusToIncident
+      }
+
+      await updateTripStatusAPI(incidentTrip.id, statusData)
+      
+      toast.warning('Đã gửi báo cáo sự cố về tổng đài điều hành! Ban quản lý đã được thông báo.')
+      setIsIncidentDialogOpen(false)
+      fetchTrips(true)
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || 'Lỗi khi gửi báo cáo sự cố')
+    }
+  }
+
   // Handle cargo status actions
   const handleCargoStatusUpdate = async (cargoId, currentStatus, dbId) => {
     let nextStatus = 'PENDING'
@@ -618,10 +691,12 @@ export default function DriverDashboard() {
 
   // Get status details for Trips
   const getTripStatusDetails = (status, incident) => {
-    if (incident) return { text: 'Sự cố: ' + incident.type, variant: 'destructive', icon: AlertTriangle }
+    // Only show incident badge when the trip status is actually INCIDENT
+    if (status === 'INCIDENT' && incident) return { text: 'Sự cố: ' + incident.type, variant: 'destructive', icon: AlertTriangle }
+    if (status === 'INCIDENT') return { text: 'Đang xảy ra sự cố', variant: 'destructive', icon: AlertTriangle }
     switch (status) {
       case 'SCHEDULED': return { text: 'Đã lên lịch', variant: 'info', icon: Clock }
-      case 'DEPARTED': return { text: 'Đang khởi hành', variant: 'warning', icon: Truck }
+      case 'DEPARTED': return { text: 'Đang di chuyển', variant: 'warning', icon: Truck }
       case 'COMPLETED': return { text: 'Đã hoàn thành', variant: 'success', icon: CheckCircle }
       case 'CANCELLED': return { text: 'Đã hủy', variant: 'destructive', icon: X }
       default: return { text: 'Đã lên lịch', variant: 'info', icon: Clock }
@@ -1183,7 +1258,7 @@ export default function DriverDashboard() {
                               </TableHeader>
                               <TableBody>
                                 {(() => {
-                                  const hasDeparted = filteredTrips.some(t => t.status === 'DEPARTED')
+                                  const hasDeparted = filteredTrips.some(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
                                   return filteredTrips.map(trip => {
                                     const statusInfo = getTripStatusDetails(trip.status, trip.incidentDetails)
                                     const isLocked = hasDeparted && trip.status === 'SCHEDULED'
@@ -1260,7 +1335,7 @@ export default function DriverDashboard() {
                                               >
                                                 {isLocked ? '🔒 Đang bị khóa' : 'Bắt đầu chuyến xe'}
                                               </Button>
-                                            ) : trip.status === 'DEPARTED' ? (
+                                            ) : (trip.status === 'DEPARTED' || trip.status === 'INCIDENT') ? (
                                               <Button
                                                 variant="outline"
                                                 size="sm"
@@ -1330,7 +1405,7 @@ export default function DriverDashboard() {
                       </div>
 
                       {(() => {
-                        const runningTrip = trips.find(t => t.status === 'DEPARTED')
+                        const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
                         if (!runningTrip) {
                           return (
                             <Card className="border-slate-100 bg-slate-50/50">
@@ -1382,6 +1457,23 @@ export default function DriverDashboard() {
                                     <div className="space-y-1">
                                       <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Users className="h-3 w-3" /> Hành khách</span>
                                       <p className="text-sm font-extrabold text-slate-700">{runningTrip.passengerCount}/{runningTrip.maxPassengers} người</p>
+                                      {(() => {
+                                        const runningTripPassengers = passengers.filter(p => p.tripId === runningTrip.id);
+                                        const boardedCount = runningTripPassengers.filter(p => p.status === 'USED').length;
+                                        const notBoardedCount = runningTripPassengers.filter(p => p.status === 'PAID').length;
+                                        return (
+                                          <div className="text-[10px] text-slate-500 font-semibold space-y-0.5 mt-1 border-t border-slate-100 pt-1">
+                                            <div className="text-green-600 flex items-center gap-1">
+                                              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                              Đã lên: {boardedCount} người
+                                            </div>
+                                            <div className="text-amber-600 flex items-center gap-1">
+                                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                              Chưa lên: {notBoardedCount} người
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="space-y-1">
                                       <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
@@ -1595,19 +1687,21 @@ export default function DriverDashboard() {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => openStatusDialog(runningTrip)}
+                                        onClick={() => openIncidentDialog(runningTrip)}
                                         className="border-red-200 text-red-650 hover:bg-red-50"
                                       >
                                         <AlertTriangle className="h-4 w-4 mr-1.5" /> Báo cáo sự cố
                                       </Button>
-                                      <Button
-                                        variant="default"
-                                        size="sm"
-                                        onClick={openEndTripDialog}
-                                        className="bg-green-600 hover:bg-green-700 text-white border-none"
-                                      >
-                                        <CheckCircle className="h-4 w-4 mr-1.5" /> Hoàn thành chuyến xe
-                                      </Button>
+                                      {runningTrip.status !== 'INCIDENT' && (
+                                        <Button
+                                          variant="default"
+                                          size="sm"
+                                          onClick={openEndTripDialog}
+                                          className="bg-green-600 hover:bg-green-700 text-white border-none"
+                                        >
+                                          <CheckCircle className="h-4 w-4 mr-1.5" /> Hoàn thành chuyến xe
+                                        </Button>
+                                      )}
                                     </div>
                                   </CardFooter>
                                 </CardContent>
@@ -2758,7 +2852,7 @@ window.addEventListener('message', function(e) {
               variant="default"
               disabled={!endTripData.location || !endTripData.km || !endTripData.confirmedComplete}
               onClick={() => {
-                const runningTrip = trips.find(t => t.status === 'DEPARTED')
+                const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
                 if (runningTrip) {
                   handleEndTrip(runningTrip.id)
                 }
@@ -2928,7 +3022,194 @@ window.addEventListener('message', function(e) {
           })()}
         </DialogContent>
       </Dialog>
+      {/* ==================== DIALOG: BÁO CÁO SỰ CỐ CHUYẾN XE ==================== */}
+      <Dialog open={isIncidentDialogOpen} onOpenChange={setIsIncidentDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-red-600 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              BÁO CÁO SỰ CỐ CHUYẾN XE
+            </DialogTitle>
+            <DialogDescription className="text-slate-505 text-xs font-semibold">
+              Vui lòng cung cấp chi tiết sự cố gặp phải để nhận trợ giúp từ Ban điều phối.
+            </DialogDescription>
+          </DialogHeader>
 
+          <div className="py-2 space-y-4 text-xs">
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100/80 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-450 font-bold">Chuyến xe:</span>
+                <span className="text-slate-800 font-extrabold">{incidentTrip?.from} → {incidentTrip?.to}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-450 font-bold">Biển số xe:</span>
+                <span className="text-slate-800 font-extrabold">{incidentTrip?.licensePlate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-450 font-bold">Trạng thái hiện tại:</span>
+                <Badge className="bg-[#004b87] text-white">Đang vận hành</Badge>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Loại sự cố *</label>
+              <select
+                value={incidentType}
+                onChange={(e) => setIncidentType(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-red-500"
+              >
+                <option value="Xe gặp vấn đề">Xe gặp vấn đề (Hỏng hóc, máy nóng, thủng lốp, lỗi phanh...)</option>
+                <option value="Trễ giờ / kẹt xe">Trễ giờ / kẹt xe (Kẹt xe, đường cấm, thời tiết xấu...)</option>
+                <option value="Tai nạn / va chạm">Tai nạn / va chạm (Va quẹt nhẹ, tai nạn, dừng khẩn cấp...)</option>
+                <option value="Hành khách có vấn đề">Hành khách có vấn đề (Vắng mặt, lên sai điểm, gây rối...)</option>
+                <option value="Hàng hóa có vấn đề">Hàng hóa có vấn đề (Móp méo, rách, thất lạc...)</option>
+                <option value="Sai lịch trình">Sai lịch trình (Sai điểm đón, sai tuyến, nhầm xe...)</option>
+                <option value="Sự cố khác">Sự cố khác (Vấn đề phát sinh khác...)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Mức độ sự cố *</label>
+              <div className="flex gap-2.5">
+                {['Nhẹ', 'Trung bình', 'Nghiêm trọng'].map((lvl) => {
+                  let color = 'border-slate-200 text-slate-650 hover:bg-slate-50'
+                  if (incidentSeverity === lvl) {
+                    if (lvl === 'Nhẹ') color = 'bg-yellow-50 border-yellow-400 text-yellow-800'
+                    else if (lvl === 'Trung bình') color = 'bg-orange-50 border-orange-400 text-orange-800'
+                    else color = 'bg-red-50 border-red-500 text-red-800'
+                  }
+                  return (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setIncidentSeverity(lvl)}
+                      className={`flex-1 py-2 px-3 border-2 rounded-xl text-center font-black transition-all cursor-pointer ${color}`}
+                    >
+                      {lvl}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Vị trí hiện tại *</label>
+                <button
+                  type="button"
+                  onClick={() => handleGetCurrentLocation('incident')}
+                  disabled={isLocLoading}
+                  className="text-xs font-extrabold text-[#004b87] hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer disabled:text-slate-400"
+                >
+                  <MapPin className={`h-3.5 w-3.5 ${isLocLoading ? 'animate-bounce' : ''}`} />
+                  {isLocLoading ? 'Đang định vị...' : 'Tự động lấy vị trí'}
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Nhập vị trí hiện tại hoặc tọa độ GPS"
+                value={incidentLoc}
+                onChange={(e) => setIncidentLoc(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Mô tả sự cố *</label>
+              <textarea
+                placeholder="Nhập nội dung chi tiết sự cố xảy ra..."
+                value={incidentDesc}
+                onChange={(e) => setIncidentDesc(e.target.value)}
+                rows={3}
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 resize-none"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Ảnh minh chứng *</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files[0]
+                  if (file) {
+                    const reader = new FileReader()
+                    reader.onloadend = () => {
+                      setIncidentImage(reader.result)
+                    }
+                    reader.readAsDataURL(file)
+                  }
+                }}
+                className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer"
+              />
+              {incidentImage && (
+                <div className="mt-2.5 relative w-full h-36 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+                  <img src={incidentImage} alt="Incident proof" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setIncidentImage('')}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors border-none cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Ghi chú thêm</label>
+              <textarea
+                placeholder="Nhập ghi chú thêm nếu có..."
+                value={incidentNotes}
+                onChange={(e) => setIncidentNotes(e.target.value)}
+                rows={2}
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 resize-none"
+              />
+            </div>
+
+            <div
+              onClick={() => setChangeStatusToIncident(!changeStatusToIncident)}
+              className={`flex items-start gap-3 rounded-xl border-2 p-3.5 cursor-pointer transition-all ${
+                changeStatusToIncident
+                  ? 'bg-red-50/50 border-red-300'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                changeStatusToIncident
+                  ? 'bg-red-500 border-red-500 text-white'
+                  : 'bg-white border-slate-300'
+              }`}>
+                {changeStatusToIncident && <Check className="h-3 w-3" />}
+              </div>
+              <div>
+                <p className="font-black text-slate-700 text-xs">Đổi trạng thái chuyến xe sang "Có sự cố"</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">Hệ thống sẽ cập nhật trạng thái chuyến đi thành "Có sự cố" trên bảng điều hành Admin.</p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsIncidentDialogOpen(false)}
+              className="border-slate-200 h-9 px-4 text-xs rounded-xl"
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!incidentLoc || !incidentDesc || !incidentImage}
+              onClick={handleSendIncidentReport}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-450 disabled:cursor-not-allowed h-9 px-4 text-xs font-black rounded-xl"
+            >
+              Gửi báo cáo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

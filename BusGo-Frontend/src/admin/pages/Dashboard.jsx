@@ -4,6 +4,7 @@ import { AuthUtil, StorageUtil } from '@/utils/helpers'
 import { ROLE_MENU, USER_ROLES } from '@/utils/constants'
 import AdminSidebar from '../components/AdminSidebar'
 import AdminTopbar from '../components/AdminTopbar'
+import axios from 'axios'
 import '../pages/AdminDashboard.css'
 
 /**
@@ -16,6 +17,19 @@ function AdminDashboard() {
   const [userRole, setUserRole] = useState(null)
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [incidents, setIncidents] = useState([])
+
+  const fetchIncidents = async () => {
+    try {
+      const token = StorageUtil.getToken()
+      const res = await axios.get('http://localhost:5000/api/admin/incidents', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setIncidents(res.data || [])
+    } catch (e) {
+      console.error('Error fetching incidents on dashboard:', e)
+    }
+  }
 
   useEffect(() => {
     // Lấy thông tin user
@@ -30,6 +44,10 @@ function AdminDashboard() {
     setUserRole(role)
     setUserName(user?.name || 'User')
     setLoading(false)
+
+    if (role === 'ADMIN') {
+      fetchIncidents()
+    }
   }, [navigate])
 
   if (loading) {
@@ -65,7 +83,7 @@ function AdminDashboard() {
 
         {/* Content */}
         <main className="admin-content">
-          <DashboardContent userRole={userRole} menuItems={menuItems} />
+          <DashboardContent userRole={userRole} menuItems={menuItems} incidents={incidents} />
         </main>
       </div>
     </div>
@@ -75,7 +93,10 @@ function AdminDashboard() {
 /**
  * DashboardContent - Hiển thị nội dung dashboard theo role
  */
-function DashboardContent({ userRole, menuItems }) {
+function DashboardContent({ userRole, menuItems, incidents }) {
+  const navigate = useNavigate()
+  const unresolvedIncidents = incidents ? incidents.filter(i => i.trangThaiSuCo === 'cho_xu_ly') : []
+
   return (
     <div className="dashboard-content">
       {/* Welcome Section */}
@@ -85,6 +106,36 @@ function DashboardContent({ userRole, menuItems }) {
           {getRoleName(userRole)} - Quản lý hệ thống
         </p>
       </section>
+
+      {/* Warning Box for Admin */}
+      {userRole === 'ADMIN' && unresolvedIncidents.length > 0 && (
+        <div 
+          className="alert alert-danger d-flex align-items-center justify-content-between p-3.5 mb-4 border-2 border-danger rounded-3 shadow-sm transition-all"
+          style={{ 
+            cursor: 'pointer', 
+            backgroundColor: '#fff5f5', 
+            borderColor: '#f5c6cb', 
+            color: '#721c24',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: '1px solid #f5c6cb',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+          }}
+          onClick={() => navigate('/admin/reports?tab=incidents')}
+        >
+          <div className="d-flex align-items-center gap-3">
+            <span style={{ fontSize: '24px' }}>⚠️</span>
+            <div>
+              <strong style={{ fontSize: '15px', color: '#721c24', display: 'block' }}>Cảnh báo vận hành khẩn cấp!</strong>
+              <span style={{ fontSize: '13px', color: '#666', fontWeight: '500' }}>
+                Có {unresolvedIncidents.length} sự cố hành trình mới đang chờ xử lý từ các tài xế. Nhấp vào đây để xem chi tiết và giải quyết.
+              </span>
+            </div>
+          </div>
+          <span style={{ fontSize: '13px', color: '#721c24', fontWeight: '700', whiteSpace: 'nowrap' }}>Giải quyết ngay &rarr;</span>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <section className="stats-grid">

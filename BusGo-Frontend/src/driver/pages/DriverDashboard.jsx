@@ -81,6 +81,9 @@ export default function DriverDashboard() {
   const [incidentDesc, setIncidentDesc] = useState('')
   const [incidentLoc, setIncidentLoc] = useState('')
 
+  // Cargo Detail Dialog State
+  const [selectedCargoForDetail, setSelectedCargoForDetail] = useState(null)
+
   // Fetch functions
   const fetchTrips = async (shouldLoadSilence = false) => {
     if (!shouldLoadSilence) setIsLoading(true)
@@ -1328,6 +1331,17 @@ export default function DriverDashboard() {
                                       </TableCell>
                                       <TableCell className="text-right">
                                         <div className="flex justify-end gap-1.5 flex-wrap">
+                                          {/* Nút Xem chi tiết (Always visible) */}
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setSelectedCargoForDetail(item)}
+                                            className="border-slate-200 text-slate-700 hover:bg-slate-50 h-8 text-xs px-2.5 rounded-lg"
+                                          >
+                                            <Info className="h-3.5 w-3.5 mr-1" />
+                                            Chi tiết
+                                          </Button>
+
                                           {item.status === 'PENDING' && (
                                             <Button
                                               variant="outline"
@@ -1717,6 +1731,173 @@ export default function DriverDashboard() {
               Lưu cập nhật
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ==================== DIALOG: CARGO DETAILS ==================== */}
+      <Dialog open={!!selectedCargoForDetail} onOpenChange={(open) => !open && setSelectedCargoForDetail(null)}>
+        <DialogContent className="max-w-2xl bg-white rounded-2xl shadow-xl border-0 overflow-hidden p-0 max-h-[90vh] overflow-y-auto">
+          {selectedCargoForDetail && (
+            <>
+              {/* Header */}
+              <div className="bg-[#004b87] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                    <Package className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-white m-0 leading-tight">Chi tiết đơn hàng #{selectedCargoForDetail.id}</h2>
+                    <p className="text-blue-100 text-xs font-semibold mt-0.5 opacity-80">
+                      {selectedCargoForDetail.isConsignment ? 'Đơn hàng vận tải ký gửi' : 'Hành lý gửi kèm chuyến xe khách'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedCargoForDetail(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border-none cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Trạng thái hiện tại */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Trạng thái đơn hàng</span>
+                    <Badge variant={getCargoStatusDetails(selectedCargoForDetail.status).variant} className="text-sm px-3 py-1 font-extrabold shadow-sm">
+                      {getCargoStatusDetails(selectedCargoForDetail.status).text}
+                    </Badge>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Loại hàng</span>
+                    <span className="text-sm font-extrabold text-slate-800">{selectedCargoForDetail.type}</span>
+                  </div>
+                </div>
+
+                {/* Thông tin tuyến đường */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                    <MapPin className="h-4 w-4" /> Lộ trình & Địa chỉ
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-black">Từ</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-extrabold text-slate-800 text-sm">Điểm gửi (Trạm / Tỉnh)</p>
+                          <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                            {selectedCargoForDetail.senderAddress || 'Tại trạm'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-black">Đến</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-extrabold text-slate-800 text-sm">Điểm nhận (Địa chỉ giao)</p>
+                          <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                            {selectedCargoForDetail.receiverAddress || 'Giao tại trạm đến'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Thông tin người gửi / nhận */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                    <Users className="h-4 w-4" /> Người gửi & Người nhận
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0">
+                        <User className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Người gửi</p>
+                        <p className="font-extrabold text-slate-800 text-sm">{selectedCargoForDetail.sender}</p>
+                        <p className="text-xs font-semibold text-slate-500 mt-0.5 flex items-center gap-1">
+                          <Phone className="h-3 w-3" /> {selectedCargoForDetail.senderPhone || 'Không có SĐT'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0">
+                        <UserCheck className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Người nhận</p>
+                        <p className="font-extrabold text-slate-800 text-sm">{selectedCargoForDetail.receiver}</p>
+                        <p className="text-xs font-semibold text-slate-500 mt-0.5 flex items-center gap-1">
+                          <Phone className="h-3 w-3" /> {selectedCargoForDetail.phone}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chi tiết Hàng Hóa & Cước Phí */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                    <Info className="h-4 w-4" /> Thông số kỹ thuật
+                  </h3>
+                  <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate-100 text-center">
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Số lượng</p>
+                        <p className="font-extrabold text-slate-800 text-sm mt-1">{selectedCargoForDetail.quantity || 1} kiện</p>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Trọng lượng</p>
+                        <p className="font-extrabold text-slate-800 text-sm mt-1">{selectedCargoForDetail.weight || 'N/A'} kg</p>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Giá cước</p>
+                        <p className="font-extrabold text-[#004b87] text-sm mt-1">{FormatUtil.formatCurrency(selectedCargoForDetail.totalPrice || 0)}</p>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Thanh toán</p>
+                        <p className={`font-extrabold text-sm mt-1 ${selectedCargoForDetail.paymentStatus === 'paid' ? 'text-green-600' : 'text-amber-500'}`}>
+                          {selectedCargoForDetail.paymentStatus === 'paid' ? 'Đã T.Toán' : 'Chưa T.Toán'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hình ảnh (nếu có) */}
+                {selectedCargoForDetail.images && selectedCargoForDetail.images.length > 0 && (
+                  <div className="space-y-3 pb-2">
+                    <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                      <Camera className="h-4 w-4" /> Hình ảnh đính kèm
+                    </h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {selectedCargoForDetail.images.map((img, i) => (
+                        <div key={i} className="flex-shrink-0 w-32 h-32 rounded-xl overflow-hidden border border-slate-200 shadow-sm relative group cursor-pointer">
+                          <img src={img} alt={`Hình ${i+1}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <Search className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

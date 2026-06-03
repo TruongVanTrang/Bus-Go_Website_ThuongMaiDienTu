@@ -1850,10 +1850,10 @@ export default function DriverDashboard() {
                 {/* Chi tiết Hàng Hóa & Cước Phí */}
                 <div className="space-y-3">
                   <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
-                    <Info className="h-4 w-4" /> Thông số kỹ thuật
+                    <Info className="h-4 w-4" /> Thông số kỹ thuật & Doanh thu
                   </h3>
                   <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate-100 text-center">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-y sm:divide-y-0 divide-slate-100 text-center border-b border-slate-100">
                       <div className="p-3">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Số lượng</p>
                         <p className="font-extrabold text-slate-800 text-sm mt-1">{selectedCargoForDetail.quantity || 1} kiện</p>
@@ -1863,14 +1863,29 @@ export default function DriverDashboard() {
                         <p className="font-extrabold text-slate-800 text-sm mt-1">{selectedCargoForDetail.weight || 'N/A'} kg</p>
                       </div>
                       <div className="p-3">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Giá cước</p>
-                        <p className="font-extrabold text-[#004b87] text-sm mt-1">{FormatUtil.formatCurrency(selectedCargoForDetail.totalPrice || 0)}</p>
-                      </div>
-                      <div className="p-3">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Thanh toán</p>
                         <p className={`font-extrabold text-sm mt-1 ${selectedCargoForDetail.paymentStatus === 'paid' ? 'text-green-600' : 'text-amber-500'}`}>
                           {selectedCargoForDetail.paymentStatus === 'paid' ? 'Đã T.Toán' : 'Chưa T.Toán'}
                         </p>
+                      </div>
+                    </div>
+                    {/* Chi tiết doanh thu */}
+                    <div className="bg-slate-50/50 p-4">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">Chi tiết cước phí & Doanh thu</p>
+                      <div className="space-y-2 text-sm font-semibold">
+                        <div className="flex justify-between items-center text-slate-600">
+                          <span>Tổng cước phí người dùng thanh toán:</span>
+                          <span className="font-extrabold">{FormatUtil.formatCurrency(selectedCargoForDetail.totalPrice || 0)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-red-500">
+                          <span>Phí nền tảng (Chiết khấu 10%):</span>
+                          <span>- {FormatUtil.formatCurrency((selectedCargoForDetail.totalPrice || 0) * 0.1)}</span>
+                        </div>
+                        <div className="h-px bg-slate-200 my-2"></div>
+                        <div className="flex justify-between items-center text-[#004b87] text-base">
+                          <span className="font-black">Thực nhận của tài xế (90%):</span>
+                          <span className="font-black">{FormatUtil.formatCurrency((selectedCargoForDetail.totalPrice || 0) * 0.9)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>

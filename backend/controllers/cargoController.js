@@ -388,7 +388,7 @@ const getStaffDrivers = async (req, res) => {
         FROM NguoiDung nd
         INNER JOIN NhanVien nv ON nd.maNguoiDung = nv.maNhanVien
         LEFT JOIN PhuongTien pt ON pt.maTaiXeChinh = nv.maNhanVien
-        WHERE UPPER(nv.vaiTro) = 'DRIVER'
+        WHERE UPPER(nv.vaiTro) IN ('DRIVER', 'TRUCK_DRIVER')
       `);
 
     res.json(result.recordset);

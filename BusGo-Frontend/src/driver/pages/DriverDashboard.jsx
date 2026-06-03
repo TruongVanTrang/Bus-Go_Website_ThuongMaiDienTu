@@ -512,10 +512,11 @@ export default function DriverDashboard() {
           <nav className="space-y-1.5">
             <SidebarItem tabId="overview" icon={Grid} label="Tổng quan" />
             {currentUser.role !== 'TRUCK_DRIVER' && (
-              <SidebarItem tabId="trips" icon={Calendar} label="Chuyến xe của tôi" />
-            )}
-            {currentUser.role !== 'TRUCK_DRIVER' && (
-              <SidebarItem tabId="passengers" icon={Users} label="Hành khách" />
+              <>
+                <SidebarItem tabId="trips" icon={Calendar} label="Chuyến xe của tôi" />
+                <SidebarItem tabId="current-trip" icon={Truck} label="Chuyến xe hiện tại" />
+                <SidebarItem tabId="passengers" icon={Users} label="Hành khách" />
+              </>
             )}
             <SidebarItem tabId="cargo" icon={Package} label={currentUser.role === 'TRUCK_DRIVER' ? "Đơn hàng của tôi" : "Hàng hóa đi kèm"} />
             <SidebarItem tabId="profile" icon={User} label="Hồ sơ cá nhân" />

@@ -240,12 +240,17 @@ CREATE TABLE YeuThich (
     UNIQUE (maKhachHang, maTuyenDuong)
 );
 
--- 16. Bảng Thông báo
+-- 16. Bảng Thông báo (Hợp nhất từ ThongBao, ThongBaoTheoDoiHang, ThongBaoAdmin)
 CREATE TABLE ThongBao (
     maThongBao INT IDENTITY(1,1) PRIMARY KEY,
-    maKhachHang INT NOT NULL FOREIGN KEY REFERENCES KhachHang(maKhachHang),
+    maNguoiDung INT FOREIGN KEY REFERENCES NguoiDung(maNguoiDung), -- Người nhận (NULL nếu gửi cho tất cả admin/chung)
+    doiTuong NVARCHAR(50) NOT NULL DEFAULT 'CUSTOMER', -- 'CUSTOMER', 'ADMIN', 'DRIVER', etc.
     tieuDe NVARCHAR(255) NOT NULL,
     noiDung NVARCHAR(MAX),
+    loaiThongBao NVARCHAR(50) DEFAULT 'general', -- 'general', 'consignment_tracking', 'incident', etc.
+    maLienKet INT NULL, -- Lưu maKyGui, maSuCo, v.v.
+    lienKet VARCHAR(255) NULL, -- FE path (ví dụ: '/admin/reports?tab=incidents')
+    viTriHienTai NVARCHAR(255) NULL, -- Dùng cho theo dõi hàng hóa
     daDoc BIT DEFAULT 0,
     thoiGianTao DATETIME DEFAULT GETDATE()
 );
@@ -309,17 +314,7 @@ CREATE TABLE DanhGiaChiTiet (
     CONSTRAINT CK_DanhGiaChiTiet_Overall CHECK (diemTongThe >= 1 AND diemTongThe <= 5)
 );
 
--- 19. Bảng Thông báo theo dõi hàng - THÊM MỚI
-CREATE TABLE ThongBaoTheoDoiHang (
-    maThongBao INT IDENTITY(1,1) PRIMARY KEY,
-    maKhachHang INT NOT NULL FOREIGN KEY REFERENCES KhachHang(maKhachHang),
-    maKyGui INT FOREIGN KEY REFERENCES KyGuiHang(maKyGui),
-    loaiThongBao NVARCHAR(50), -- accepted, in_transit, delivered, failed
-    viTriHienTai NVARCHAR(255),
-    noiDung NVARCHAR(MAX),
-    daDoc BIT DEFAULT 0,
-    thoiGianTao DATETIME DEFAULT GETDATE()
-);
+-- 19. Bảng Thông báo theo dõi hàng - ĐÃ HỢP NHẤT VÀO BẢNG ThongBao
 
 -- 19.5. Bảng Nhật ký hành trình - THÊM MỚI (dùng cho hành trình di chuyển của tài xế)
 CREATE TABLE NhatKyHanhTrinh (
@@ -334,6 +329,25 @@ CREATE TABLE NhatKyHanhTrinh (
     anhXeSauChuyen NVARCHAR(MAX), -- Ảnh xe sau chuyến (chỉ dùng khi END)
     ghiChu NVARCHAR(MAX)
 );
+
+-- 19.6. Bảng Sự cố - THÊM MỚI (để lưu thông tin sự cố chi tiết)
+CREATE TABLE SuCo (
+    maSuCo INT IDENTITY(1,1) PRIMARY KEY,
+    maChuyenXe INT NOT NULL FOREIGN KEY REFERENCES ChuyenXe(maChuyenXe),
+    maNhanVien INT NOT NULL FOREIGN KEY REFERENCES NhanVien(maNhanVien), -- Tài xế báo cáo
+    loaiSuCo NVARCHAR(100) NOT NULL, -- 'Xe gặp vấn đề', 'Trễ giờ / kẹt xe', etc.
+    mucDo NVARCHAR(50) NOT NULL, -- 'Nhẹ', 'Trung bình', 'Nghiêm trọng'
+    viTri NVARCHAR(255) NOT NULL,
+    moTa NVARCHAR(MAX),
+    anhMinhChung NVARCHAR(MAX), -- Ảnh Base64 hoặc link ảnh
+    ghiChu NVARCHAR(MAX),
+    trangThaiSuCo NVARCHAR(50) DEFAULT 'cho_xu_ly', -- cho_xu_ly, dang_xu_ly, da_xu_ly
+    thoiGianTao DATETIME DEFAULT GETDATE(),
+    thoiGianCapNhat DATETIME DEFAULT GETDATE()
+);
+
+-- 19.7. Bảng Thông báo Admin - ĐÃ HỢP NHẤT VÀO BẢNG ThongBao
+
 
 -- ============================================================================
 -- PHẦN 7: INDEX VÀ TRIGGER

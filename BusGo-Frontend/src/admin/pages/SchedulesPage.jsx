@@ -100,7 +100,7 @@ function SchedulesPage() {
 
   return (
     <div className="admin-dashboard">
-      <AdminSidebar isOpen={sidebarOpen} userRole={userRole} menuItems={menuItems} onClose={() => setSidebarOpen(false)} />
+      <AdminSidebar isOpen={sidebarOpen} userRole={userRole} userName={userName} menuItems={menuItems} onClose={() => setSidebarOpen(false)} />
       <div className="admin-main">
         <AdminTopbar userName={userName} userRole={userRole} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         <main className="admin-content">
@@ -174,7 +174,7 @@ function SchedulesPage() {
                       <label className="form-label fw-semibold">Tài xế</label>
                       <select className="form-select" value={form.maNhanVien} onChange={e => setForm({...form, maNhanVien: e.target.value})}>
                         <option value="">-- Chọn tài xế --</option>
-                        {staff.filter(s => s.vaiTro === 'Driver').map(s => <option key={s.maNguoiDung} value={s.maNguoiDung}>{s.tenNguoiDung}</option>)}
+                        {staff.filter(s => s.vaiTro === 'DRIVER').map(s => <option key={s.maNguoiDung} value={s.maNguoiDung}>{s.tenNguoiDung}</option>)}
                       </select>
                     </div>
                     <div className="col-md-6">

@@ -4,6 +4,7 @@ import { AuthUtil } from '@/utils/helpers'
 import { ROLE_MENU, USER_ROLES } from '@/utils/constants'
 import AdminSidebar from '../components/AdminSidebar'
 import AdminTopbar from '../components/AdminTopbar'
+import axios from 'axios'
 import '../pages/AdminDashboard.css'
 
 /**
@@ -15,6 +16,19 @@ function AdminDashboard() {
   const [userRole, setUserRole] = useState(null)
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [incidents, setIncidents] = useState([])
+
+  const fetchIncidents = async () => {
+    try {
+      const token = StorageUtil.getToken()
+      const res = await axios.get('http://localhost:5000/api/admin/incidents', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setIncidents(res.data || [])
+    } catch (e) {
+      console.error('Error fetching incidents on dashboard:', e)
+    }
+  }
 
   useEffect(() => {
     const role = AuthUtil.getCurrentRole()
@@ -23,6 +37,10 @@ function AdminDashboard() {
     setUserRole(role)
     setUserName(user?.name || 'User')
     setLoading(false)
+
+    if (role === 'ADMIN') {
+      fetchIncidents()
+    }
   }, [navigate])
 
   if (loading) {

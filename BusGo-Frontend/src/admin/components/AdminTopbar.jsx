@@ -1,7 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AuthUtil } from '@/utils/helpers'
+import { AuthUtil, StorageUtil } from '@/utils/helpers'
+import axios from 'axios'
 import './AdminTopbar.css'
+
+const API = 'http://localhost:5000/api'
 
 /**
  * AdminTopbar - Thanh trên cùng giống hình minh họa BusGo
@@ -9,10 +12,35 @@ import './AdminTopbar.css'
 function AdminTopbar({ userName, userRole, onMenuToggle }) {
   const navigate = useNavigate()
   const [showDropdown, setShowDropdown] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false)
 
-  const handleLogout = () => {
-    AuthUtil.logout()
-    navigate('/login')
+  const token = () => StorageUtil.getToken()
+  const headers = () => ({ Authorization: `Bearer ${token()}` })
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/notifications`, { headers: headers() })
+      setNotifications(res.data || [])
+    } catch (e) {
+      console.error('Error fetching admin notifications:', e)
+    }
+  }
+
+  useEffect(() => {
+    fetchNotifications()
+    // Poll notifications every 10 seconds for real-time alerts
+    const interval = setInterval(fetchNotifications, 10000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleMarkAllRead = async () => {
+    try {
+      await axios.put(`${API}/admin/notifications/mark-read`, {}, { headers: headers() })
+      setNotifications(prev => prev.map(n => ({ ...n, daDoc: true })))
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   const today = new Date().toLocaleDateString('vi-VN', {
@@ -50,6 +78,43 @@ function AdminTopbar({ userName, userRole, onMenuToggle }) {
           <button className="btn-icon" title="Thông báo" id="admin-bell-btn">
             <i className="fas fa-bell" />
           </button>
+
+          {showNotifDropdown && (
+            <div className="notif-dropdown-menu">
+              <div className="notif-header">
+                <span className="notif-title">Thông báo hệ thống</span>
+                {unreadCount > 0 && (
+                  <button onClick={handleMarkAllRead} className="btn-mark-read">
+                    Đọc tất cả
+                  </button>
+                )}
+              </div>
+              <div className="notif-list">
+                {notifications.length === 0 ? (
+                  <div className="notif-empty">Không có thông báo mới</div>
+                ) : (
+                  notifications.map((n) => (
+                    <div
+                      key={n.maThongBao}
+                      className={`notif-item ${!n.daDoc ? 'notif-unread' : ''}`}
+                      onClick={() => {
+                        if (n.lienKet) {
+                          navigate(n.lienKet)
+                        }
+                        setShowNotifDropdown(false)
+                      }}
+                    >
+                      <div className="notif-item-title">{n.tieuDe}</div>
+                      <div className="notif-item-desc">{n.noiDung}</div>
+                      <div className="notif-item-time">
+                        {new Date(n.thoiGianTao).toLocaleString('vi-VN')}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* User Profile */}
@@ -69,10 +134,10 @@ function AdminTopbar({ userName, userRole, onMenuToggle }) {
 
           {showDropdown && (
             <div className="user-dropdown-menu">
-              <a href="#" className="dropdown-item">
+              <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); navigate('/admin/users') }}>
                 <i className="fas fa-user" /> Hồ sơ cá nhân
               </a>
-              <a href="#" className="dropdown-item">
+              <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); navigate('/admin/schedules') }}>
                 <i className="fas fa-cog" /> Cài đặt
               </a>
               <div className="dropdown-divider" />

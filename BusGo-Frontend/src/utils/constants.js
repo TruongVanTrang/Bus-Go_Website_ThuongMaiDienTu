@@ -236,8 +236,8 @@ export const ROLE_MENU = {
     { id: 'passengers', label: 'Danh sách hành khách', icon: 'users', path: '/admin/staff/passengers' }
   ],
   [USER_ROLES.SUPPORT_STAFF]: [
-    { id: 'ticket-lookup', label: 'Tra cứu vé', icon: 'search', path: '/admin/support/lookup' },
-    { id: 'refund', label: 'Xử lý yêu cầu hoàn/hủy', icon: 'undo', path: '/admin/support/refund' }
+    { id: 'live-chat', label: 'Hỗ trợ trực tuyến', icon: 'chat', path: '/admin/support/chat' },
+    { id: 'refund', label: 'Xử lý yêu cầu hoàn/hủy', icon: 'undo', path: '/admin/support/cancellations' }
   ],
   [USER_ROLES.CUSTOMER]: []
 }

@@ -32,6 +32,10 @@ import ReportsPage from './admin/pages/ReportsPage'
 import DriverDashboard from './driver/pages/DriverDashboard'
 import { USER_ROLES } from './utils/constants'
 
+// Support Staff Components
+import LiveChatPage from './support-staff/pages/LiveChatPage'
+import CancellationPage from './support-staff/pages/CancellationPage'
+
 // Reset scroll lên đầu trang mỗi khi navigate sang route mới
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -102,6 +106,24 @@ function App() {
         <Route path="/history" element={<PageLayout><UserHistory /></PageLayout>} />
         <Route path="/watchlist" element={<PageLayout><WatchlistPage /></PageLayout>} />
         <Route path="/profile" element={<PageLayout><UserProfile /></PageLayout>} />
+
+        {/* ==================== SUPPORT STAFF ROUTES ==================== */}
+        <Route
+          path="/admin/support/chat"
+          element={
+            <RoleProtectedRoute allowedRoles={[USER_ROLES.SUPPORT_STAFF]}>
+              <LiveChatPage />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/support/cancellations"
+          element={
+            <RoleProtectedRoute allowedRoles={[USER_ROLES.SUPPORT_STAFF]}>
+              <CancellationPage />
+            </RoleProtectedRoute>
+          }
+        />
 
         {/* ==================== CATCH ALL ==================== */}
         <Route path="*" element={<Navigate to="/" replace />} />

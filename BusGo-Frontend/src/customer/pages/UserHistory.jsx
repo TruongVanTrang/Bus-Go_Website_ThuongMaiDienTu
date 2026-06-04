@@ -3,7 +3,8 @@ import { FiHeart, FiTrash2, FiMapPin, FiClock, FiDollarSign, FiX, FiDownload, Fi
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode.react'
 import { StorageUtil } from '../../utils/helpers'
-import { getMyTicketsAPI, cancelBookingAPI, submitFeedbackAPI, getFeedbackAPI } from '../../services/bookingService'
+import { getMyTicketsAPI, submitFeedbackAPI, getFeedbackAPI } from '../../services/bookingService'
+import { requestTicketCancellationAPI } from '../../services/customerService'
 import './UserHistory.css'
 
 export default function UserHistory() {
@@ -14,6 +15,7 @@ export default function UserHistory() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelRequest, setCancelRequest] = useState(null)
+  const [cancelReason, setCancelReason] = useState('')
   const [showRatingModal, setShowRatingModal] = useState(false)
   const [ratingValue, setRatingValue] = useState(0)
   const [ratingComment, setRatingComment] = useState('')
@@ -165,20 +167,23 @@ export default function UserHistory() {
           navigate('/login')
           return
         }
-        await cancelBookingAPI(token, cancelRequest.id)
-        const refundAmount = calculateRefund(cancelRequest)
+        await requestTicketCancellationAPI(cancelRequest.id, cancelReason || 'Khách hàng yêu cầu hủy')
+        alert('Đã gửi yêu cầu hủy vé thành công. Vui lòng đợi nhân viên xác nhận.')
+        
+        // Update local state to show it's pending (we add a temporary flag)
         setBookings(prev =>
           prev.map(b =>
             b.id === cancelRequest.id
-              ? { ...b, status: 'Da huy', refundAmount }
+              ? { ...b, status: 'Cho xu ly huy' }
               : b
           )
         )
         setShowCancelModal(false)
         setCancelRequest(null)
+        setCancelReason('')
       } catch (err) {
         console.error('Lỗi khi hủy đặt vé:', err)
-        alert(err.message || 'Lỗi khi hủy đặt vé. Vui lòng thử lại.')
+        alert(err.response?.data?.message || err.message || 'Lỗi khi hủy đặt vé. Vui lòng thử lại.')
       }
     }
   }
@@ -299,6 +304,10 @@ export default function UserHistory() {
     
     if (booking.status === 'Da huy') {
       return { ...baseStyle, backgroundColor: '#ef4444', text: 'Đã hủy', icon: <FiX size={14} /> }
+    }
+    
+    if (booking.status === 'Cho xu ly huy') {
+      return { ...baseStyle, backgroundColor: '#f59e0b', text: 'Chờ xử lý hủy', icon: <FiAlertTriangle size={14} /> }
     }
     
     if (status === 'upcoming') {
@@ -496,13 +505,13 @@ export default function UserHistory() {
                           </button>
                         )}
 
-                        {canCancelBooking(booking) && (
+                        {canCancelBooking(booking) && booking.status !== 'Cho xu ly huy' && (
                           <button
                             onClick={() => handleCancelRequest(booking)}
                             className="btn-action btn-cancel"
                           >
                             <FiX size={14} />
-                            Hủy
+                            Yêu cầu hủy
                           </button>
                         )}
                       </div>
@@ -1146,6 +1155,17 @@ export default function UserHistory() {
               <p className="text-muted small mb-3">
                 Tiền hoàn lại sẽ được chuyển về tài khoản trong 2-3 ngày làm việc.
               </p>
+
+              <div className="form-group mb-3">
+                <label className="fw-bold mb-2">Lý do hủy vé (Bắt buộc):</label>
+                <textarea 
+                  className="form-control" 
+                  rows="3"
+                  placeholder="Vui lòng nhập lý do hủy vé..."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                ></textarea>
+              </div>
             </div>
 
             <div className="modal-footer">

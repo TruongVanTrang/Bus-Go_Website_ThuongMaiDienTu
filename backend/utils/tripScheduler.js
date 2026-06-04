@@ -3,7 +3,7 @@
  * This scheduler runs daily to ensure trips are always available for booking
  */
 
-const { sql, getPool } = require('../config/db');
+const { sql, config } = require('../config/db');
 const schedule = require('node-schedule');
 
 // Format date to YYYY-MM-DD
@@ -25,7 +25,7 @@ const formatDate = (date) => {
 const generateDailyTrips = async () => {
   let pool;
   try {
-    pool = getPool();
+    pool = await sql.connect(config);
     console.log('[TripScheduler] Starting daily trip generation...');
 
     // Get all routes
@@ -134,7 +134,7 @@ const generateDailyTrips = async () => {
 const cleanupOldTrips = async () => {
   let pool;
   try {
-    pool = getPool();
+    pool = await sql.connect(config);
     console.log('[TripScheduler] Starting cleanup of old trips...');
 
     const yesterday = new Date();

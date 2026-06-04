@@ -33,8 +33,7 @@ import DriverDashboard from './driver/pages/DriverDashboard'
 import { USER_ROLES } from './utils/constants'
 
 // Support Staff Components
-import LiveChatPage from './support-staff/pages/LiveChatPage'
-import CancellationPage from './support-staff/pages/CancellationPage'
+import SupportDashboard from './support-staff/pages/SupportDashboard'
 
 // Reset scroll lên đầu trang mỗi khi navigate sang route mới
 function ScrollToTop() {
@@ -112,7 +111,7 @@ function App() {
           path="/admin/support/chat"
           element={
             <RoleProtectedRoute allowedRoles={[USER_ROLES.SUPPORT_STAFF]}>
-              <LiveChatPage />
+              <SupportDashboard />
             </RoleProtectedRoute>
           }
         />
@@ -120,7 +119,7 @@ function App() {
           path="/admin/support/cancellations"
           element={
             <RoleProtectedRoute allowedRoles={[USER_ROLES.SUPPORT_STAFF]}>
-              <CancellationPage />
+              <SupportDashboard />
             </RoleProtectedRoute>
           }
         />

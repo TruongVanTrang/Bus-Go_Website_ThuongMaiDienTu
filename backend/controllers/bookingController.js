@@ -12,27 +12,41 @@ const calculateDuration = (startTime, endTime) => {
 
 // Helper function to format Date to YYYY-MM-DD
 const formatDate = (dateObj) => {
-  const d = new Date(dateObj);
-  let month = '' + (d.getUTCMonth() + 1);
-  let day = '' + d.getUTCDate();
-  const year = d.getUTCFullYear();
+  if (!dateObj) return '';
+  try {
+    const d = new Date(dateObj);
+    if (isNaN(d.getTime())) return '';
+    let month = '' + (d.getUTCMonth() + 1);
+    let day = '' + d.getUTCDate();
+    const year = d.getUTCFullYear();
 
-  if (month.length < 2) month = '0' + month;
-  if (day.length < 2) day = '0' + day;
+    if (month.length < 2) month = '0' + month;
+    if (day.length < 2) day = '0' + day;
 
-  return [year, month, day].join('-');
+    return [year, month, day].join('-');
+  } catch (e) {
+    console.error('Error in formatDate:', e, dateObj);
+    return '';
+  }
 };
 
 // Helper function to format Time to HH:mm
 const formatTime = (dateObj) => {
-  const d = new Date(dateObj);
-  let hours = '' + d.getUTCHours();
-  let minutes = '' + d.getUTCMinutes();
+  if (!dateObj) return '--:--';
+  try {
+    const d = new Date(dateObj);
+    if (isNaN(d.getTime())) return '--:--';
+    let hours = '' + d.getUTCHours();
+    let minutes = '' + d.getUTCMinutes();
 
-  if (hours.length < 2) hours = '0' + hours;
-  if (minutes.length < 2) minutes = '0' + minutes;
+    if (hours.length < 2) hours = '0' + hours;
+    if (minutes.length < 2) minutes = '0' + minutes;
 
-  return [hours, minutes].join(':');
+    return [hours, minutes].join(':');
+  } catch (e) {
+    console.error('Error in formatTime:', e, dateObj);
+    return '--:--';
+  }
 };
 
 const mapMethodName = (methodStr) => {
@@ -288,12 +302,23 @@ const getMyTickets = async (req, res) => {
           cx.thoiGianDen,
           cx.trangThaiChuyen,
           gh.soGhe,
-          ptt.tenPhuongThuc
+          ptt.tenPhuongThuc,
+          cr.maYeuCau,
+          cr.trangThai AS cancellationStatus,
+          cr.trangThaiHoan,
+          cr.lyDoHuy,
+          cr.soTienHoan,
+          hh.loaiHangHoa,
+          hh.moTa AS cargoDesc,
+          hh.trongLuong,
+          hh.giaHangHoa
         FROM VeDienTu vdt
         INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
         INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
         LEFT JOIN GheNgoi gh ON vdt.maGhe = gh.maGhe
         LEFT JOIN PhuongThucThanhToan ptt ON vdt.maPhuongThuc = ptt.maPhuongThuc
+        LEFT JOIN CancellationRequest cr ON vdt.maVe = cr.maVe
+        LEFT JOIN HangHoa hh ON vdt.maVe = hh.maVe
         WHERE vdt.maKhachHang = @maKhachHang
         ORDER BY vdt.ngayDatVe DESC
       `);
@@ -302,46 +327,68 @@ const getMyTickets = async (req, res) => {
     const bookingsMap = {};
 
     for (const t of tickets) {
+      // Skip if essential data is missing
+      if (!t.thoiGianDi || !t.diemDi || !t.diemDen) {
+        console.warn('Skipping ticket with missing data:', t.maVe);
+        continue;
+      }
+
       let bId = t.maQR ? t.maQR.split('-')[0] : `BK${t.maVe}`;
       if (!bId.startsWith('BK')) {
         bId = `BK${t.maVe}`;
       }
 
       if (!bookingsMap[bId]) {
-        const cargoResult = await pool.request()
-          .input('maVe', sql.Int, t.maVe)
-          .query('SELECT * FROM HangHoa WHERE maVe = @maVe');
-        const cargoRow = cargoResult.recordset[0];
-
         bookingsMap[bId] = {
           id: bId,
-          from: t.diemDi,
-          to: t.diemDen,
-          date: formatDate(t.thoiGianDi),
-          departureTime: formatTime(t.thoiGianDi),
-          arrivalTime: formatTime(t.thoiGianDen),
-          seats: [t.soGhe],
-          price: Number(t.giaVe),
+          from: t.diemDi || '',
+          to: t.diemDen || '',
+          date: t.thoiGianDi ? formatDate(t.thoiGianDi) : '',
+          departureTime: t.thoiGianDi ? formatTime(t.thoiGianDi) : '--:--',
+          arrivalTime: t.thoiGianDen ? formatTime(t.thoiGianDen) : '--:--',
+          seats: t.soGhe ? [t.soGhe] : [],
+          price: Number(t.giaVe || 0),
           status: t.trangThaiVe === 'da_thanh_toan' ? 'Da thanh toan' : (t.trangThaiVe === 'da_huy' ? 'Da huy' : 'Cho thanh toan'),
           tripStatus: t.trangThaiChuyen,
           operator: 'BusGo',
-          bookingDate: formatDate(t.ngayDatVe),
-          passengerName: t.hoTenHanhKhach,
-          email: t.emailHanhKhach,
-          phone: t.soDienThoaiHanhKhach,
+          bookingDate: t.ngayDatVe ? formatDate(t.ngayDatVe) : '',
+          passengerName: t.hoTenHanhKhach || '',
+          email: t.emailHanhKhach || '',
+          phone: t.soDienThoaiHanhKhach || '',
           cargoInfo: {
-            type: cargoRow ? cargoRow.loaiHangHoa : 'none',
-            description: cargoRow ? cargoRow.moTa : 'Không có',
-            weight: cargoRow ? cargoRow.trongLuong : null,
-            price: cargoRow ? Number(cargoRow.giaHangHoa) : 0
-          }
+            type: t.loaiHangHoa || 'none',
+            description: t.cargoDesc || 'Không có',
+            weight: t.trongLuong || null,
+            price: t.giaHangHoa ? Number(t.giaHangHoa) : 0
+          },
+          cancellationRequest: t.maYeuCau ? {
+            maYeuCau: t.maYeuCau,
+            trangThai: t.cancellationStatus,
+            trangThaiHoan: t.trangThaiHoan,
+            lyDoHuy: t.lyDoHuy,
+            soTienHoan: t.soTienHoan ? Number(t.soTienHoan) : 0
+          } : null
         };
       } else {
-        bookingsMap[bId].seats.push(t.soGhe);
-        bookingsMap[bId].price += Number(t.giaVe);
-        // Cộng giá hàng hóa từ vé đầu tiên (nếu có)
-        if (t.giaHangHoa) {
-          bookingsMap[bId].price += Number(t.giaHangHoa);
+        // Thêm ghế vào danh sách (chỉ nếu không NULL)
+        if (t.soGhe && !bookingsMap[bId].seats.includes(t.soGhe)) {
+          bookingsMap[bId].seats.push(t.soGhe);
+        }
+        // Cộng giá vé
+        bookingsMap[bId].price += Number(t.giaVe || 0);
+        // Cộng giá hàng hóa (chỉ lần đầu)
+        if (t.giaHangHoa && !bookingsMap[bId].cargoInfo.price) {
+          bookingsMap[bId].cargoInfo.price = Number(t.giaHangHoa);
+        }
+        // Cập nhật thông tin hủy nếu vé này có
+        if (t.maYeuCau && !bookingsMap[bId].cancellationRequest) {
+          bookingsMap[bId].cancellationRequest = {
+            maYeuCau: t.maYeuCau,
+            trangThai: t.cancellationStatus,
+            trangThaiHoan: t.trangThaiHoan,
+            lyDoHuy: t.lyDoHuy,
+            soTienHoan: t.soTienHoan ? Number(t.soTienHoan) : 0
+          };
         }
       }
     }

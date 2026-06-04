@@ -65,6 +65,8 @@ function LoginPage() {
           navigate('/home')
         } else if (data.user.role === USER_ROLES.DRIVER) {
           navigate('/driver/dashboard')
+        } else if (data.user.role === USER_ROLES.SUPPORT_STAFF) {
+          navigate('/admin/support/chat')
         } else {
           navigate('/admin/dashboard')
         }

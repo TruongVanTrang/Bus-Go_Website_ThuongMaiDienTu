@@ -20,7 +20,7 @@ IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ChatSession')
 BEGIN
     CREATE TABLE ChatSession (
         maChatSession   INT IDENTITY(1,1) PRIMARY KEY,
-        maNhanVienHT    INT NOT NULL FOREIGN KEY REFERENCES NhanVien(maNhanVien),  -- Support Agent
+        maNhanVienHT    INT FOREIGN KEY REFERENCES NhanVien(maNhanVien),  -- Support Agent (nullable initially)
         maKhachHang     INT FOREIGN KEY REFERENCES KhachHang(maKhachHang),         -- Khách hàng (NULL nếu chưa gán)
         tenKhachHang    NVARCHAR(100),          -- Tên khách (nếu không có tài khoản)
         emailKhach      VARCHAR(100),

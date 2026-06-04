@@ -1,4 +1,4 @@
-const { sql } = require('../config/db');
+const { sql, config } = require('../config/db');
 const { otpStore } = require('./authController');
 
 // @desc    Lấy thông tin profile người dùng
@@ -7,7 +7,7 @@ const { otpStore } = require('./authController');
 const getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const pool = await sql.connect();
+    const pool = await sql.connect(config);
 
     const userResult = await pool.request()
       .input('maNguoiDung', sql.Int, userId)
@@ -58,7 +58,7 @@ const updateProfile = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const pool = await sql.connect();
+    const pool = await sql.connect(config);
 
     // Check if user exists and get current data
     const userResult = await pool.request()
@@ -157,7 +157,7 @@ const updateProfile = async (req, res) => {
 const getMyChatSession = async (req, res) => {
   const userId = req.user.id;
   try {
-    const pool = await sql.connect();
+    const pool = await sql.connect(config);
     const result = await pool.request()
       .input('maKhachHang', sql.Int, userId)
       .query(`
@@ -180,25 +180,15 @@ const createMyChatSession = async (req, res) => {
   const userId = req.user.id;
   const { chuDeChat } = req.body;
   try {
-    const pool = await sql.connect();
+    const pool = await sql.connect(config);
     
-    // Tìm một Support Agent để assign (Lấy agent có role 3 - Support Staff)
-    // Nếu ko có thì set mặc định 1 ID (ví dụ: 7) - giả lập route agent
-    const agentResult = await pool.request().query(`
-      SELECT TOP 1 maNhanVien FROM NhanVien nv
-      INNER JOIN PhanQuyen pq ON nv.maNhanVien = pq.maNguoiDung
-      WHERE pq.maVaiTro = 3
-    `);
-    
-    const agentId = agentResult.recordset.length > 0 ? agentResult.recordset[0].maNhanVien : 7;
-    
+    // Để NULL ban đầu, support staff sẽ pick up sau
     const insertResult = await pool.request()
       .input('maKhachHang', sql.Int, userId)
-      .input('maNhanVienHT', sql.Int, agentId)
       .input('chuDeChat', sql.NVarChar, chuDeChat || 'Cần hỗ trợ')
       .query(`
-        INSERT INTO ChatSession (maNhanVienHT, maKhachHang, trangThai, chuDeChat)
-        VALUES (@maNhanVienHT, @maKhachHang, 'active', @chuDeChat);
+        INSERT INTO ChatSession (maKhachHang, trangThai, chuDeChat)
+        VALUES (@maKhachHang, 'active', @chuDeChat);
         SELECT SCOPE_IDENTITY() AS maChatSession;
       `);
       
@@ -216,8 +206,10 @@ const getMyChatMessages = async (req, res) => {
   const { sessionId } = req.params;
   const userId = req.user.id;
   
+  console.log(`[DEBUG] getMyChatMessages: sessionId=${sessionId}, userId=${userId}`);
+  
   try {
-    const pool = await sql.connect();
+    const pool = await sql.connect(config);
     // Đánh dấu đã đọc tin nhắn của agent gửi cho khách
     await pool.request()
       .input('sessionId', sql.Int, sessionId)
@@ -235,6 +227,8 @@ const getMyChatMessages = async (req, res) => {
         WHERE m.maChatSession = @sessionId AND s.maKhachHang = @userId
         ORDER BY thoiGianGui ASC
       `);
+    
+    console.log(`[DEBUG] messages count: ${result.recordset.length}`);
       
     res.json({ messages: result.recordset });
   } catch (error) {
@@ -254,7 +248,7 @@ const sendMyChatMessage = async (req, res) => {
   if (!noiDung || !noiDung.trim()) return res.status(400).json({ message: 'Tin nhắn trống' });
   
   try {
-    const pool = await sql.connect();
+    const pool = await sql.connect(config);
     
     // Check session
     const sessionCheck = await pool.request()
@@ -290,80 +284,131 @@ const sendMyChatMessage = async (req, res) => {
 // @route   POST /api/users/tickets/:ticketId/cancel
 // @access  Private
 const requestTicketCancellation = async (req, res) => {
-  const { ticketId } = req.params; // Thực chất là bookingId (ví dụ: BK1717506300994)
+  const { ticketId } = req.params;
   const { lyDoHuy } = req.body;
   const userId = req.user.id;
 
   try {
-    const pool = await sql.connect();
+    const pool = await sql.connect(config);
     
-    // Tìm tất cả các vé thuộc booking này
-    const ticketsResult = await pool.request()
-      .input('bookingId', sql.VarChar, ticketId)
+    // Tìm vé đầu tiên (để lấy maQR và thông tin chuyến)
+    const firstVeResult = await pool.request()
+      .input('ticketId', sql.VarChar, ticketId)
+      .input('ticketIdInt', sql.Int, parseInt(ticketId) || 0)
       .input('maKhachHang', sql.Int, userId)
       .query(`
-        SELECT v.maVe, v.trangThaiVe, c.thoiGianDi 
+        SELECT TOP 1 v.maVe, v.maQR, v.maChuyenXe, v.trangThaiVe, v.giaVe, c.thoiGianDi 
         FROM VeDienTu v
         INNER JOIN ChuyenXe c ON v.maChuyenXe = c.maChuyenXe
-        WHERE (v.maQR LIKE @bookingId + '%' OR CAST(v.maVe AS VARCHAR) = @bookingId)
-          AND v.maKhachHang = @maKhachHang
+        WHERE (
+          v.maQR = @ticketId
+          OR v.maQR LIKE @ticketId + '%'
+          OR CAST(v.maVe AS VARCHAR) = @ticketId
+          OR v.maVe = @ticketIdInt
+        )
+        AND v.maKhachHang = @maKhachHang
       `);
 
-    const tickets = ticketsResult.recordset;
-
-    if (tickets.length === 0) {
-      return res.status(404).json({ message: 'Không tìm thấy vé cần hủy' });
+    if (firstVeResult.recordset.length === 0) {
+      return res.status(404).json({ 
+        message: 'Không tìm thấy vé cần hủy'
+      });
     }
 
-    // Lấy thông tin chuyến đi từ vé đầu tiên (cùng chuyến)
-    const firstTicket = tickets[0];
+    const firstVe = firstVeResult.recordset[0];
+    
+    // Tìm tất cả các vé trong cùng chuyến (cùng maChuyenXe) với cùng khách hàng và cùng ngày đặt
+    const allTicketsResult = await pool.request()
+      .input('maChuyenXe', sql.Int, firstVe.maChuyenXe)
+      .input('maKhachHang', sql.Int, userId)
+      .input('ngayDatVe', sql.DateTime, firstVe.ngayDatVe || new Date())
+      .query(`
+        SELECT v.maVe, v.trangThaiVe, v.giaVe, c.thoiGianDi 
+        FROM VeDienTu v
+        INNER JOIN ChuyenXe c ON v.maChuyenXe = c.maChuyenXe
+        WHERE v.maChuyenXe = @maChuyenXe
+          AND v.maKhachHang = @maKhachHang
+          AND CAST(v.ngayDatVe AS DATE) = CAST(@ngayDatVe AS DATE)
+      `);
 
-    // Chỉ vé đã thanh toán mới được hủy để hoàn tiền
-    if (firstTicket.trangThaiVe !== 'da_thanh_toan') {
-      return res.status(400).json({ message: 'Chỉ vé đã thanh toán mới có thể yêu cầu hủy' });
+    const allTickets = allTicketsResult.recordset;
+
+    if (allTickets.length === 0) {
+      return res.status(404).json({ 
+        message: 'Không tìm thấy vé cần hủy'
+      });
+    }
+
+    // Chỉ vé đã thanh toán mới được hủy
+    if (firstVe.trangThaiVe !== 'da_thanh_toan') {
+      return res.status(400).json({ 
+        message: 'Chỉ vé đã thanh toán mới có thể yêu cầu hủy',
+        trangThaiHienTai: firstVe.trangThaiVe
+      });
     }
 
     // Kiểm tra thời gian
     const now = new Date();
-    const thoiGianDi = new Date(firstTicket.thoiGianDi);
+    const thoiGianDi = new Date(firstVe.thoiGianDi);
     if (thoiGianDi <= now) {
-      return res.status(400).json({ message: 'Chuyến xe đã khởi hành, không thể hủy' });
+      return res.status(400).json({ 
+        message: 'Chuyến xe đã khởi hành, không thể hủy'
+      });
+    }
+
+    // Kiểm tra xem vé đầu tiên đã có yêu cầu hủy pending chưa
+    const existingRequest = await pool.request()
+      .input('maVe', sql.Int, firstVe.maVe)
+      .query(`
+        SELECT TOP 1 maYeuCau, trangThai
+        FROM CancellationRequest
+        WHERE maVe = @maVe
+          AND trangThai IN ('pending', 'approved')
+      `);
+
+    if (existingRequest.recordset.length > 0) {
+      return res.status(400).json({ 
+        message: 'Booking này đã có yêu cầu hủy đang chờ xử lý hoặc đã được duyệt',
+        trangThaiHienTai: existingRequest.recordset[0].trangThai
+      });
     }
 
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
 
     try {
-      for (const t of tickets) {
-        // Kiểm tra xem đã có yêu cầu nào pending chưa
-        const existingReq = await transaction.request()
-          .input('maVe', sql.Int, t.maVe)
-          .query(`SELECT maYeuCau FROM CancellationRequest WHERE maVe = @maVe AND trangThai = 'pending'`);
+      // Tính tổng giá cho booking
+      const tongGiaVe = allTickets.reduce((sum, t) => sum + Number(t.giaVe), 0);
 
-        if (existingReq.recordset.length > 0) {
-          continue; // Bỏ qua nếu đã có yêu cầu (hoặc có thể ném lỗi)
-        }
-
-        // Tạo yêu cầu hủy
-        await transaction.request()
-          .input('maVe', sql.Int, t.maVe)
-          .input('maKhachHang', sql.Int, userId)
-          .input('lyDoHuy', sql.NVarChar, lyDoHuy || 'Yêu cầu hủy từ khách hàng')
-          .query(`
-            INSERT INTO CancellationRequest (maVe, maKhachHang, lyDoHuy, trangThai, trangThaiHoan)
-            VALUES (@maVe, @maKhachHang, @lyDoHuy, 'pending', 'pending')
-          `);
-      }
+      // Tạo 1 CancellationRequest duy nhất cho vé đầu tiên
+      await transaction.request()
+        .input('maVe', sql.Int, firstVe.maVe)
+        .input('maKhachHang', sql.Int, userId)
+        .input('lyDoHuy', sql.NVarChar, lyDoHuy || 'Yêu cầu hủy từ khách hàng')
+        .input('tongGiaVe', sql.Decimal(18, 2), tongGiaVe)
+        .query(`
+          INSERT INTO CancellationRequest 
+            (maVe, maKhachHang, lyDoHuy, trangThai, trangThaiHoan, giaVeGoc, soTienHoan)
+          VALUES 
+            (@maVe, @maKhachHang, @lyDoHuy, 'pending', 'pending', @tongGiaVe, 0)
+        `);
 
       await transaction.commit();
-      res.status(201).json({ message: 'Đã gửi yêu cầu hủy vé thành công. Vui lòng đợi nhân viên xác nhận.' });
+
+      res.status(201).json({ 
+        message: `Đã gửi yêu cầu hủy ${allTickets.length} vé thành công. Vui lòng đợi nhân viên xác nhận.`,
+        soVe: allTickets.length
+      });
     } catch (err) {
       await transaction.rollback();
       throw err;
     }
   } catch (error) {
     console.error('Lỗi requestTicketCancellation:', error);
-    res.status(500).json({ message: 'Lỗi server khi gửi yêu cầu hủy vé' });
+    res.status(500).json({ 
+      message: 'Lỗi server khi gửi yêu cầu hủy vé',
+      error: error.message
+    });
   }
 };
 

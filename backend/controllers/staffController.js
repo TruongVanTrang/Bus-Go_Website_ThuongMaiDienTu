@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { sql } = require('../config/db');
+const { sendCancellationApprovedEmail, sendCancellationRejectedEmail } = require('../utils/emailService');
 
 const VALID_ROLES = ['Driver', 'Ticket-Staff', 'Support-Staff'];
 
@@ -629,11 +630,20 @@ const getChatSessions = async (req, res) => {
 
   try {
     const pool = await sql.connect();
+    // Support Staff có thể xem TẤT CẢ phiên chat (không chỉ của họ)
+    // để có thể pick up từ bất kỳ khách nào
     let query = `
       SELECT
-        cs.maChatSession, cs.maKhachHang, cs.tenKhachHang, cs.emailKhach,
-        cs.trangThai, cs.chuDeChat, cs.thoiGianBatDau, cs.thoiGianCapNhat,
-        nd.tenNguoiDung AS tenKhachHangTaiKhoan,
+        cs.maChatSession, 
+        cs.maKhachHang, 
+        ISNULL(nd.tenNguoiDung, cs.tenKhachHang) AS tenKhachHang,
+        ISNULL(nd.email, cs.emailKhach) AS emailKhach,
+        cs.trangThai, 
+        cs.chuDeChat, 
+        cs.thoiGianBatDau, 
+        cs.thoiGianCapNhat,
+        cs.maNhanVienHT, 
+        nv_user.tenNguoiDung AS tenAgentHienTai,
         (
           SELECT TOP 1 noiDung FROM ChatMessage
           WHERE maChatSession = cs.maChatSession
@@ -644,15 +654,15 @@ const getChatSessions = async (req, res) => {
           WHERE maChatSession = cs.maChatSession AND nguoiGui = 'customer' AND trangThaiDoc = 'sent'
         ) AS soTinChuaDoc
       FROM ChatSession cs
-      LEFT JOIN KhachHang kh ON cs.maKhachHang = kh.maKhachHang
-      LEFT JOIN NguoiDung nd ON kh.maKhachHang = nd.maNguoiDung
-      WHERE cs.maNhanVienHT = @agentId
+      LEFT JOIN NguoiDung nd ON cs.maKhachHang = nd.maNguoiDung
+      LEFT JOIN NhanVien nv ON cs.maNhanVienHT = nv.maNhanVien
+      LEFT JOIN NguoiDung nv_user ON nv.maNhanVien = nv_user.maNguoiDung
     `;
 
-    const request = pool.request().input('agentId', sql.Int, agentId);
+    const request = pool.request();
 
     if (trangThai) {
-      query += ` AND cs.trangThai = @trangThai`;
+      query += ` WHERE cs.trangThai = @trangThai`;
       request.input('trangThai', sql.VarChar, trangThai);
     }
 
@@ -662,7 +672,7 @@ const getChatSessions = async (req, res) => {
     res.json({ chatSessions: result.recordset, total: result.recordset.length });
   } catch (error) {
     console.error('Lỗi getChatSessions:', error);
-    res.status(500).json({ message: 'Lỗi server khi lấy danh sách phiên chat' });
+    res.status(500).json({ message: 'Lỗi server khi lấy danh sách phiên chat', error: error.message });
   }
 };
 
@@ -676,20 +686,35 @@ const getChatMessages = async (req, res) => {
   try {
     const pool = await sql.connect();
 
-    // Kiểm tra phiên chat thuộc agent này
+    // Kiểm tra phiên chat tồn tại (không cần check agent cụ thể)
     const sessionResult = await pool.request()
       .input('sessionId', sql.Int, sessionId)
-      .input('agentId', sql.Int, agentId)
       .query(`
-        SELECT cs.*, nd.tenNguoiDung AS tenKhachHangTaiKhoan
+        SELECT cs.*, 
+               ISNULL(nd.tenNguoiDung, cs.tenKhachHang) AS tenKhachHangTaiKhoan,
+               nv_user.tenNguoiDung AS tenAgentHienTai
         FROM ChatSession cs
-        LEFT JOIN KhachHang kh ON cs.maKhachHang = kh.maKhachHang
-        LEFT JOIN NguoiDung nd ON kh.maKhachHang = nd.maNguoiDung
-        WHERE cs.maChatSession = @sessionId AND cs.maNhanVienHT = @agentId
+        LEFT JOIN NguoiDung nd ON cs.maKhachHang = nd.maNguoiDung
+        LEFT JOIN NhanVien nv ON cs.maNhanVienHT = nv.maNhanVien
+        LEFT JOIN NguoiDung nv_user ON nv.maNhanVien = nv_user.maNguoiDung
+        WHERE cs.maChatSession = @sessionId
       `);
 
     if (sessionResult.recordset.length === 0) {
       return res.status(404).json({ message: 'Không tìm thấy phiên chat' });
+    }
+
+    // Nếu phiên chưa được gán cho ai, assign cho agent hiện tại
+    const session = sessionResult.recordset[0];
+    if (!session.maNhanVienHT) {
+      await pool.request()
+        .input('sessionId', sql.Int, sessionId)
+        .input('agentId', sql.Int, agentId)
+        .query(`
+          UPDATE ChatSession 
+          SET maNhanVienHT = @agentId 
+          WHERE maChatSession = @sessionId
+        `);
     }
 
     // Lấy tin nhắn
@@ -735,11 +760,10 @@ const sendChatMessage = async (req, res) => {
   try {
     const pool = await sql.connect();
 
-    // Kiểm tra phiên chat
+    // Kiểm tra phiên chat tồn tại (không cần check agent cụ thể)
     const sessionCheck = await pool.request()
       .input('sessionId', sql.Int, sessionId)
-      .input('agentId', sql.Int, agentId)
-      .query(`SELECT trangThai FROM ChatSession WHERE maChatSession = @sessionId AND maNhanVienHT = @agentId`);
+      .query(`SELECT trangThai FROM ChatSession WHERE maChatSession = @sessionId`);
 
     if (sessionCheck.recordset.length === 0) {
       return res.status(404).json({ message: 'Không tìm thấy phiên chat' });
@@ -761,10 +785,16 @@ const sendChatMessage = async (req, res) => {
         SELECT SCOPE_IDENTITY() AS maTinNhan;
       `);
 
-    // Cập nhật thời gian session
+    // Cập nhật thời gian session và đảm bảo agent được assign
     await pool.request()
       .input('sessionId', sql.Int, sessionId)
-      .query(`UPDATE ChatSession SET thoiGianCapNhat = GETDATE(), trangThai = 'active' WHERE maChatSession = @sessionId`);
+      .input('agentId', sql.Int, agentId)
+      .query(`
+        UPDATE ChatSession 
+        SET thoiGianCapNhat = GETDATE(), trangThai = 'active',
+            maNhanVienHT = ISNULL(maNhanVienHT, @agentId)
+        WHERE maChatSession = @sessionId
+      `);
 
     res.status(201).json({
       message: 'Gửi tin nhắn thành công',
@@ -796,11 +826,10 @@ const closeChatSession = async (req, res) => {
 
     const result = await pool.request()
       .input('sessionId', sql.Int, sessionId)
-      .input('agentId', sql.Int, agentId)
       .query(`
         UPDATE ChatSession
         SET trangThai = 'closed', thoiGianKetThuc = GETDATE(), thoiGianCapNhat = GETDATE()
-        WHERE maChatSession = @sessionId AND maNhanVienHT = @agentId AND trangThai != 'closed'
+        WHERE maChatSession = @sessionId AND trangThai != 'closed'
       `);
 
     if (result.rowsAffected[0] === 0) {
@@ -919,16 +948,33 @@ const getCancellationRequests = async (req, res) => {
 
   try {
     const pool = await sql.connect();
+    
+    // Query tối ưu: 1 CancellationRequest = 1 booking (đã tạo từ customer)
     let query = `
       SELECT
-        cr.maYeuCau, cr.maVe, cr.trangThai, cr.trangThaiHoan,
-        cr.lyDoHuy, cr.giaVeGoc, cr.phanTramHoan, cr.soTienHoan,
-        cr.lyDoTuChoi, cr.thoiGianYeuCau, cr.thoiGianXuLy,
-        vdt.hoTenHanhKhach, vdt.emailHanhKhach, vdt.soDienThoaiHanhKhach,
-        vdt.trangThaiVe, vdt.giaThanhToan,
-        td.diemDi, td.diemDen,
-        cx.thoiGianDi, cx.thoiGianDen,
-        nd.tenNguoiDung AS tenNhanVienXuLy
+        cr.maYeuCau,
+        cr.maVe,
+        vdt.maQR,
+        cr.trangThai,
+        cr.trangThaiHoan,
+        cr.lyDoHuy,
+        cr.giaVeGoc,
+        cr.phanTramHoan,
+        cr.soTienHoan,
+        cr.lyDoTuChoi,
+        cr.thoiGianYeuCau,
+        cr.thoiGianXuLy,
+        vdt.hoTenHanhKhach,
+        vdt.emailHanhKhach,
+        vdt.soDienThoaiHanhKhach,
+        vdt.trangThaiVe,
+        vdt.maKhachHang,
+        td.diemDi,
+        td.diemDen,
+        cx.thoiGianDi,
+        cx.thoiGianDen,
+        nd.tenNguoiDung AS tenNhanVienXuLy,
+        (SELECT COUNT(*) FROM VeDienTu WHERE maQR = vdt.maQR) AS soVeInBooking
       FROM CancellationRequest cr
       INNER JOIN VeDienTu vdt ON cr.maVe = vdt.maVe
       INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
@@ -944,10 +990,39 @@ const getCancellationRequests = async (req, res) => {
       request.input('trangThai', sql.VarChar, trangThai);
     }
 
-    query += ` ORDER BY cr.thoiGianYeuCau DESC OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`;
+    query += `
+      ORDER BY cr.thoiGianYeuCau DESC
+      OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY
+    `;
 
     const result = await request.query(query);
-    res.json({ requests: result.recordset, total: result.recordset.length });
+    
+    // Đếm tổng số request
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM CancellationRequest cr
+      WHERE 1=1
+    `;
+    
+    if (trangThai) {
+      countQuery += ` AND cr.trangThai = @trangThai`;
+    }
+    
+    const countRequest = pool.request();
+    if (trangThai) {
+      countRequest.input('trangThai', sql.VarChar, trangThai);
+    }
+    
+    const countResult = await countRequest.query(countQuery);
+    const total = countResult.recordset[0].total;
+
+    res.json({ 
+      requests: result.recordset, 
+      total: total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      note: '1 request = 1 booking. Khi phê duyệt/từ chối, tất cả vé trong booking sẽ được xử lý'
+    });
   } catch (error) {
     console.error('Lỗi getCancellationRequests:', error);
     res.status(500).json({ message: 'Lỗi server khi lấy danh sách yêu cầu' });
@@ -1055,7 +1130,7 @@ const checkCancellationEligibility = async (req, res) => {
   }
 };
 
-// @desc    Xử lý yêu cầu hoàn/hủy vé (Phê duyệt hoặc Từ chối)
+// @desc    Xử lý yêu cầu hoàn/hủy vé (Phê duyệt hoặc Từ chối) - Xử lý TẤT CẢ vé trong booking
 // @route   POST /api/staff/support/cancellations/:ticketId/process
 // @access  Private/Support-Staff
 const processCancellationRequest = async (req, res) => {
@@ -1075,14 +1150,34 @@ const processCancellationRequest = async (req, res) => {
   try {
     const pool = await sql.connect();
 
-    // Lấy thông tin vé
+    // Lấy thông tin yêu cầu hủy từ CancellationRequest
+    const cancellationReqResult = await pool.request()
+      .input('maVe', sql.Int, ticketId)
+      .query(`
+        SELECT maYeuCau, maVe, giaVeGoc, trangThai, trangThaiHoan
+        FROM CancellationRequest
+        WHERE maVe = @maVe
+      `);
+
+    if (cancellationReqResult.recordset.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy yêu cầu hủy vé' });
+    }
+
+    const cancellationReq = cancellationReqResult.recordset[0];
+    const storedGiaVeGoc = Number(cancellationReq.giaVeGoc || 0);
+
+    // Lấy thông tin vé gốc + thông tin khách hàng
     const ticketResult = await pool.request()
       .input('maVe', sql.Int, ticketId)
       .query(`
-        SELECT vdt.maVe, vdt.trangThaiVe, vdt.giaVe, vdt.maGhe, vdt.maKhachHang,
-               cx.thoiGianDi, cx.trangThaiChuyen
+        SELECT vdt.maVe, vdt.maChuyenXe, vdt.maKhachHang, vdt.ngayDatVe, vdt.maQR,
+               vdt.trangThaiVe, vdt.giaVe, vdt.maGhe,
+               vdt.hoTenHanhKhach, vdt.emailHanhKhach,
+               cx.thoiGianDi, cx.trangThaiChuyen,
+               td.diemDi, td.diemDen
         FROM VeDienTu vdt
         INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
+        INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
         WHERE vdt.maVe = @maVe
       `);
 
@@ -1091,6 +1186,53 @@ const processCancellationRequest = async (req, res) => {
     }
 
     const ticket = ticketResult.recordset[0];
+
+    // Lấy TẤT CẢ vé thuộc cùng booking
+    // Chiến lược: Nếu có maQR, dùng maQR để nhóm (vì maQR là ID của booking)
+    // Nếu không có maQR, dùng maChuyenXe + maKhachHang + DATE(ngayDatVe)
+    let allTicketsQuery;
+    let allTicketsRequest = pool.request()
+      .input('maChuyenXe', sql.Int, ticket.maChuyenXe)
+      .input('maKhachHang', sql.Int, ticket.maKhachHang)
+      .input('ngayDatVe', sql.DateTime, ticket.ngayDatVe);
+
+    if (ticket.maQR && ticket.maQR.trim()) {
+      // Ưu tiên maQR vì nó là booking identifier
+      allTicketsRequest = allTicketsRequest.input('maQR', sql.VarChar, ticket.maQR);
+      allTicketsQuery = `
+        SELECT vdt.maVe, vdt.trangThaiVe, vdt.giaVe, vdt.maGhe, vdt.maKhachHang, vdt.maQR,
+               cx.thoiGianDi, cx.trangThaiChuyen
+        FROM VeDienTu vdt
+        INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
+        WHERE vdt.maQR = @maQR
+      `;
+    } else {
+      // Fallback: dùng composite key nếu maQR không có
+      allTicketsQuery = `
+        SELECT vdt.maVe, vdt.trangThaiVe, vdt.giaVe, vdt.maGhe, vdt.maKhachHang, vdt.maQR,
+               cx.thoiGianDi, cx.trangThaiChuyen
+        FROM VeDienTu vdt
+        INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
+        WHERE vdt.maChuyenXe = @maChuyenXe
+          AND vdt.maKhachHang = @maKhachHang
+          AND CAST(vdt.ngayDatVe AS DATE) = CAST(@ngayDatVe AS DATE)
+      `;
+    }
+
+    const allTicketsResult = await allTicketsRequest.query(allTicketsQuery);
+
+    const allTickets = allTicketsResult.recordset;
+    
+    // DEBUG: Log for troubleshooting
+    console.log(`[Cancellation] Processing booking:`, {
+      ticketId,
+      maQR: ticket.maQR,
+      maChuyenXe: ticket.maChuyenXe,
+      maKhachHang: ticket.maKhachHang,
+      ngayDatVe: ticket.ngayDatVe,
+      ticketsFound: allTickets.length,
+      ticketDetails: allTickets.map(t => ({ maVe: t.maVe, giaVe: t.giaVe, maQR: t.maQR }))
+    });
 
     // Kiểm tra lại điều kiện
     if (ticket.trangThaiVe === 'da_huy') {
@@ -1101,90 +1243,116 @@ const processCancellationRequest = async (req, res) => {
     const hoursUntilDeparture = (new Date(ticket.thoiGianDi) - now) / (1000 * 60 * 60);
 
     const refundPolicy = calculateRefundPolicy(hoursUntilDeparture);
-    const giaVeGoc = Number(ticket.giaVe);
-    const soTienHoan = Math.floor(giaVeGoc * refundPolicy.phanTramHoan / 100);
+    
+    // Use the stored giaVeGoc (which is the total of all tickets), not recalculated
+    // This ensures we honor the original booking total even if we can't find all tickets
+    const tongGiaVeGoc = storedGiaVeGoc > 0 ? storedGiaVeGoc : allTickets.reduce((sum, t) => sum + Number(t.giaVe), 0);
+    // Tính hoàn tiền dựa trên tổng giá
+    const tongSoTienHoan = Math.floor(tongGiaVeGoc * refundPolicy.phanTramHoan / 100);
 
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
 
     try {
       if (hanh_dong === 'approve') {
-        // 1. Cập nhật trạng thái vé
-        await transaction.request()
-          .input('maVe', sql.Int, ticketId)
-          .query(`UPDATE VeDienTu SET trangThaiVe = 'da_huy', ngayCapNhat = GETDATE() WHERE maVe = @maVe`);
-
-        // 2. Giải phóng ghế
-        if (ticket.maGhe) {
+        // Xử lý TẤT CẢ vé trong booking
+        for (const tkt of allTickets) {
+          // 1. Cập nhật trạng thái vé
           await transaction.request()
-            .input('maGhe', sql.Int, ticket.maGhe)
-            .query(`UPDATE GheNgoi SET trangThaiGhe = 'trong' WHERE maGhe = @maGhe`);
+            .input('maVe', sql.Int, tkt.maVe)
+            .query(`UPDATE VeDienTu SET trangThaiVe = 'da_huy', ngayCapNhat = GETDATE() WHERE maVe = @maVe`);
+
+          // 2. Giải phóng ghế
+          if (tkt.maGhe) {
+            await transaction.request()
+              .input('maGhe', sql.Int, tkt.maGhe)
+              .query(`UPDATE GheNgoi SET trangThaiGhe = 'trong' WHERE maGhe = @maGhe`);
+          }
         }
 
-        // 3. Tạo/cập nhật CancellationRequest
+        // 3. Cập nhật 1 CancellationRequest cho vé đầu tiên (đại diện cho booking)
         await transaction.request()
           .input('maVe', sql.Int, ticketId)
-          .input('maKhachHang', sql.Int, ticket.maKhachHang || null)
           .input('agentId', sql.Int, agentId)
-          .input('lyDoHuy', sql.NVarChar, lyDoHuy || 'Yêu cầu hủy từ khách hàng')
-          .input('giaVeGoc', sql.Decimal(18, 2), giaVeGoc)
           .input('phanTramHoan', sql.Decimal(5, 2), refundPolicy.phanTramHoan)
-          .input('soTienHoan', sql.Decimal(18, 2), soTienHoan)
+          .input('soTienHoanTongCong', sql.Decimal(18, 2), tongSoTienHoan)
+          .input('tongGiaVeGoc', sql.Decimal(18, 2), tongGiaVeGoc)
           .query(`
-            IF EXISTS (SELECT 1 FROM CancellationRequest WHERE maVe = @maVe AND trangThai = 'pending')
-              UPDATE CancellationRequest SET
-                trangThai = 'approved', trangThaiHoan = 'processing',
-                maNhanVienXuLy = @agentId, thoiGianXuLy = GETDATE(),
-                giaVeGoc = @giaVeGoc, phanTramHoan = @phanTramHoan, soTienHoan = @soTienHoan,
-                thoiGianCapNhat = GETDATE()
-              WHERE maVe = @maVe AND trangThai = 'pending'
-            ELSE
-              INSERT INTO CancellationRequest
-                (maVe, maKhachHang, maNhanVienXuLy, lyDoHuy, trangThai, trangThaiHoan, giaVeGoc, phanTramHoan, soTienHoan, thoiGianXuLy)
-              VALUES
-                (@maVe, @maKhachHang, @agentId, @lyDoHuy, 'approved', 'completed', @giaVeGoc, @phanTramHoan, @soTienHoan, GETDATE())
+            UPDATE CancellationRequest SET
+              trangThai = 'approved', trangThaiHoan = 'processing',
+              maNhanVienXuLy = @agentId, thoiGianXuLy = GETDATE(),
+              giaVeGoc = @tongGiaVeGoc,
+              phanTramHoan = @phanTramHoan, soTienHoan = @soTienHoanTongCong,
+              thoiGianCapNhat = GETDATE()
+            WHERE maVe = @maVe
           `);
 
         await transaction.commit();
 
-        res.json({
-          message: 'Phê duyệt hủy vé thành công',
-          result: {
+        // Gửi email thông báo phê duyệt
+        try {
+          await sendCancellationApprovedEmail(ticket.emailHanhKhach, ticket.hoTenHanhKhach, {
             maVe: ticketId,
+            soVe: allTickets.length,
+            diemDi: ticket.diemDi,
+            diemDen: ticket.diemDen,
+            soTienHoan: tongSoTienHoan,
+            phanTramHoan: refundPolicy.phanTramHoan,
+            thoiGianDi: ticket.thoiGianDi
+          });
+        } catch (emailError) {
+          console.error('Lỗi gửi email phê duyệt:', emailError);
+        }
+
+        res.json({
+          message: `Phê duyệt hủy ${allTickets.length} vé thành công`,
+          result: {
+            soVe: allTickets.length,
+            danhSachMaVe: allTickets.map(t => t.maVe),
             trangThai: 'approved',
-            soTienHoan,
+            soTienHoanTongCong: tongSoTienHoan,
             phanTramHoan: refundPolicy.phanTramHoan,
             moTa: refundPolicy.moTa
           }
         });
 
       } else {
-        // Từ chối
+        // Từ chối - chỉ cập nhật 1 CancellationRequest (cho vé đầu tiên)
         await transaction.request()
           .input('maVe', sql.Int, ticketId)
-          .input('maKhachHang', sql.Int, ticket.maKhachHang || null)
           .input('agentId', sql.Int, agentId)
-          .input('lyDoHuy', sql.NVarChar, lyDoHuy || '')
           .input('lyDoTuChoi', sql.NVarChar, lyDoTuChoi.trim())
           .query(`
-            IF EXISTS (SELECT 1 FROM CancellationRequest WHERE maVe = @maVe AND trangThai = 'pending')
-              UPDATE CancellationRequest SET
-                trangThai = 'rejected', trangThaiHoan = 'rejected',
-                maNhanVienXuLy = @agentId, thoiGianXuLy = GETDATE(),
-                lyDoTuChoi = @lyDoTuChoi, thoiGianCapNhat = GETDATE()
-              WHERE maVe = @maVe AND trangThai = 'pending'
-            ELSE
-              INSERT INTO CancellationRequest
-                (maVe, maKhachHang, maNhanVienXuLy, lyDoHuy, trangThai, trangThaiHoan, lyDoTuChoi, giaVeGoc, soTienHoan, thoiGianXuLy)
-              VALUES
-                (@maVe, @maKhachHang, @agentId, @lyDoHuy, 'rejected', 'rejected', @lyDoTuChoi, @giaVeGoc, 0, GETDATE())
-          `).input('giaVeGoc', sql.Decimal(18, 2), giaVeGoc);
+            UPDATE CancellationRequest SET
+              trangThai = 'rejected', trangThaiHoan = 'rejected',
+              maNhanVienXuLy = @agentId, thoiGianXuLy = GETDATE(),
+              lyDoTuChoi = @lyDoTuChoi, thoiGianCapNhat = GETDATE()
+            WHERE maVe = @maVe
+          `);
 
         await transaction.commit();
 
+        // Gửi email thông báo từ chối
+        try {
+          await sendCancellationRejectedEmail(ticket.emailHanhKhach, ticket.hoTenHanhKhach, {
+            maVe: ticketId,
+            diemDi: ticket.diemDi,
+            diemDen: ticket.diemDen,
+            lyDoTuChoi: lyDoTuChoi.trim(),
+            thoiGianDi: ticket.thoiGianDi
+          });
+        } catch (emailError) {
+          console.error('Lỗi gửi email từ chối:', emailError);
+        }
+
         res.json({
-          message: 'Đã từ chối yêu cầu hủy vé',
-          result: { maVe: ticketId, trangThai: 'rejected', lyDoTuChoi: lyDoTuChoi.trim() }
+          message: `Đã từ chối yêu cầu hủy ${allTickets.length} vé`,
+          result: { 
+            soVe: allTickets.length,
+            danhSachMaVe: allTickets.map(t => t.maVe),
+            trangThai: 'rejected', 
+            lyDoTuChoi: lyDoTuChoi.trim() 
+          }
         });
       }
     } catch (err) {
@@ -1248,6 +1416,93 @@ const createCancellationRequest = async (req, res) => {
   }
 };
 
+// @desc    Lấy lịch sử chat của khách hàng theo customer ID
+// @route   GET /api/staff/support/customers/:customerId/chat-history
+// @access  Private/Support-Staff
+const getCustomerChatHistory = async (req, res) => {
+  const { customerId } = req.params;
+
+  try {
+    const pool = await sql.connect();
+
+    // Lấy tất cả chat session của khách hàng
+    const sessionResult = await pool.request()
+      .input('customerId', sql.Int, customerId)
+      .query(`
+        SELECT 
+          cs.maChatSession, cs.maKhachHang, cs.tenKhachHang, cs.emailKhach,
+          cs.trangThai, cs.chuDeChat, cs.thoiGianBatDau, cs.thoiGianCapNhat,
+          cs.thoiGianKetThuc, cs.maNhanVienHT, nv.tenNhanVien AS tenAgentHienTai,
+          (SELECT COUNT(*) FROM ChatMessage WHERE maChatSession = cs.maChatSession) AS soTinNhan
+        FROM ChatSession cs
+        LEFT JOIN NhanVien nv ON cs.maNhanVienHT = nv.maNhanVien
+        WHERE cs.maKhachHang = @customerId
+        ORDER BY cs.thoiGianBatDau DESC
+      `);
+
+    if (sessionResult.recordset.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Khách hàng chưa có phiên chat nào',
+        data: {
+          customerId,
+          chatSessions: [],
+          totalSessions: 0
+        }
+      });
+    }
+
+    // Lấy tin nhắn của từng session
+    const chatSessions = sessionResult.recordset;
+    const chatData = [];
+
+    for (const session of chatSessions) {
+      const messagesResult = await pool.request()
+        .input('sessionId', sql.Int, session.maChatSession)
+        .query(`
+          SELECT 
+            maTinNhan, maChatSession, nguoiGui, maNguoiGui, noiDung, 
+            trangThaiDoc, thoiGianGui
+          FROM ChatMessage
+          WHERE maChatSession = @sessionId
+          ORDER BY thoiGianGui ASC
+        `);
+
+      chatData.push({
+        session: {
+          maChatSession: session.maChatSession,
+          chuDeChat: session.chuDeChat,
+          trangThai: session.trangThai,
+          thoiGianBatDau: session.thoiGianBatDau,
+          thoiGianCapNhat: session.thoiGianCapNhat,
+          thoiGianKetThuc: session.thoiGianKetThuc,
+          tenAgentHienTai: session.tenAgentHienTai,
+          soTinNhan: session.soTinNhan
+        },
+        messages: messagesResult.recordset
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Lấy lịch sử chat thành công',
+      data: {
+        customerId,
+        totalSessions: chatSessions.length,
+        chatData
+      }
+    });
+
+  } catch (error) {
+    console.error('Lỗi getCustomerChatHistory:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi server khi lấy lịch sử chat',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   createStaff,
   getAllStaff,
@@ -1263,6 +1518,7 @@ module.exports = {
   closeChatSession,
   createChatSession,
   getCustomerTickets,
+  getCustomerChatHistory,
   // Support Staff - Cancellation
   getCancellationRequests,
   checkCancellationEligibility,

@@ -8,6 +8,7 @@
   height: 100%;
   width: 100%;
   background: white;
+  overflow: hidden;
 }
 
 /* Sidebar Danh sách Chat */
@@ -16,6 +17,8 @@
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .chat-header {
@@ -101,6 +104,8 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border-color);
+  height: 100%;
+  overflow: hidden;
 }
 
 .chat-messages {
@@ -183,12 +188,16 @@
   background: white;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .ticket-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background: #f8fafc;
+  padding: 0;
 }
 
 .ticket-card {
@@ -196,6 +205,7 @@
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 15px;
+  margin: 12px;
   font-size: 13px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }

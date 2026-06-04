@@ -26,6 +26,9 @@ router.put('/support/chats/:sessionId/close', protect, staffController.closeChat
 // GET  /api/staff/support/customers/:id/tickets - Vé của khách hàng (xem trong chat)
 router.get('/support/customers/:customerId/tickets', protect, staffController.getCustomerTickets);
 
+// GET  /api/staff/support/customers/:id/chat-history - Lịch sử chat của khách hàng
+router.get('/support/customers/:customerId/chat-history', protect, staffController.getCustomerChatHistory);
+
 // ==================== SUPPORT STAFF – CANCELLATION/REFUND ====================
 // GET  /api/staff/support/cancellations                   - Danh sách yêu cầu hủy
 // POST /api/staff/support/cancellations                   - Tạo yêu cầu hủy (pending)

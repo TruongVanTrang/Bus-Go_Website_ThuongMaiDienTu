@@ -66,7 +66,7 @@ export default function UserHistory() {
         setWatchlist([])
       }
     } else {
-      setWatchlist([]) // Không dùng dữ liệu mầu
+      setWatchlist([])
     }
 
     // Tải ratings từ localStorage (UX state cục bộ)
@@ -82,6 +82,13 @@ export default function UserHistory() {
 
     // Dữ liệu ký gửi hàng sẽ được lấy từ backend khi API sẵn sàng
     setConsignments([])
+
+    // Auto refresh lịch sử vé mỗi 10 giây để cập nhật trạng thái hủy từ staff
+    const refreshInterval = setInterval(() => {
+      loadData()
+    }, 10000)
+
+    return () => clearInterval(refreshInterval)
   }, [navigate])
 
   // Helper function to parse datetime correctly (handle timezone)
@@ -115,6 +122,11 @@ export default function UserHistory() {
 
   // Check if cancellation is allowed
   const canCancelBooking = (booking) => {
+    // Nếu vé đã có yêu cầu hủy (pending, approved, rejected) → không được hủy tiếp
+    if (booking.cancellationRequest) {
+      return false;
+    }
+
     const departureDate = parseDateTimeUTC(booking.date, booking.departureTime)
     const now = new Date()
     return departureDate > now && booking.status === 'Da thanh toan'
@@ -352,7 +364,43 @@ export default function UserHistory() {
   return (
     <div className="user-history-page">
       <div className="container-fluid px-md-5 px-3 py-5">
-        <h1 className="fw-bold mb-4 text-neutral-900">Lịch sử hoạt động</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h1 className="fw-bold text-neutral-900" style={{ marginInlineStart: 20 }}>Lịch sử hoạt động</h1>
+          <button
+            onClick={() => {
+              setLoading(true)
+              const token = StorageUtil.getToken()
+              if (token) {
+                getMyTicketsAPI(token)
+                  .then(tickets => {
+                    setBookings(tickets)
+                    setError(null)
+                  })
+                  .catch(err => {
+                    console.error('Lỗi refresh:', err)
+                    setError(err.message || 'Lỗi khi tải lịch sử vé')
+                  })
+                  .finally(() => setLoading(false))
+              }
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#004b87',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+            title="Refresh lịch sử"
+          >
+            🔄 Làm mới
+          </button>
+        </div>
 
         {/* Tabs */}
         <div className="tabs-container mb-4">
@@ -505,13 +553,15 @@ export default function UserHistory() {
                           </button>
                         )}
 
-                        {canCancelBooking(booking) && booking.status !== 'Cho xu ly huy' && (
+                        {canCancelBooking(booking) && (
                           <button
                             onClick={() => handleCancelRequest(booking)}
                             className="btn-action btn-cancel"
                           >
                             <FiX size={14} />
-                            Yêu cầu hủy
+                            {booking.cancellationRequest ? 
+                              `Đã gửi yêu cầu (${booking.cancellationRequest.trangThai})` 
+                              : 'Yêu cầu hủy'}
                           </button>
                         )}
                       </div>

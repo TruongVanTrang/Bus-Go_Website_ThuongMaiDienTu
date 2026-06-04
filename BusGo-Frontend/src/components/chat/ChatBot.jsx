@@ -178,11 +178,8 @@ export default function ChatBot() {
                 )}
                 
                 {messages.map(message => (
-                  <div key={message.maTinNhan} className={`message mb-3 d-flex ${message.nguoiGui === 'customer' ? 'justify-content-end' : 'justify-content-start'}`}>
-                    <div 
-                      className={`message-content p-2 px-3 rounded-4 ${message.nguoiGui === 'customer' ? 'bg-primary text-white' : 'bg-white border'}`}
-                      style={{ maxWidth: '80%', wordBreak: 'break-word', borderBottomRightRadius: message.nguoiGui === 'customer' ? '4px' : '16px', borderBottomLeftRadius: message.nguoiGui !== 'customer' ? '4px' : '16px' }}
-                    >
+                  <div key={message.maTinNhan} className={`message ${message.nguoiGui === 'customer' ? 'message-user' : 'message-bot'}`}>
+                    <div className="message-content">
                       {message.noiDung}
                     </div>
                   </div>
@@ -202,28 +199,28 @@ export default function ChatBot() {
             )}
           </div>
 
-          <div className="chat-input-area border-top bg-white p-2">
-            <div className="input-group">
-              <input
-                type="text"
-                className="form-control border-0 bg-light rounded-pill px-3"
-                placeholder={session?.trangThai === 'closed' ? "Chat đã kết thúc" : "Nhập tin nhắn..."}
-                value={inputValue}
-                disabled={!session || session.trangThai === 'closed'}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') handleSendMessage()
-                }}
-              />
-              <button
-                className="btn btn-primary rounded-circle ms-2 d-flex align-items-center justify-content-center"
-                style={{ width: '40px', height: '40px' }}
-                disabled={!session || session.trangThai === 'closed' || !inputValue.trim()}
-                onClick={handleSendMessage}
-              >
-                <FiSend size={18} />
-              </button>
-            </div>
+          <div className="chat-input-area border-top bg-white p-3">
+            <input
+              type="text"
+              className="form-control border-0 bg-light rounded-pill px-3 flex-grow-1"
+              placeholder={session?.trangThai === 'closed' ? "Chat đã kết thúc" : "Nhập tin nhắn..."}
+              value={inputValue}
+              disabled={!session || session.trangThai === 'closed'}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') handleSendMessage()
+              }}
+              style={{ minHeight: '40px' }}
+            />
+            <button
+              className="btn btn-primary rounded-circle ms-2"
+              disabled={!session || session.trangThai === 'closed' || !inputValue.trim()}
+              onClick={handleSendMessage}
+              title="Gửi tin nhắn"
+              type="button"
+            >
+              <FiSend size={18} />
+            </button>
           </div>
         </div>
       )}

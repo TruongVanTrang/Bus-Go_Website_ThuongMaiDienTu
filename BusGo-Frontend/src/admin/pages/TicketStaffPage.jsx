@@ -15,8 +15,7 @@ import {
   QrCode,
   Search,
   Users,
-  X,
-  XCircle
+  X
 } from 'lucide-react'
 import { AuthUtil } from '@/utils/helpers'
 import { USER_ROLES } from '@/utils/constants'
@@ -37,14 +36,14 @@ const NAV_ITEMS = [
 ]
 
 const INITIAL_PASSENGERS = [
-  { id: 'BG-001', name: 'Nguyễn Văn A', phone: '0912 345 678', seat: 'A01', trip: 'HN → HP', time: '08:00', status: 'boarded' },
-  { id: 'BG-002', name: 'Trần Thị B', phone: '0987 654 321', seat: 'A02', trip: 'HN → HP', time: '08:00', status: 'boarded' },
-  { id: 'BG-003', name: 'Lê Văn C', phone: '0901 234 567', seat: 'B01', trip: 'HN → HCM', time: '10:30', status: 'not_boarded' },
-  { id: 'BG-004', name: 'Phạm Thị D', phone: '0933 111 222', seat: 'B02', trip: 'HN → HCM', time: '10:30', status: 'boarded' },
-  { id: 'BG-005', name: 'Hoàng Văn E', phone: '0944 555 666', seat: 'C01', trip: 'HN → HP', time: '14:00', status: 'not_boarded' },
-  { id: 'BG-006', name: 'Vũ Thị F', phone: '0955 777 888', seat: 'C02', trip: 'HN → HP', time: '14:00', status: 'boarded' },
-  { id: 'BG-007', name: 'Đặng Văn G', phone: '0966 999 000', seat: 'D01', trip: 'HN → HCM', time: '16:00', status: 'boarded' },
-  { id: 'BG-008', name: 'Bùi Thị H', phone: '0977 123 456', seat: 'D02', trip: 'HN → HCM', time: '16:00', status: 'not_boarded' }
+  { id: 'BG-001', name: 'Nguyễn Văn A', phone: '0912 345 678', email: 'nguyenvana@email.com', idCard: '001234567890', seat: 'A01', trip: 'HN → HP', time: '08:00', pickup: 'Bến xe Giáp Bát', dropoff: 'Bến xe Hải Phòng', fare: '250.000đ', paymentStatus: 'Đã thanh toán', bookingDate: '02/06/2026', status: 'boarded', checkedInAt: '07:45' },
+  { id: 'BG-002', name: 'Trần Thị B', phone: '0987 654 321', email: 'tranthib@email.com', idCard: '001234567891', seat: 'A02', trip: 'HN → HP', time: '08:00', pickup: 'Bến xe Giáp Bát', dropoff: 'Bến xe Hải Phòng', fare: '250.000đ', paymentStatus: 'Đã thanh toán', bookingDate: '01/06/2026', status: 'boarded', checkedInAt: '07:50' },
+  { id: 'BG-003', name: 'Lê Văn C', phone: '0901 234 567', email: 'levanc@email.com', idCard: '001234567892', seat: 'B01', trip: 'HN → HCM', time: '10:30', pickup: 'Bến xe Mỹ Đình', dropoff: 'Bến xe Miền Đông', fare: '450.000đ', paymentStatus: 'Đã thanh toán', bookingDate: '03/06/2026', status: 'not_boarded', checkedInAt: null },
+  { id: 'BG-004', name: 'Phạm Thị D', phone: '0933 111 222', email: 'phamthid@email.com', idCard: '001234567893', seat: 'B02', trip: 'HN → HCM', time: '10:30', pickup: 'Bến xe Mỹ Đình', dropoff: 'Bến xe Miền Đông', fare: '450.000đ', paymentStatus: 'Đã thanh toán', bookingDate: '02/06/2026', status: 'boarded', checkedInAt: '10:15' },
+  { id: 'BG-005', name: 'Hoàng Văn E', phone: '0944 555 666', email: 'hoangvane@email.com', idCard: '001234567894', seat: 'C01', trip: 'HN → HP', time: '14:00', pickup: 'Bến xe Giáp Bát', dropoff: 'Bến xe Hải Phòng', fare: '250.000đ', paymentStatus: 'Đã thanh toán', bookingDate: '03/06/2026', status: 'not_boarded', checkedInAt: null },
+  { id: 'BG-006', name: 'Vũ Thị F', phone: '0955 777 888', email: 'vuthif@email.com', idCard: '001234567895', seat: 'C02', trip: 'HN → HP', time: '14:00', pickup: 'Bến xe Giáp Bát', dropoff: 'Bến xe Hải Phòng', fare: '250.000đ', paymentStatus: 'Đã thanh toán', bookingDate: '01/06/2026', status: 'boarded', checkedInAt: '13:40' },
+  { id: 'BG-007', name: 'Đặng Văn G', phone: '0966 999 000', email: 'dangvang@email.com', idCard: '001234567896', seat: 'D01', trip: 'HN → HCM', time: '16:00', pickup: 'Bến xe Mỹ Đình', dropoff: 'Bến xe Miền Đông', fare: '450.000đ', paymentStatus: 'Đã thanh toán', bookingDate: '02/06/2026', status: 'boarded', checkedInAt: '15:30' },
+  { id: 'BG-008', name: 'Bùi Thị H', phone: '0977 123 456', email: 'buithih@email.com', idCard: '001234567897', seat: 'D02', trip: 'HN → HCM', time: '16:00', pickup: 'Bến xe Mỹ Đình', dropoff: 'Bến xe Miền Đông', fare: '450.000đ', paymentStatus: 'Đã thanh toán', bookingDate: '03/06/2026', status: 'not_boarded', checkedInAt: null }
 ]
 
 const INITIAL_SCAN_RESULTS = [
@@ -263,9 +262,19 @@ function TicketStatCard({ icon: Icon, label, value, color }) {
   )
 }
 
+function stopMediaStream(streamRef, videoRef) {
+  if (streamRef.current) {
+    streamRef.current.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+  }
+  if (videoRef?.current) {
+    videoRef.current.srcObject = null
+  }
+}
+
 function ScanView({ onGoPassengers }) {
   const [cameraOn, setCameraOn] = useState(true)
-  const [scanning, setScanning] = useState(true)
+  const [cameraError, setCameraError] = useState(false)
   const [showManualModal, setShowManualModal] = useState(false)
   const [manualCode, setManualCode] = useState('')
   const [scanResults, setScanResults] = useState(INITIAL_SCAN_RESULTS)
@@ -275,40 +284,45 @@ function ScanView({ onGoPassengers }) {
   const validCount = scanResults.filter((r) => r.valid).length
   const invalidCount = scanResults.filter((r) => !r.valid).length
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-      }
-      setCameraOn(true)
-      setScanning(true)
-    } catch {
-      setCameraOn(false)
-      setScanning(false)
-    }
-  }
-
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop())
-      streamRef.current = null
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-    setCameraOn(false)
-    setScanning(false)
-  }
-
   useEffect(() => {
+    if (!cameraOn) {
+      stopMediaStream(streamRef, videoRef)
+      return undefined
+    }
+
+    let cancelled = false
+    setCameraError(false)
+
+    const startCamera = async () => {
+      try {
+        stopMediaStream(streamRef, videoRef)
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        })
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
+        streamRef.current = stream
+        const video = videoRef.current
+        if (video) {
+          video.srcObject = stream
+          await video.play()
+        }
+      } catch {
+        if (!cancelled) {
+          setCameraError(true)
+        }
+      }
+    }
+
     startCamera()
-    return () => stopCamera()
-  }, [])
+
+    return () => {
+      cancelled = true
+      stopMediaStream(streamRef, videoRef)
+    }
+  }, [cameraOn])
 
   const addScanResult = (ticketId) => {
     const known = KNOWN_TICKETS[ticketId.trim().toUpperCase()] || KNOWN_TICKETS[ticketId.trim()]
@@ -317,7 +331,6 @@ function ScanView({ onGoPassengers }) {
       : { id: ticketId, name: 'Không xác định', route: '—', time: formatTime(), valid: false }
 
     setScanResults((prev) => [entry, ...prev].slice(0, 20))
-    setScanning(true)
   }
 
   const handleManualSubmit = (e) => {
@@ -329,11 +342,8 @@ function ScanView({ onGoPassengers }) {
   }
 
   const toggleCamera = () => {
-    if (cameraOn) {
-      stopCamera()
-    } else {
-      startCamera()
-    }
+    setCameraOn((prev) => !prev)
+    setCameraError(false)
   }
 
   return (
@@ -354,18 +364,25 @@ function ScanView({ onGoPassengers }) {
           </div>
 
           <div className="scan-viewport">
-            {cameraOn && (
-              <video ref={videoRef} playsInline muted aria-label="Camera quét QR" />
+            <video
+              ref={videoRef}
+              className={`scan-video${cameraOn && !cameraError ? ' scan-video--active' : ''}`}
+              playsInline
+              muted
+              autoPlay
+              aria-label="Camera quét QR"
+            />
+            {cameraOn && !cameraError && (
+              <div className="scan-frame">
+                <span className="scan-corner scan-corner-tl" />
+                <span className="scan-corner scan-corner-tr" />
+                <span className="scan-corner scan-corner-bl" />
+                <span className="scan-corner scan-corner-br" />
+                <span className="scan-line" />
+              </div>
             )}
-            <div className="scan-frame">
-              <span className="scan-corner scan-corner-tl" />
-              <span className="scan-corner scan-corner-tr" />
-              <span className="scan-corner scan-corner-bl" />
-              <span className="scan-corner scan-corner-br" />
-              {cameraOn && scanning && <span className="scan-line" />}
-            </div>
-            {cameraOn && scanning && (
-              <div className="scan-placeholder">
+            {cameraOn && !cameraError && (
+              <div className="scan-status-badge">
                 <div className="scan-spinner" />
                 <span>Đang quét...</span>
               </div>
@@ -374,6 +391,12 @@ function ScanView({ onGoPassengers }) {
               <div className="scan-placeholder">
                 <CameraOff size={32} style={{ marginBottom: 8 }} />
                 <span>Camera đã tắt</span>
+              </div>
+            )}
+            {cameraOn && cameraError && (
+              <div className="scan-placeholder">
+                <CameraOff size={32} style={{ marginBottom: 8 }} />
+                <span>Không thể truy cập camera</span>
               </div>
             )}
           </div>
@@ -458,6 +481,118 @@ function ScanView({ onGoPassengers }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function PassengerDetailModal({ passenger, onClose }) {
+  const isBoarded = passenger.status === 'boarded'
+
+  return (
+    <div className="ticket-staff-modal-backdrop" onClick={onClose}>
+      <div className="passenger-detail-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="passenger-detail-modal-header">
+          <div>
+            <h3>Chi tiết hành khách</h3>
+            <p className="passenger-detail-ticket-id">{passenger.id}</p>
+          </div>
+          <button type="button" className="passenger-detail-close" onClick={onClose} aria-label="Đóng">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="passenger-detail-avatar">
+          <span>{passenger.name.charAt(0)}</span>
+        </div>
+
+        <div className="passenger-detail-modal-body">
+          <div className="passenger-detail-section">
+            <h4>Thông tin cá nhân</h4>
+            <dl className="passenger-detail-list">
+              <div>
+                <dt>Họ tên</dt>
+                <dd>{passenger.name}</dd>
+              </div>
+              <div>
+                <dt>Số điện thoại</dt>
+                <dd>{passenger.phone}</dd>
+              </div>
+              <div>
+                <dt>Email</dt>
+                <dd>{passenger.email}</dd>
+              </div>
+              <div>
+                <dt>CCCD/CMND</dt>
+                <dd>{passenger.idCard}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="passenger-detail-section">
+            <h4>Thông tin vé & chuyến</h4>
+            <dl className="passenger-detail-list">
+              <div>
+                <dt>Mã vé</dt>
+                <dd>{passenger.id}</dd>
+              </div>
+              <div>
+                <dt>Chuyến</dt>
+                <dd>
+                  {passenger.trip} — {passenger.time}
+                </dd>
+              </div>
+              <div>
+                <dt>Ghế</dt>
+                <dd>{passenger.seat}</dd>
+              </div>
+              <div>
+                <dt>Điểm đón</dt>
+                <dd>{passenger.pickup}</dd>
+              </div>
+              <div>
+                <dt>Điểm trả</dt>
+                <dd>{passenger.dropoff}</dd>
+              </div>
+              <div>
+                <dt>Ngày đặt vé</dt>
+                <dd>{passenger.bookingDate}</dd>
+              </div>
+              <div>
+                <dt>Giá vé</dt>
+                <dd>{passenger.fare}</dd>
+              </div>
+              <div>
+                <dt>Thanh toán</dt>
+                <dd>{passenger.paymentStatus}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="passenger-detail-section">
+            <h4>Trạng thái soát vé</h4>
+            <dl className="passenger-detail-list">
+              <div>
+                <dt>Trạng thái lên xe</dt>
+                <dd>
+                  <span className={`status-pill ${isBoarded ? 'boarded' : 'not-boarded'}`}>
+                    {isBoarded ? 'Đã lên xe' : 'Chưa lên xe'}
+                  </span>
+                </dd>
+              </div>
+              <div>
+                <dt>Thời gian soát vé</dt>
+                <dd>{passenger.checkedInAt || '—'}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+
+        <div className="passenger-detail-modal-footer">
+          <button type="button" className="btn-cancel" onClick={onClose}>
+            Đóng
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -597,39 +732,7 @@ function PassengersView() {
       </div>
 
       {selectedPassenger && (
-        <div className="passenger-detail-panel">
-          <h4>Chi tiết hành khách — {selectedPassenger.id}</h4>
-          <div className="passenger-detail-grid">
-            <div>
-              <span>Họ tên: </span>
-              {selectedPassenger.name}
-            </div>
-            <div>
-              <span>SĐT: </span>
-              {selectedPassenger.phone}
-            </div>
-            <div>
-              <span>Ghế: </span>
-              {selectedPassenger.seat}
-            </div>
-            <div>
-              <span>Chuyến: </span>
-              {selectedPassenger.trip} {selectedPassenger.time}
-            </div>
-            <div>
-              <span>Trạng thái: </span>
-              {selectedPassenger.status === 'boarded' ? 'Đã lên xe' : 'Chưa lên xe'}
-            </div>
-          </div>
-          <button
-            type="button"
-            className="btn-detail-link"
-            style={{ marginTop: 12 }}
-            onClick={() => setSelectedPassenger(null)}
-          >
-            Đóng
-          </button>
-        </div>
+        <PassengerDetailModal passenger={selectedPassenger} onClose={() => setSelectedPassenger(null)} />
       )}
     </div>
   )

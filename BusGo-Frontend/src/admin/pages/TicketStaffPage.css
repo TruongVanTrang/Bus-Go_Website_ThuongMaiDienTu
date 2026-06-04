@@ -181,26 +181,35 @@
 
 .scan-viewport {
   position: relative;
-  aspect-ratio: 1;
-  max-height: 420px;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  min-height: 280px;
+  max-height: 480px;
   background: #0f172a;
   border-radius: 8px;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-.scan-viewport video {
+.scan-video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
+  display: none;
+  background: #0f172a;
+}
+
+.scan-video--active {
+  display: block;
 }
 
 .scan-frame {
   position: absolute;
   inset: 24px;
   pointer-events: none;
+  z-index: 2;
 }
 
 .scan-corner {
@@ -230,9 +239,33 @@
 }
 
 .scan-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   color: #94a3b8;
-  z-index: 1;
+  z-index: 2;
+  background: #0f172a;
+}
+
+.scan-status-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(15, 23, 42, 0.75);
+  border-radius: 20px;
+  color: #e2e8f0;
+  font-size: 13px;
+  z-index: 3;
+  pointer-events: none;
 }
 
 .scan-placeholder .scan-spinner {
@@ -649,29 +682,141 @@
   color: white;
 }
 
-.passenger-detail-panel {
-  margin-top: 20px;
-  padding: 16px;
-  background: rgba(59, 130, 246, 0.06);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 8px;
+.passenger-detail-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
 }
 
-.passenger-detail-panel h4 {
-  font-size: 16px;
+.passenger-detail-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.passenger-detail-modal-header h3 {
+  font-size: 18px;
   font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.passenger-detail-ticket-id {
+  font-size: 14px;
+  color: var(--primary-color);
+  font-weight: 600;
+  margin: 0;
+}
+
+.passenger-detail-close {
+  background: var(--light-bg);
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.passenger-detail-close:hover {
+  background: var(--border-color);
+  color: var(--text-dark);
+}
+
+.passenger-detail-avatar {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
+}
+
+.passenger-detail-avatar span {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.passenger-detail-modal-body {
+  overflow-y: auto;
+  padding: 8px 24px 20px;
+}
+
+.passenger-detail-section {
+  margin-bottom: 20px;
+}
+
+.passenger-detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.passenger-detail-section h4 {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
   margin-bottom: 12px;
 }
 
-.passenger-detail-grid {
+.passenger-detail-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px 24px;
+  gap: 10px;
+  margin: 0;
+}
+
+.passenger-detail-list > div {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 8px;
   font-size: 14px;
 }
 
-.passenger-detail-grid span {
+.passenger-detail-list dt {
   color: var(--text-muted);
+  font-weight: 500;
+  margin: 0;
+}
+
+.passenger-detail-list dd {
+  margin: 0;
+  color: var(--text-dark);
+  font-weight: 500;
+}
+
+.passenger-detail-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.passenger-detail-modal-footer .btn-cancel {
+  padding: 10px 24px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.passenger-detail-modal-footer .btn-cancel:hover {
+  background: var(--light-bg);
 }
 
 @media (max-width: 1024px) {

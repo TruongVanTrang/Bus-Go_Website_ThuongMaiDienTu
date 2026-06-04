@@ -217,6 +217,175 @@
   color: #6b7280;
 }
 
+/* Ticket Stub Style for E-Receipt */
+.ticket-stub {
+  position: relative;
+  background: white;
+  border: 1px solid #e2e8f0;
+}
+
+.ticket-stub::before, .ticket-stub::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #f8fafc; /* Matches parent card body or page bg */
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid #e2e8f0;
+  z-index: 10;
+}
+
+.ticket-stub::before {
+  left: -11px;
+}
+
+.ticket-stub::after {
+  right: -11px;
+}
+
+/* Image capture styles */
+.cargo-img-thumbnail {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.cargo-img-container {
+  position: relative;
+  display: inline-block;
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+.cargo-img-remove-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.cargo-img-remove-btn:hover {
+  background: #dc2626;
+}
+
+/* Camera modal overlay */
+.camera-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.camera-modal-content {
+  background: white;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 100%;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.camera-video-container {
+  background: black;
+  aspect-ratio: 16/9;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-mock-overlay {
+  position: absolute;
+  inset: 0;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: center;
+  z-index: 10;
+}
+
+/* Stamp Sec for approvals */
+.stamp-sec {
+  border-width: 2px;
+  border-style: solid;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-weight: bold;
+  font-size: 10px;
+  display: inline-block;
+  transform: rotate(-12deg);
+}
+
+.stamp-pending {
+  border-color: #cbd5e1;
+  color: #94a3b8;
+}
+
+.stamp-searching {
+  border-color: #93c5fd;
+  color: #3b82f6;
+}
+
+.stamp-approved {
+  border-color: #86efac;
+  color: #22c55e;
+}
+
+.stamp-rejected {
+  border-color: #fca5a5;
+  color: #ef4444;
+}
+
+.stamp-transit {
+  border-color: #c084fc;
+  color: #a855f7;
+}
+
+/* Service select button styles */
+.service-btn {
+  border: 2px solid #e5e7eb;
+  background: white;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.service-btn.active {
+  border-color: #0066cc;
+  background-color: #f0f7ff;
+}
+
+.service-btn:hover:not(.active) {
+  border-color: #cbd5e1;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .cargo-consignment-page {
@@ -280,3 +449,4 @@
     font-size: 1.1rem !important;
   }
 }
+

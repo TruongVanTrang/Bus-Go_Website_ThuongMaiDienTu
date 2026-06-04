@@ -56,21 +56,35 @@ export const checkInPassengerAPI = async (ticketId) => {
   }
 }
 
-// Lấy danh sách hàng hóa đi kèm của chuyến
+// Lấy danh sách hàng hóa theo chuyến xe
 export const getTripCargoAPI = async (tripId) => {
   try {
     const response = await axios.get(`${API_BASE_URL}/driver/trips/${tripId}/cargo`, getAuthHeaders())
     return response.data
   } catch (error) {
     console.error('Lỗi API getTripCargo:', error)
-    throw error.response?.data || { message: 'Lỗi kết nối máy chủ' }
+    throw error.response?.data || { message: 'Lỗi kết nối server' }
+  }
+}
+
+// Lấy danh sách hàng hóa (dành riêng cho xe tải)
+export const getTruckCargoAPI = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/driver/truck-cargo`, getAuthHeaders())
+    return response.data
+  } catch (error) {
+    console.error('Lỗi API getTruckCargo:', error)
+    throw error.response?.data || { message: 'Lỗi kết nối server' }
   }
 }
 
 // Cập nhật trạng thái kiện hàng
-export const updateCargoStatusAPI = async (cargoId, status) => {
+export const updateCargoStatusAPI = async (cargoId, status, imageUrl = null) => {
   try {
-    const response = await axios.put(`${API_BASE_URL}/driver/cargo/${cargoId}/status`, { status }, getAuthHeaders())
+    const payload = { status }
+    if (imageUrl) payload.imageUrl = imageUrl
+
+    const response = await axios.put(`${API_BASE_URL}/driver/cargo/${cargoId}/status`, payload, getAuthHeaders())
     return response.data
   } catch (error) {
     console.error('Lỗi API updateCargoStatus:', error)

@@ -6,6 +6,7 @@ const {
   getTripPassengers,
   checkInPassenger,
   getTripCargo,
+  getTruckCargo,
   updateCargoStatus
 } = require('../controllers/driverController');
 
@@ -19,6 +20,7 @@ router.put('/trips/:tripId/status', updateTripStatus);
 router.get('/trips/:tripId/passengers', getTripPassengers);
 router.put('/passengers/:ticketId/check-in', checkInPassenger);
 router.get('/trips/:tripId/cargo', getTripCargo);
+router.get('/truck-cargo', getTruckCargo);
 router.put('/cargo/:cargoId/status', updateCargoStatus);
 
 module.exports = router;

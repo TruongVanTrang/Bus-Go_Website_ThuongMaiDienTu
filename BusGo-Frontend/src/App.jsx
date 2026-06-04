@@ -27,6 +27,9 @@ import VehiclesPage from './admin/pages/VehiclesPage'
 import RoutesPage from './admin/pages/RoutesPage'
 import SchedulesPage from './admin/pages/SchedulesPage'
 import ReportsPage from './admin/pages/ReportsPage'
+import DriverCargoPage from './admin/pages/DriverCargoPage'
+import SupportCargoPage from './admin/pages/SupportCargoPage'
+import TicketStaffPage from './admin/pages/TicketStaffPage'
 
 // Driver Components
 import DriverDashboard from './driver/pages/DriverDashboard'
@@ -80,11 +83,25 @@ function App() {
         <Route path="/admin/schedules" element={<StaffProtectedRoute><SchedulesPage /></StaffProtectedRoute>} />
         <Route path="/admin/reports" element={<StaffProtectedRoute><ReportsPage /></StaffProtectedRoute>} />
 
+        {/* DRIVER ROUTES */}
+        <Route path="/admin/driver/cargo" element={<StaffProtectedRoute><DriverCargoPage defaultTab="cargo" /></StaffProtectedRoute>} />
+        <Route path="/admin/driver/schedule" element={<StaffProtectedRoute><DriverCargoPage defaultTab="schedule" /></StaffProtectedRoute>} />
+        <Route path="/admin/driver/trip-status" element={<StaffProtectedRoute><DriverCargoPage defaultTab="trip-status" /></StaffProtectedRoute>} />
+
+        {/* TICKET STAFF ROUTES */}
+        <Route path="/admin/staff/scan" element={<StaffProtectedRoute><TicketStaffPage /></StaffProtectedRoute>} />
+        <Route path="/admin/staff/passengers" element={<StaffProtectedRoute><TicketStaffPage /></StaffProtectedRoute>} />
+
+        {/* SUPPORT STAFF ROUTES */}
+        <Route path="/admin/support/cargo-assign" element={<StaffProtectedRoute><SupportCargoPage defaultTab="cargo-assign" /></StaffProtectedRoute>} />
+        <Route path="/admin/support/lookup" element={<StaffProtectedRoute><SupportCargoPage defaultTab="lookup" /></StaffProtectedRoute>} />
+        <Route path="/admin/support/refund" element={<StaffProtectedRoute><SupportCargoPage defaultTab="refund" /></StaffProtectedRoute>} />
+
         {/* ==================== DRIVER ROUTES ==================== */}
         <Route
           path="/driver/dashboard"
           element={
-            <RoleProtectedRoute allowedRoles={[USER_ROLES.DRIVER]}>
+            <RoleProtectedRoute allowedRoles={[USER_ROLES.DRIVER, USER_ROLES.TRUCK_DRIVER]}>
               <DriverDashboard />
             </RoleProtectedRoute>
           }

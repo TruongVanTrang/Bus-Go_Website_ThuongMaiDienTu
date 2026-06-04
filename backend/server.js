@@ -9,7 +9,6 @@ const tripRoutes = require('./routes/tripRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const cargoRoutes = require('./routes/cargoRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
-const feedbackRoutes = require('./routes/feedbackRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const driverRoutes = require('./routes/driverRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -18,7 +17,8 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json()); // Parse JSON body
+app.use(express.json({ limit: '50mb' })); // Parse JSON body with increased limit for images
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Connect Database
 connectDB();
@@ -30,7 +30,6 @@ app.use('/api/trips', tripRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/cargo', cargoRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);

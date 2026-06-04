@@ -114,7 +114,9 @@ export const AuthUtil = {
 
   // Get current user role
   getCurrentRole: () => {
-    return StorageUtil.getRole()
+    const role = StorageUtil.getRole()
+    if (!role) return null
+    return role.toUpperCase().replace('-', '_')
   },
 
   // Check if user has specific role(s)

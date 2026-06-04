@@ -39,4 +39,10 @@ router.get('/analytics/revenue', protect, admin, analyticsController.getRevenue)
 router.get('/analytics/routes', protect, admin, analyticsController.getRouteAnalytics);
 router.get('/analytics/ratings', protect, admin, analyticsController.getRatings);
 
+// Quản lý Sự cố và Thông báo Admin
+router.get('/incidents', protect, admin, adminController.getIncidents);
+router.put('/incidents/:id/resolve', protect, admin, adminController.resolveIncident);
+router.get('/notifications', protect, admin, adminController.getAdminNotifications);
+router.put('/notifications/mark-read', protect, admin, adminController.markAdminNotificationsAsRead);
+
 module.exports = router;

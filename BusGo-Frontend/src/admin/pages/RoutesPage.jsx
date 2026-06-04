@@ -21,7 +21,9 @@ function RoutesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [formError, setFormError] = useState('');
-  const [form, setForm] = useState({ diemDi: '', diemDen: '', loaiDichVu: 'city', khoangCach: '', danhSachTramDung: '' });
+  const [form, setForm] = useState({ diemDi: '', diemDen: '', loaiDichVu: 'city', khoangCach: '' });
+  const [tramDungArray, setTramDungArray] = useState([]);
+  const [newTramDung, setNewTramDung] = useState({ name: '', time: '', type: 'stop' });
 
   useEffect(() => {
     const role = AuthUtil.getCurrentRole();
@@ -44,7 +46,9 @@ function RoutesPage() {
 
   const openAdd = () => {
     setEditRoute(null);
-    setForm({ diemDi: '', diemDen: '', loaiDichVu: 'city', khoangCach: '', danhSachTramDung: '' });
+    setForm({ diemDi: '', diemDen: '', loaiDichVu: 'city', khoangCach: '' });
+    setTramDungArray([]);
+    setNewTramDung({ name: '', time: '', type: 'stop' });
     setFormError(''); setShowModal(true);
   };
 
@@ -52,20 +56,41 @@ function RoutesPage() {
     setEditRoute(r);
     setForm({
       diemDi: r.diemDi, diemDen: r.diemDen, loaiDichVu: r.loaiDichVu,
-      khoangCach: r.khoangCach || '',
-      danhSachTramDung: r.danhSachTramDung ? JSON.stringify(JSON.parse(r.danhSachTramDung), null, 2) : ''
+      khoangCach: r.khoangCach || ''
     });
+    const tramDung = r.danhSachTramDung ? JSON.parse(r.danhSachTramDung) : [];
+    setTramDungArray(tramDung);
+    setNewTramDung({ name: '', time: '', type: 'stop' });
     setFormError(''); setShowModal(true);
+  };
+
+  const addTramDung = () => {
+    if (!newTramDung.name || !newTramDung.time) {
+      setFormError('Vui lòng nhập tên trạm và giờ');
+      return;
+    }
+    setTramDungArray([...tramDungArray, newTramDung]);
+    setNewTramDung({ name: '', time: '', type: 'stop' });
+    setFormError('');
+  };
+
+  const removeTramDung = (index) => {
+    setTramDungArray(tramDungArray.filter((_, i) => i !== index));
+  };
+
+  const updateTramDung = (index, field, value) => {
+    const updated = [...tramDungArray];
+    updated[index] = { ...updated[index], [field]: value };
+    setTramDungArray(updated);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setFormError('');
-    let tramDung = null;
-    if (form.danhSachTramDung) {
-      try { tramDung = JSON.parse(form.danhSachTramDung); }
-      catch { setFormError('Danh sách trạm dừng không đúng định dạng JSON'); return; }
+    if (!form.diemDi || !form.diemDen) {
+      setFormError('Vui lòng nhập điểm đi và điểm đến');
+      return;
     }
-    const payload = { diemDi: form.diemDi, diemDen: form.diemDen, loaiDichVu: form.loaiDichVu, khoangCach: Number(form.khoangCach) || null, danhSachTramDung: tramDung };
+    const payload = { diemDi: form.diemDi, diemDen: form.diemDen, loaiDichVu: form.loaiDichVu, khoangCach: Number(form.khoangCach) || null, danhSachTramDung: tramDungArray.length > 0 ? tramDungArray : null };
     try {
       setSubmitting(true);
       if (editRoute) {
@@ -95,7 +120,7 @@ function RoutesPage() {
 
   return (
     <div className="admin-dashboard">
-      <AdminSidebar isOpen={sidebarOpen} userRole={userRole} menuItems={menuItems} onClose={() => setSidebarOpen(false)} />
+      <AdminSidebar isOpen={sidebarOpen} userRole={userRole} userName={userName} menuItems={menuItems} onClose={() => setSidebarOpen(false)} />
       <div className="admin-main">
         <AdminTopbar userName={userName} userRole={userRole} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         <main className="admin-content">
@@ -139,7 +164,7 @@ function RoutesPage() {
       </div>
 
       {showModal && (
-        <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setShowModal(false)}>
+        <div className="modal show d-block" onClick={() => setShowModal(false)}>
           <div className="modal-dialog modal-lg" onClick={e => e.stopPropagation()}>
             <div className="modal-content">
               <div className="modal-header">
@@ -170,10 +195,85 @@ function RoutesPage() {
                       <input className="form-control" type="number" value={form.khoangCach} onChange={e => setForm({...form, khoangCach: e.target.value})} placeholder="300" />
                     </div>
                     <div className="col-12">
-                      <label className="form-label fw-semibold">Danh sách trạm dừng (JSON)</label>
-                      <textarea className="form-control" rows={4} value={form.danhSachTramDung} onChange={e => setForm({...form, danhSachTramDung: e.target.value})}
-                        placeholder='[{"name":"Điểm đi","time":"08:00","type":"start"},{"name":"Điểm đến","time":"13:00","type":"end"}]' />
-                      <small className="text-muted">Định dạng: mảng JSON với các trường name, time, type</small>
+                      <label className="form-label fw-semibold">📍 Danh sách trạm dừng</label>
+                      <div style={{ border: '1px solid #ddd', borderRadius: '4px', padding: '12px', marginBottom: '12px', maxHeight: '300px', overflowY: 'auto' }}>
+                        {tramDungArray.length === 0 ? (
+                          <p className="text-muted mb-0">Chưa có trạm dừng nào</p>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {tramDungArray.map((tram, idx) => (
+                              <div key={idx} style={{ border: '1px solid #e0e0e0', borderRadius: '4px', padding: '10px', backgroundColor: '#f9f9f9' }}>
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                  <input
+                                    type="text"
+                                    className="form-control form-control-sm"
+                                    placeholder="Tên trạm"
+                                    value={tram.name}
+                                    onChange={(e) => updateTramDung(idx, 'name', e.target.value)}
+                                  />
+                                  <input
+                                    type="time"
+                                    className="form-control form-control-sm"
+                                    value={tram.time}
+                                    onChange={(e) => updateTramDung(idx, 'time', e.target.value)}
+                                    style={{ maxWidth: '120px' }}
+                                  />
+                                  <select
+                                    className="form-select form-select-sm"
+                                    value={tram.type}
+                                    onChange={(e) => updateTramDung(idx, 'type', e.target.value)}
+                                    style={{ maxWidth: '120px' }}
+                                  >
+                                    <option value="start">Điểm đi</option>
+                                    <option value="stop">Trạm dừng</option>
+                                    <option value="end">Điểm đến</option>
+                                  </select>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() => removeTramDung(idx)}
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div style={{ border: '1px dashed #3b82f6', borderRadius: '4px', padding: '12px', backgroundColor: '#f0f7ff' }}>
+                        <label className="form-label fw-semibold mb-2">Thêm trạm mới</label>
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                          <input
+                            type="text"
+                            className="form-control form-control-sm"
+                            placeholder="Tên trạm"
+                            value={newTramDung.name}
+                            onChange={(e) => setNewTramDung({...newTramDung, name: e.target.value})}
+                          />
+                          <input
+                            type="time"
+                            className="form-control form-control-sm"
+                            value={newTramDung.time}
+                            onChange={(e) => setNewTramDung({...newTramDung, time: e.target.value})}
+                            style={{ maxWidth: '120px' }}
+                          />
+                          <select
+                            className="form-select form-select-sm"
+                            value={newTramDung.type}
+                            onChange={(e) => setNewTramDung({...newTramDung, type: e.target.value})}
+                            style={{ maxWidth: '120px' }}
+                          >
+                            <option value="start">Điểm đi</option>
+                            <option value="stop">Trạm dừng</option>
+                            <option value="end">Điểm đến</option>
+                          </select>
+                        </div>
+                        <button type="button" className="btn btn-sm btn-primary w-100" onClick={addTramDung}>
+                          + Thêm trạm
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

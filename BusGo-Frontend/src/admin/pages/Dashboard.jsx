@@ -4,6 +4,7 @@ import { AuthUtil, StorageUtil } from '@/utils/helpers'
 import { ROLE_MENU, USER_ROLES } from '@/utils/constants'
 import AdminSidebar from '../components/AdminSidebar'
 import AdminTopbar from '../components/AdminTopbar'
+import TicketStaffPage from './TicketStaffPage'
 import '../pages/AdminDashboard.css'
 
 /**
@@ -40,6 +41,10 @@ function AdminDashboard() {
         </div>
       </div>
     )
+  }
+
+  if (userRole === USER_ROLES.TICKET_STAFF) {
+    return <TicketStaffPage />
   }
 
   const menuItems = ROLE_MENU[userRole] || []

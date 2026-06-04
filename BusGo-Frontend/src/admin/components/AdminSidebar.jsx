@@ -105,6 +105,7 @@ function getMenuIcon(iconName) {
     calendar: '📅',
     road: '🛣️',
     qrcode: '📱',
+    clipboard: '📋',
     search: '🔍',
     undo: '↩️'
   }

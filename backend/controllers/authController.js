@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sql } = require('../config/db');
-const emailService = require('../config/emailService');
+const emailService = require('../utils/emailService');
 
 const otpStore = {}; // Lưu trữ OTP tạm thời: { [email]: { code, expiresAt } }
 
@@ -233,5 +233,6 @@ module.exports = {
   register,
   login,
   sendOTP,
-  verifyOTP
+  verifyOTP,
+  otpStore
 };

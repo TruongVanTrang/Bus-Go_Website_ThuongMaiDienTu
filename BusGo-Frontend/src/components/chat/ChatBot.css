@@ -2,7 +2,7 @@
 .chat-button {
   position: fixed;
   bottom: 2rem;
-  right: 2rem;
+  left: 2rem;
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -36,7 +36,7 @@
 .chat-window {
   position: fixed;
   bottom: 80px;
-  right: 2rem;
+  left: 2rem;
   width: 380px;
   height: 600px;
   background-color: white;
@@ -240,7 +240,7 @@
 
   .chat-button {
     bottom: 1.5rem;
-    right: 1.5rem;
+    left: 1.5rem;
   }
 
   .message-content {

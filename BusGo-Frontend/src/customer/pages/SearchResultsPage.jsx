@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import TripCard from '../../components/search/TripCard'
 import SearchFilters from '../../components/search/SearchFilters'
-import { BUS_TYPES } from '../../utils/constants'
 import { searchTrips } from '../../services/tripService'
-import './SearchResultsPage.css'
+import { FiRefreshCw, FiSearch, FiAlertTriangle, FiLoader } from 'react-icons/fi'
 
 export default function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -27,11 +26,11 @@ export default function SearchResultsPage() {
     departureDate: searchParams.get('date') || ''
   })
 
-  // (Hooks removed to prevent infinite re-rendering loops)
-  // Filters state is now managed purely internally and initialized from router state/searchParams on mount.
-
   // Fetch matching trips from backend API when core filters change
   useEffect(() => {
+    // Luôn xóa bản nháp khi người dùng quay lại trang tìm kiếm để không bị dính trạng thái cũ
+    sessionStorage.removeItem('bookingDraft')
+
     const fetchTrips = async () => {
       setLoading(true)
       setError(null)
@@ -72,37 +71,25 @@ export default function SearchResultsPage() {
   // Client-side filtration for price, amenities, vehicle types, and departure times
   useEffect(() => {
     let filtered = trips.filter(trip => {
-      // Core route verification (safeguard)
-      if (filters.from && trip.from !== filters.from) {
-        return false
-      }
-      if (filters.to && trip.to !== filters.to) {
-        return false
-      }
+      // Core route verification
+      if (filters.from && trip.from !== filters.from) return false
+      if (filters.to && trip.to !== filters.to) return false
 
       // Price filter
-      if (trip.price < filters.priceRange[0] || trip.price > filters.priceRange[1]) {
-        return false
-      }
+      if (trip.price < filters.priceRange[0] || trip.price > filters.priceRange[1]) return false
 
       // Bus type filter
       if (filters.busType && filters.busType !== '') {
-        if (trip.busType !== filters.busType) {
-          return false
-        }
+        if (trip.busType !== filters.busType) return false
       }
 
       // Amenities filter
       if (filters.amenities && filters.amenities.length > 0) {
-        const hasAllAmenities = filters.amenities.every(amenity =>
-          trip.amenities.includes(amenity)
-        )
-        if (!hasAllAmenities) {
-          return false
-        }
+        const hasAllAmenities = filters.amenities.every(amenity => trip.amenities.includes(amenity))
+        if (!hasAllAmenities) return false
       }
 
-      // Departure time filter - Categorized slots
+      // Departure time filter
       if (filters.departureTime && filters.departureTime !== '') {
         const hour = parseInt(trip.departureTime.split(':')[0])
         
@@ -122,14 +109,10 @@ export default function SearchResultsPage() {
         const range = timeRanges[filters.departureTime]
         if (range) {
           if (range.start < range.end) {
-            if (hour < range.start || hour >= range.end) {
-              return false
-            }
+            if (hour < range.start || hour >= range.end) return false
           } else {
             // Night time (22:00-04:00)
-            if (hour < range.start && hour >= range.end) {
-              return false
-            }
+            if (hour < range.start && hour >= range.end) return false
           }
         }
       }
@@ -146,41 +129,50 @@ export default function SearchResultsPage() {
   }, [filters, navigate])
 
   return (
-    <div className="search-results-page">
-      <div className="container-fluid px-md-5 px-3 pb-5 pt-3">
-        <div className="row g-4">
+    <div className="min-h-screen bg-slate-50 py-16 px-4 sm:px-8 md:px-16">
+      <div className="max-w-[1400px] mx-auto">
+        
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 xl:gap-10">
+          
           {/* Filters Sidebar - Left Column */}
-          <div className="col-md-3">
-            <div className="sticky-top" style={{ top: '80px' }}>
-              <SearchFilters filters={filters} setFilters={setFilters} />
-            </div>
+          <div className="lg:col-span-3">
+            <SearchFilters filters={filters} setFilters={setFilters} />
           </div>
 
           {/* Results - Right Column */}
-          <div className="col-md-9">
-            <div className="mb-4">
-              <h2 className="text-neutral-900 fw-bold">
-                Kết quả tìm kiếm
-              </h2>
-              <p className="text-muted">
-                {loading ? 'Đang tải dữ liệu...' : `${filteredTrips.length} chuyến xe được tìm thấy`}
-              </p>
+          <div className="lg:col-span-7">
+            
+            <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-black text-slate-900 mb-2">Kết quả tìm kiếm</h1>
+                <p className="text-slate-500 font-medium">
+                  {loading ? 'Đang phân tích dữ liệu chuyến xe...' : `Tìm thấy ${filteredTrips.length} chuyến xe phù hợp`}
+                </p>
+              </div>
             </div>
 
             {loading ? (
-              <div className="d-flex flex-column align-items-center justify-content-center py-5">
-                <div className="spinner-border mb-3" role="status" style={{ width: '3rem', height: '3rem', color: 'var(--color-primary-600)' }}>
-                  <span className="visually-hidden">Đang tải...</span>
-                </div>
-                <h5 className="text-muted">Đang tìm kiếm chuyến xe tốt nhất cho bạn...</h5>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 flex flex-col items-center justify-center text-center">
+                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <h3 className="text-lg font-bold text-slate-900">Đang tìm kiếm chuyến xe tốt nhất...</h3>
+                <p className="text-slate-500 mt-2">Vui lòng đợi trong giây lát</p>
               </div>
             ) : error ? (
-              <div className="alert alert-danger text-center py-5">
-                <h5 className="mb-3">⚠️ Đã xảy ra lỗi</h5>
-                <p className="text-muted">{error}</p>
+              <div className="bg-red-50 rounded-2xl border border-red-100 p-12 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mb-4">
+                  <FiAlertTriangle size={32} />
+                </div>
+                <h3 className="text-lg font-bold text-red-700 mb-2">Đã xảy ra sự cố</h3>
+                <p className="text-red-500 font-medium">{error}</p>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="mt-6 px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors"
+                >
+                  Thử lại
+                </button>
               </div>
             ) : filteredTrips.length > 0 ? (
-              <div className="d-flex flex-column gap-3">
+              <div className="space-y-4">
                 {filteredTrips.map(trip => (
                   <TripCard
                     key={trip.id}
@@ -190,13 +182,13 @@ export default function SearchResultsPage() {
                 ))}
               </div>
             ) : (
-              <div className="alert alert-warning text-center py-5">
-                <h5 className="mb-3">
-                  <span style={{ fontSize: '24px', marginRight: '8px' }}>🔍</span>
-                  Không tìm thấy chuyến xe phù hợp
-                </h5>
-                <p className="text-muted mb-4">
-                  Hãy thử thay đổi các bộ lọc hoặc tiêu chí tìm kiếm khác
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 flex flex-col items-center justify-center text-center">
+                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                  <FiSearch size={40} className="text-slate-300" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">Không tìm thấy chuyến xe nào</h3>
+                <p className="text-slate-500 max-w-md mx-auto mb-8">
+                  Không có chuyến xe nào khớp với tiêu chí tìm kiếm của bạn. Hãy thử thay đổi bộ lọc, chọn thời gian khác hoặc điểm đến khác.
                 </p>
                 <button
                   onClick={() => {
@@ -211,21 +203,16 @@ export default function SearchResultsPage() {
                       departureDate: filters.departureDate
                     })
                   }}
-                  className="btn"
-                  style={{
-                    backgroundColor: 'var(--color-primary-600)',
-                    color: 'white',
-                    border: 'none',
-                    padding: '0.75rem 2rem',
-                    fontWeight: '600'
-                  }}
+                  className="px-6 py-3 bg-slate-900 hover:bg-blue-600 text-white font-bold rounded-xl flex items-center gap-2 transition-colors shadow-sm"
                 >
-                  ↺ Làm mới các bộ lọc
+                  <FiRefreshCw /> Làm mới bộ lọc
                 </button>
               </div>
             )}
+            
           </div>
         </div>
+
       </div>
     </div>
   )

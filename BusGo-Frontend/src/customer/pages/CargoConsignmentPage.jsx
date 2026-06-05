@@ -11,6 +11,40 @@ import './CargoConsignmentPage.css'
 export default function CargoConsignmentPage() {
   const navigate = useNavigate()
   const location = useLocation()
+
+  // Tự động load dữ liệu từ Đặt lại đơn
+  useEffect(() => {
+    if (location.state && location.state.reorderData) {
+      const c = location.state.reorderData;
+      setServiceType(c.loaiDichVu || 'van_tai');
+      if (c.loaiDichVu === 'gui_kem') setSelectedTripId(c.maChuyenXe);
+      if (c.loaiDichVu === 'van_tai') setSelectedTruckType(c.loaiXeVanTai || 'truck_10t');
+      
+      setRouteData({
+        from: c.diemGui || '',
+        to: c.diemNhan || '',
+        date: '', // Khách hàng phải tự chọn lại ngày
+        senderAddress: c.diaChiGuiChiTiet || '',
+        receiverAddress: c.diaChiNhanChiTiet || ''
+      });
+      
+      setCargoData({
+        type: c.loaiHangHoa || 'documents',
+        weight: c.trongLuong || '',
+        quantity: c.soLuong || 1,
+        images: c.hinhAnh || []
+      });
+      
+      setPersonData({
+        senderName: c.tenNguoiGui || '',
+        senderPhone: c.soDienThoaiNguoiGui || '',
+        senderCCCD: c.soCCCD || '',
+        senderEmail: c.emailNguoiGui || '',
+        receiverName: c.tenNguoiNhan || '',
+        receiverPhone: c.soDienThoaiNguoiNhan || ''
+      });
+    }
+  }, [location.state]);
   const [isEditingMode, setIsEditingMode] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const canvasRef = useRef(null)

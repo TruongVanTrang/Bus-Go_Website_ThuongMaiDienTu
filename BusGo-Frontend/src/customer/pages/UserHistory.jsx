@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FiHeart, FiTrash2, FiMapPin, FiClock, FiDollarSign, FiX, FiDownload, FiBell, FiCheckCircle, FiLoader, FiStar, FiPackage, FiTruck, FiCheckSquare, FiAlertTriangle } from 'react-icons/fi'
+import { FiHeart, FiTrash2, FiMapPin, FiClock, FiDollarSign, FiX, FiDownload, FiBell, FiCheckCircle, FiLoader, FiStar, FiPackage, FiTruck, FiCheckSquare, FiAlertTriangle, FiRefreshCw } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode.react'
 import { StorageUtil } from '../../utils/helpers'
@@ -298,7 +298,8 @@ export default function UserHistory() {
       'pending': { ...baseStyle, backgroundColor: '#f59e0b', text: 'Chờ xác nhận', icon: FiClock },
       'confirmed': { ...baseStyle, backgroundColor: '#3b82f6', text: 'Đã xác nhận', icon: FiCheckSquare },
       'in_transit': { ...baseStyle, backgroundColor: '#8b5cf6', text: 'Đang vận chuyển', icon: FiTruck },
-      'delivered': { ...baseStyle, backgroundColor: '#10b981', text: 'Đã giao', icon: FiCheckCircle }
+      'delivered': { ...baseStyle, backgroundColor: '#10b981', text: 'Đã giao', icon: FiCheckCircle },
+      'cancelled': { ...baseStyle, backgroundColor: '#ef4444', text: 'Đã hủy', icon: FiX }
     }
     
     return statusMap[status] || statusMap['pending']
@@ -718,7 +719,7 @@ export default function UserHistory() {
             </div>
 
             {filteredConsignments.length > 0 ? (
-              <div className="consignments-list grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+              <div className="consignments-list row g-4 mt-2">
                 {filteredConsignments.map(consignment => {
                   const statusBadge = getCargoStatusBadgeInfo(consignment.cargoStatus)
                   const cargoTypeMap = {
@@ -729,7 +730,8 @@ export default function UserHistory() {
                   }
                   
                   return (
-                    <div key={consignment.id} className="consignment-card" style={{ border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1rem', }}>
+                    <div key={consignment.id} className="col-12 col-md-6 col-lg-4">
+                      <div className={`consignment-card ${consignment.isEdited ? 'edited-glow' : ''}`} style={{ border: consignment.cargoStatus === 'cancelled' ? '2px solid #ef4444' : consignment.isEdited ? '2px solid #f59e0b' : '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1rem', height: '100%' }}>
                       {/* Status Badge */}
                       <div className="status-badge" style={statusBadge}>
                         {statusBadge.text}
@@ -812,9 +814,34 @@ export default function UserHistory() {
                             <FiPackage size={14} className="me-1" />
                             Xem chi tiết
                           </button>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => {
+                              navigate('/cargo-consignment', { 
+                                state: { 
+                                  reorderData: {
+                                    loaiDichVu: 'van_tai',
+                                    diemGui: consignment.from,
+                                    diemNhan: consignment.to,
+                                    tenNguoiGui: consignment.senderName,
+                                    soDienThoaiNguoiGui: consignment.senderPhone,
+                                    tenNguoiNhan: consignment.receiverName,
+                                    soDienThoaiNguoiNhan: consignment.receiverPhone,
+                                    loaiHangHoa: consignment.type,
+                                    trongLuong: consignment.weight,
+                                    giaTriKhaiGia: consignment.declaredValue,
+                                  } 
+                                } 
+                              })
+                            }}
+                          >
+                            <FiRefreshCw size={14} className="me-1" />
+                            Đặt lại
+                          </button>
                         </div>
                       </div>
                     </div>
+                  </div>
                   )
                 })}
               </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { FiCheckCircle, FiArrowRight, FiDownload, FiEdit2, FiAlertCircle, FiCamera, FiUpload, FiTrash2, FiPrinter, FiX, FiLock, FiInfo } from 'react-icons/fi'
+import { FiCheckCircle, FiArrowRight, FiDownload, FiEdit2, FiAlertCircle, FiCamera, FiUpload, FiTrash2, FiPrinter, FiX, FiLock, FiInfo, FiClock } from 'react-icons/fi'
 import { MdDirectionsBus, MdLocalShipping, MdCreditCard } from 'react-icons/md'
 import QRCode from 'qrcode.react'
 import Stepper from '../../components/common/Stepper'
@@ -495,12 +495,10 @@ export default function CargoConsignmentPage() {
         }
 
         setTimeout(() => {
-          navigate('/cargo-payment', {
-            state: {
-              activeConsignmentId: savedId,
-              activeConsignment: fullConsignment
-            }
-          })
+          setConfirmLoading(false)
+          setActiveConsignmentId(savedId)
+          setActiveConsignment(fullConsignment)
+          setCurrentStep(5)
         }, 800)
       } else {
         const errData = await response.json()
@@ -1580,78 +1578,109 @@ export default function CargoConsignmentPage() {
                         <span className="text-3xl">💳</span> Thanh Toán Cước Vận Chuyển
                       </h4>
                       
-                      {/* Payment Choice */}
-                      <div className="mb-8">
-                        <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Phương thức thanh toán</label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'momo' ? 'border-pink-500 bg-pink-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-pink-300 hover:shadow-sm'}`}>
-                            <input
-                              type="radio"
-                              name="pay-waiting"
-                              value="momo"
-                              className="w-5 h-5 text-pink-600 focus:ring-pink-500 border-slate-300"
-                              checked={selectedPaymentMethod === 'momo'}
-                              onChange={() => setSelectedPaymentMethod('momo')}
-                            />
-                            <div>
-                              <strong className="text-slate-800 text-base block mb-0.5">📱 Ví Điện Tử MoMo</strong>
-                              <span className="text-xs text-slate-500">Trả qua app MoMo</span>
-                            </div>
-                            {selectedPaymentMethod === 'momo' && <div className="absolute top-4 right-4 text-pink-500"><FiCheckCircle size={20} /></div>}
-                          </label>
+                      {['dang_cho_xac_nhan', 'dang_tim_xe_trong', 'pending'].includes(consignmentStatus) ? (
+                        <div className="pt-8 border-t border-slate-100 flex flex-col items-center gap-4 text-center">
+                          <div className="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mb-2">
+                            <FiClock size={32} />
+                          </div>
+                          <strong className="text-amber-600 text-xl font-black tracking-tight">Đang Chờ Phê Duyệt</strong>
+                          <p className="text-slate-500 max-w-md">
+                            Đơn hàng của bạn đã được gửi thành công và đang chờ xác nhận từ {serviceType === 'gui_kem' ? 'tài xế' : 'nhân viên điều phối'}. Bạn sẽ nhận được thông báo ngay khi đơn hàng được duyệt để tiến hành thanh toán.
+                          </p>
+                          <div className="flex gap-4 mt-4">
+                            <button
+                              type="button"
+                              className="bg-white border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-bold px-6 py-3 rounded-xl transition-all"
+                              onClick={handleCancelConsignment}
+                              disabled={paymentLoading}
+                            >
+                              Hủy Đơn
+                            </button>
+                            <button
+                              type="button"
+                              className="bg-emerald-50 text-emerald-600 border-2 border-emerald-200 hover:bg-emerald-100 font-bold px-8 py-3 rounded-xl transition-all"
+                              onClick={() => navigate('/history')}
+                            >
+                              Về Lịch Sử
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Payment Choice */}
+                          <div className="mb-8">
+                            <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Phương thức thanh toán</label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'momo' ? 'border-pink-500 bg-pink-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-pink-300 hover:shadow-sm'}`}>
+                                <input
+                                  type="radio"
+                                  name="pay-waiting"
+                                  value="momo"
+                                  className="w-5 h-5 text-pink-600 focus:ring-pink-500 border-slate-300"
+                                  checked={selectedPaymentMethod === 'momo'}
+                                  onChange={() => setSelectedPaymentMethod('momo')}
+                                />
+                                <div>
+                                  <strong className="text-slate-800 text-base block mb-0.5">📱 Ví Điện Tử MoMo</strong>
+                                  <span className="text-xs text-slate-500">Trả qua app MoMo</span>
+                                </div>
+                                {selectedPaymentMethod === 'momo' && <div className="absolute top-4 right-4 text-pink-500"><FiCheckCircle size={20} /></div>}
+                              </label>
 
-                          <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'visa' ? 'border-blue-500 bg-blue-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}>
-                            <input
-                              type="radio"
-                              name="pay-waiting"
-                              value="visa"
-                              className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-slate-300"
-                              checked={selectedPaymentMethod === 'visa'}
-                              onChange={() => setSelectedPaymentMethod('visa')}
-                            />
-                            <div>
-                              <strong className="text-slate-800 text-base block mb-0.5">💳 Thẻ Visa/Mastercard</strong>
-                              <span className="text-xs text-slate-500">Cổng thanh toán thẻ quốc tế</span>
+                              <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'visa' ? 'border-blue-500 bg-blue-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}>
+                                <input
+                                  type="radio"
+                                  name="pay-waiting"
+                                  value="visa"
+                                  className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-slate-300"
+                                  checked={selectedPaymentMethod === 'visa'}
+                                  onChange={() => setSelectedPaymentMethod('visa')}
+                                />
+                                <div>
+                                  <strong className="text-slate-800 text-base block mb-0.5">💳 Thẻ Visa/Mastercard</strong>
+                                  <span className="text-xs text-slate-500">Cổng thanh toán thẻ quốc tế</span>
+                                </div>
+                                {selectedPaymentMethod === 'visa' && <div className="absolute top-4 right-4 text-blue-500"><FiCheckCircle size={20} /></div>}
+                              </label>
                             </div>
-                            {selectedPaymentMethod === 'visa' && <div className="absolute top-4 right-4 text-blue-500"><FiCheckCircle size={20} /></div>}
-                          </label>
-                        </div>
-                      </div>
+                          </div>
 
-                      {/* Pay button */}
-                      <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                        <div className="text-center md:text-left">
-                          <span className="text-slate-400 text-[10px] font-bold block uppercase tracking-wider mb-1">Tổng số tiền cần thanh toán</span>
-                          <strong className="text-emerald-600 text-4xl font-black tracking-tight">{formatVND(getTotalPrice())}</strong>
-                        </div>
-                        <div className="flex gap-4 w-full md:w-auto">
-                          <button
-                            type="button"
-                            className="w-full md:w-auto bg-white border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-bold px-6 py-4 rounded-xl transition-all"
-                            onClick={handleCancelConsignment}
-                            disabled={paymentLoading}
-                          >
-                            Hủy Đơn
-                          </button>
-                          <button
-                            type="button"
-                            className="w-full md:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black px-8 py-4 rounded-xl shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5"
-                            disabled={paymentLoading}
-                            onClick={handlePaymentConfirm}
-                          >
-                            {paymentLoading ? (
-                              <>
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Đang giao dịch...
-                              </>
-                            ) : (
-                              <>
-                                <MdCreditCard size={16} /> {isEditingMode ? 'Cập nhật' : 'Thanh toán'} ngay
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
+                          {/* Pay button */}
+                          <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                            <div className="text-center md:text-left">
+                              <span className="text-slate-400 text-[10px] font-bold block uppercase tracking-wider mb-1">Tổng số tiền cần thanh toán</span>
+                              <strong className="text-emerald-600 text-4xl font-black tracking-tight">{formatVND(getTotalPrice())}</strong>
+                            </div>
+                            <div className="flex gap-4 w-full md:w-auto">
+                              <button
+                                type="button"
+                                className="w-full md:w-auto bg-white border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-bold px-6 py-4 rounded-xl transition-all"
+                                onClick={handleCancelConsignment}
+                                disabled={paymentLoading}
+                              >
+                                Hủy Đơn
+                              </button>
+                              <button
+                                type="button"
+                                className="w-full md:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black px-8 py-4 rounded-xl shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5"
+                                disabled={paymentLoading}
+                                onClick={handlePaymentConfirm}
+                              >
+                                {paymentLoading ? (
+                                  <>
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Đang giao dịch...
+                                  </>
+                                ) : (
+                                  <>
+                                    <MdCreditCard size={16} /> {isEditingMode ? 'Cập nhật' : 'Thanh toán'} ngay
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
 
                     </div>
                   )}

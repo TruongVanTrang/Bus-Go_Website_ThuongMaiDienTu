@@ -832,8 +832,14 @@ export default function UserHistory() {
                             <button
                               className="btn btn-success btn-sm"
                               onClick={() => {
-                                setPaymentConsignment(consignment)
-                                setShowPaymentModal(true)
+                                navigate('/cargo-payment', { 
+                                  state: { 
+                                    activeConsignment: {
+                                      id: consignment.rawBackendData?.maKyGui || consignment.id,
+                                      ...consignment.rawBackendData
+                                    }
+                                  } 
+                                })
                               }}
                             >
                               <FiDollarSign size={14} className="me-1" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
@@ -29,6 +29,7 @@ import {
   getTripCargoAPI, 
   getTruckCargoAPI,
   updateCargoStatusAPI 
+, uploadImageAPI
 } from '@/services/driverService'
 
 export default function DriverDashboard() {
@@ -81,6 +82,52 @@ export default function DriverDashboard() {
   const [incidentType, setIncidentType] = useState('Hỏng xe')
   const [incidentDesc, setIncidentDesc] = useState('')
   const [incidentLoc, setIncidentLoc] = useState('')
+
+  // File Upload Action State
+  const hiddenFileInputRef = useRef(null);
+  const [uploadingCargoId, setUploadingCargoId] = useState(null);
+  const [uploadTargetStatus, setUploadTargetStatus] = useState(null);
+  const [isCargoUploading, setIsCargoUploading] = useState(false);
+
+  const handleCargoButtonClick = (item, targetStatus) => {
+    setUploadingCargoId(item.id);
+    setUploadTargetStatus(targetStatus);
+    if (hiddenFileInputRef.current) {
+      hiddenFileInputRef.current.click();
+    }
+  };
+
+  const handleCargoFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !uploadingCargoId || !uploadTargetStatus) return;
+
+    setIsCargoUploading(true);
+    const toastId = toast.loading('Đang tải ảnh lên...');
+    try {
+      const uploadRes = await uploadImageAPI(file);
+      toast.dismiss(toastId);
+      
+      const item = cargo.find(c => c.id === uploadingCargoId);
+      if (item) {
+        await handleCargoStatusUpdate(
+          item.id,
+          uploadTargetStatus,
+          item.dbId,
+          item.isConsignment,
+          uploadRes.url
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      toast.dismiss(toastId);
+      toast.error('Lỗi khi tải ảnh: ' + (err.message || ''));
+    } finally {
+      setIsCargoUploading(false);
+      e.target.value = null; // reset input
+      setUploadingCargoId(null);
+      setUploadTargetStatus(null);
+    }
+  };
 
   // Cargo Detail Dialog State
   const [selectedCargoForDetail, setSelectedCargoForDetail] = useState(null)
@@ -771,6 +818,7 @@ export default function DriverDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans overflow-x-hidden antialiased">
+      <input type="file" accept="image/*" capture="environment" className="hidden" ref={hiddenFileInputRef} onChange={handleCargoFileChange} />
       
       {/* ==================== LEFT SIDEBAR ==================== */}
       <aside
@@ -2289,19 +2337,15 @@ window.addEventListener('message', function(e) {
                                                 <div className="flex flex-col items-end gap-1 w-full">
                                                   <span className="text-[10px] text-amber-600 font-bold block w-full text-right">Chờ đến nhận</span>
                                                   <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                      const fakeImage = prompt("Nhập URL hình ảnh xác nhận nhận hàng:", "https://example.com/pickup.jpg");
-                                                      if (fakeImage) {
-                                                        handleCargoStatusUpdate(item.id, 'APPROVED', item.dbId, true, fakeImage);
-                                                      }
-                                                    }}
-                                                    className="border-amber-200 text-amber-700 hover:bg-amber-50 h-8 text-xs px-2.5 rounded-lg"
-                                                  >
-                                                    <Camera className="h-3.5 w-3.5 mr-1" />
-                                                    Đã nhận
-                                                  </Button>
+                                                      variant="outline"
+                                                      size="sm"
+                                                      disabled={isCargoUploading && uploadingCargoId === item.id}
+                                                      onClick={() => handleCargoButtonClick(item, 'APPROVED')}
+                                                      className="border-amber-200 text-amber-700 hover:bg-amber-50 h-8 text-xs px-2.5 rounded-lg"
+                                                    >
+                                                      <Camera className="h-3.5 w-3.5 mr-1" />
+                                                      {isCargoUploading && uploadingCargoId === item.id ? 'Đang gửi...' : 'Đã nhận'}
+                                                    </Button>
                                                 </div>
                                               ) : (
                                                 <span className="text-[10px] text-slate-500 font-bold block w-full text-right">{currentUser.role === 'TRUCK_DRIVER' ? 'Đã thanh toán (Sẵn sàng nhận hàng)' : 'Đã thanh toán (Chờ xuất phát)'}</span>
@@ -2313,22 +2357,22 @@ window.addEventListener('message', function(e) {
 
                                           {item.status === 'SHIPPING' && (
                                             <>
-                                              <Button
-                                                variant="default"
-                                                size="sm"
-                                                onClick={() => {
-                                                  if (item.isConsignment) {
-                                                    const fakeImage = prompt("Nhập URL hình ảnh xác nhận giao hàng:", "https://example.com/dropoff.jpg");
-                                                    if (fakeImage) handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, item.isConsignment, fakeImage);
-                                                  } else {
-                                                    handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, false);
-                                                  }
-                                                }}
-                                                className="bg-[#004b87] hover:bg-[#003d70] h-8 text-xs px-2.5 rounded-lg border-none"
-                                              >
-                                                {item.isConsignment ? <Camera className="h-3.5 w-3.5 mr-1" /> : <Truck className="h-3.5 w-3.5 mr-1" />}
-                                                {item.isConsignment ? 'Chụp ảnh giao' : 'Đã giao'}
-                                              </Button>
+                                                                                              <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    disabled={isCargoUploading && uploadingCargoId === item.id}
+                                                    onClick={() => {
+                                                      if (item.isConsignment) {
+                                                        handleCargoButtonClick(item, 'SHIPPING');
+                                                      } else {
+                                                        handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, false);
+                                                      }
+                                                    }}
+                                                    className="bg-[#004b87] hover:bg-[#003d70] h-8 text-xs px-2.5 rounded-lg border-none w-full"
+                                                  >
+                                                    {item.isConsignment ? <Camera className="h-3.5 w-3.5 mr-1" /> : <Truck className="h-3.5 w-3.5 mr-1" />}
+                                                    {item.isConsignment && isCargoUploading && uploadingCargoId === item.id ? 'Đang gửi...' : (item.isConsignment ? 'Chụp ảnh giao' : 'Đã giao')}
+                                                  </Button>
                                               <Button
                                                 variant="outline"
                                                 size="sm"
@@ -2703,6 +2747,142 @@ window.addEventListener('message', function(e) {
                     <span className="text-sm font-extrabold text-slate-800">{selectedCargoForDetail.type}</span>
                   </div>
                 </div>
+
+                {/* Thông tin tuyến đường */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                    <MapPin className="h-4 w-4" /> Lộ trình & Địa chỉ
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-black">Từ</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-extrabold text-slate-800 text-sm">Điểm gửi (Trạm / Tỉnh)</p>
+                          <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                            {selectedCargoForDetail.senderAddress || 'Tại trạm'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-black">Đến</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-extrabold text-slate-800 text-sm">Điểm nhận (Địa chỉ giao)</p>
+                          <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                            {selectedCargoForDetail.receiverAddress || 'Giao tại trạm đến'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Thông tin người gửi / nhận */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                    <Users className="h-4 w-4" /> Người gửi & Người nhận
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0">
+                        <User className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Người gửi</p>
+                        <p className="font-extrabold text-slate-800 text-sm">{selectedCargoForDetail.sender}</p>
+                        <p className="text-xs font-semibold text-slate-500 mt-0.5 flex items-center gap-1">
+                          <Phone className="h-3 w-3" /> {selectedCargoForDetail.senderPhone || 'Không có SĐT'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0">
+                        <UserCheck className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Người nhận</p>
+                        <p className="font-extrabold text-slate-800 text-sm">{selectedCargoForDetail.receiver}</p>
+                        <p className="text-xs font-semibold text-slate-500 mt-0.5 flex items-center gap-1">
+                          <Phone className="h-3 w-3" /> {selectedCargoForDetail.phone}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chi tiết Hàng Hóa & Cước Phí */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                    <Info className="h-4 w-4" /> Thông số kỹ thuật & Doanh thu
+                  </h3>
+                  <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-y sm:divide-y-0 divide-slate-100 text-center border-b border-slate-100">
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Số lượng</p>
+                        <p className="font-extrabold text-slate-800 text-sm mt-1">{selectedCargoForDetail.quantity || 1} kiện</p>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Trọng lượng</p>
+                        <p className="font-extrabold text-slate-800 text-sm mt-1">{selectedCargoForDetail.weight || 'N/A'} kg</p>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Thanh toán</p>
+                        <p className={`font-extrabold text-sm mt-1 ${selectedCargoForDetail.paymentStatus === 'paid' ? 'text-green-600' : 'text-amber-500'}`}>
+                          {selectedCargoForDetail.paymentStatus === 'paid' ? 'Đã T.Toán' : 'Chưa T.Toán'}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Chi tiết doanh thu */}
+                    <div className="bg-slate-50/50 p-4">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-3">Chi tiết cước phí & Doanh thu</p>
+                      <div className="space-y-2 text-sm font-semibold">
+                        <div className="flex justify-between items-center text-slate-600">
+                          <span>Tổng cước phí người dùng thanh toán:</span>
+                          <span className="font-extrabold">{FormatUtil.formatCurrency(selectedCargoForDetail.totalPrice || 0)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-red-500">
+                          <span>Phí nền tảng (Chiết khấu 10%):</span>
+                          <span>- {FormatUtil.formatCurrency((selectedCargoForDetail.totalPrice || 0) * 0.1)}</span>
+                        </div>
+                        <div className="h-px bg-slate-200 my-2"></div>
+                        <div className="flex justify-between items-center text-[#004b87] text-base">
+                          <span className="font-black">Thực nhận của tài xế (90%):</span>
+                          <span className="font-black">{FormatUtil.formatCurrency((selectedCargoForDetail.totalPrice || 0) * 0.9)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hình ảnh (nếu có) */}
+                {selectedCargoForDetail.images && selectedCargoForDetail.images.length > 0 && (
+                  <div className="space-y-3 pb-2">
+                    <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                      <Camera className="h-4 w-4" /> Hình ảnh đính kèm
+                    </h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {selectedCargoForDetail.images.map((img, i) => (
+                        <div key={i} className="flex-shrink-0 w-32 h-32 rounded-xl overflow-hidden border border-slate-200 shadow-sm relative group cursor-pointer">
+                          <img src={img} alt={`Hình ${i+1}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <Search className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
               </div>
             </>
           )}

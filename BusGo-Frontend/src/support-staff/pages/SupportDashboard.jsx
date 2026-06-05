@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getChatSessionsAPI, getCancellationRequestsAPI, checkCancellationAPI, processCancellationAPI, getChatMessagesAPI, getCustomerTicketsAPI, closeChatSessionAPI, sendChatMessageAPI } from '../../services/supportService'
 import { toast } from '../../utils/toastService'
 import { AuthUtil } from '../../utils/helpers'
 import {
   MessageCircle, FileText, LogOut, Menu, X, Send, Search, Bell,
   CheckCircle, AlertCircle, Clock, DollarSign, Phone, Mail, MapPin,
-  BarChart3, Users, Ticket, Calendar, ChevronRight, ArrowRight, Grid, User, RefreshCw
+  BarChart3, Users, Ticket, Calendar, ChevronRight, ArrowRight, Grid, User, RefreshCw, Truck
 } from 'lucide-react'
 
 // Import custom UI components
@@ -15,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table'
 
 function SupportDashboard() {
+  const navigate = useNavigate()
   // Layout States
   const [isSidebarPinned, setIsSidebarPinned] = useState(false)
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
@@ -314,6 +316,21 @@ function SupportDashboard() {
             <SidebarItem tabId="overview" icon={Grid} label="Tổng quan" />
             <SidebarItem tabId="chat" icon={MessageCircle} label="Chat hỗ trợ" badgeCount={stats.activeSessions} badgeColor="bg-red-500 text-white" />
             <SidebarItem tabId="cancellation" icon={FileText} label="Hoàn/Hủy vé" badgeCount={stats.pendingCancellations} badgeColor="bg-orange-500 text-white" />
+            
+            {/* Link out to the old Cargo Assign page */}
+            <button
+              onClick={() => navigate('/admin/support/cargo-assign')}
+              className={`flex items-center w-full rounded-xl py-3.5 text-sm font-extrabold tracking-wide transition-all group duration-200 border-none bg-transparent cursor-pointer ${isSidebarCollapsed ? 'justify-center px-0' : 'px-4'} text-slate-500 hover:bg-slate-50 hover:text-slate-800`}
+            >
+              <div className={`transition-transform duration-200 group-hover:scale-105 flex items-center`}>
+                <Truck className={`h-5 w-5 text-slate-400 group-hover:text-slate-600`} />
+              </div>
+              {!isSidebarCollapsed && (
+                <span className="ml-3 truncate flex-1 text-left">
+                  Phân phối xe ký gửi
+                </span>
+              )}
+            </button>
           </nav>
         </div>
 

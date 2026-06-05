@@ -5,9 +5,24 @@ import { ROLE_MENU } from '@/utils/constants';
 import AdminSidebar from '../components/AdminSidebar';
 import AdminTopbar from '../components/AdminTopbar';
 import axios from 'axios';
-import './AdminDashboard.css';
+
+// Import custom UI components
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+
+// Import Lucide icons
+import { 
+  Package, Calendar, Truck, Check, X, RefreshCw, MapPin, 
+  Clock, Play, Inbox, ClipboardList, AlertTriangle 
+} from 'lucide-react';
 
 const API = 'http://localhost:5000/api';
+
+const selectCls = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm focus:border-[#004b87] focus:outline-none focus:ring-2 focus:ring-[#004b87]/15 transition-all";
+const inputCls = selectCls;
 
 function DriverCargoPage({ defaultTab = 'cargo' }) {
   const navigate = useNavigate();
@@ -82,7 +97,6 @@ function DriverCargoPage({ defaultTab = 'cargo' }) {
   const fetchTrips = async () => {
     try {
       setLoadingTrips(true);
-      // API trả về các chuyến xe có maNhanVien = userId
       const res = await axios.get(`${API}/trips?driverId=${userId}`, { headers: headers() });
       setTrips(res.data || []);
     } catch (err) {
@@ -101,7 +115,6 @@ function DriverCargoPage({ defaultTab = 'cargo' }) {
       const driver = AuthUtil.getCurrentUser();
       const driverName = driver?.name || 'Tài xế';
       const driverPhone = driver?.phone || '';
-      // Lấy biển số xe từ dữ liệu tài xế (hiện tại dùng driverInfo cũ nếu có)
       const payload = {
         trangThaiKyGui: 'da_xac_nhan',
         maTaiXe: userId,
@@ -169,16 +182,26 @@ function DriverCargoPage({ defaultTab = 'cargo' }) {
 
   const getStatusBadge = (status) => {
     const map = {
-      dang_cho_xac_nhan: { text: 'Chờ tài xế duyệt', class: 'bg-warning text-dark' },
-      dang_tim_xe_trong: { text: 'Chờ gán xe tải', class: 'bg-info text-dark' },
-      da_xac_nhan: { text: 'Đã xác nhận', class: 'bg-primary text-white' },
-      received_at_station: { text: 'Đã nhận tại trạm', class: 'bg-purple text-white' },
-      in_transit: { text: 'Đang vận chuyển', class: 'bg-indigo text-white' },
-      delivered: { text: 'Đã giao hàng', class: 'bg-success text-white' },
-      failed: { text: 'Đã hủy/Từ chối', class: 'bg-danger text-white' }
+      dang_cho_xac_nhan: { text: 'Chờ tài xế duyệt', variant: 'warning' },
+      dang_tim_xe_trong: { text: 'Chờ gán xe tải', variant: 'info' },
+      da_xac_nhan: { text: 'Đã xác nhận', variant: 'info' },
+      received_at_station: { text: 'Đã nhận tại trạm', variant: 'warning' },
+      in_transit: { text: 'Đang vận chuyển', variant: 'warning' },
+      delivered: { text: 'Đã giao hàng', variant: 'success' },
+      failed: { text: 'Giao thất bại', variant: 'destructive' }
     };
-    const res = map[status] || { text: status, class: 'bg-secondary text-white' };
-    return <span className={`badge ${res.class}`}>{res.text}</span>;
+    const res = map[status] || { text: status, variant: 'secondary' };
+    return <Badge variant={res.variant} className="font-extrabold rounded-lg text-xs px-2.5 py-0.5">{res.text}</Badge>;
+  };
+
+  const getTripStatusBadge = (status) => {
+    const map = {
+      da_len_lich: { text: 'Đã lên lịch', variant: 'secondary' },
+      dang_khoi_hanh: { text: 'Đang chạy', variant: 'info' },
+      da_hoan_thanh: { text: 'Đã hoàn thành', variant: 'success' }
+    };
+    const res = map[status] || { text: status, variant: 'secondary' };
+    return <Badge variant={res.variant} className="font-extrabold rounded-lg text-xs px-2.5 py-0.5">{res.text}</Badge>;
   };
 
   // Filter cargo list based on tab filters
@@ -195,7 +218,7 @@ function DriverCargoPage({ defaultTab = 'cargo' }) {
   if (loading) {
     return (
       <div className="admin-loading">
-        <div className="spinner-border text-primary" role="status" />
+        <div className="loading-spinner" />
       </div>
     );
   }
@@ -204,76 +227,114 @@ function DriverCargoPage({ defaultTab = 'cargo' }) {
 
   return (
     <div className="admin-dashboard">
-      <AdminSidebar isOpen={sidebarOpen} userRole={userRole} menuItems={menuItems} onClose={() => setSidebarOpen(false)} />
+      <AdminSidebar isOpen={sidebarOpen} userRole={userRole} userName={userName} menuItems={menuItems} onClose={() => setSidebarOpen(false)} />
       
       <div className="admin-main">
         <AdminTopbar userName={userName} userRole={userRole} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         
         <main className="admin-content">
-          <div className="dashboard-content">
-            <h1 className="page-title mb-4">
-              {activeTab === 'cargo' && '📦 Phê duyệt & Vận chuyển Ký gửi'}
-              {activeTab === 'schedule' && '📅 Lịch trình chạy được phân công'}
-              {activeTab === 'trip-status' && '🛣️ Cập nhật trạng thái hành trình'}
-            </h1>
+          <div className="p-6 max-w-7xl mx-auto space-y-6">
+            
+            {/* Header */}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-800 flex items-center gap-2">
+                {activeTab === 'cargo' && <Package className="h-8 w-8 text-[#004b87]" />}
+                {activeTab === 'schedule' && <Calendar className="h-8 w-8 text-[#004b87]" />}
+                {activeTab === 'trip-status' && <Truck className="h-8 w-8 text-[#004b87]" />}
+                {activeTab === 'cargo' && 'Phê duyệt & Vận chuyển Ký gửi'}
+                {activeTab === 'schedule' && 'Lịch trình chạy được phân công'}
+                {activeTab === 'trip-status' && 'Cập nhật trạng thái hành trình'}
+              </h1>
+              <p className="text-slate-500 text-sm font-semibold mt-1">
+                {activeTab === 'cargo' && 'Quản lý yêu cầu ký gửi hành lý và vận đơn của khách hàng'}
+                {activeTab === 'schedule' && 'Xem thông tin các chuyến xe được chỉ định chạy trong ngày của bạn'}
+                {activeTab === 'trip-status' && 'Cập nhật nhanh tiến trình di chuyển của chuyến chạy'}
+              </p>
+            </div>
 
-            {/* Quick Navigation Tabs inside content area */}
-            <ul className="nav nav-tabs mb-4">
-              <li className="nav-item">
-                <button className={`nav-link ${activeTab === 'cargo' ? 'active' : ''}`} onClick={() => setActiveTab('cargo')}>
-                  📦 Xác nhận ký gửi hàng
-                </button>
-              </li>
-              <li className="nav-item">
-                <button className={`nav-link ${activeTab === 'schedule' ? 'active' : ''}`} onClick={() => setActiveTab('schedule')}>
-                  📅 Lịch trình chạy
-                </button>
-              </li>
-              <li className="nav-item">
-                <button className={`nav-link ${activeTab === 'trip-status' ? 'active' : ''}`} onClick={() => setActiveTab('trip-status')}>
-                  🛣️ Cập nhật hành trình
-                </button>
-              </li>
-            </ul>
+            {/* Quick Navigation Tabs */}
+            <div className="flex flex-wrap gap-2 p-1 bg-slate-100/80 backdrop-blur rounded-2xl w-fit border border-slate-200/50">
+              {[
+                ['cargo', '📦 Xác nhận ký gửi'],
+                ['schedule', '📅 Lịch trình chạy'],
+                ['trip-status', '🛣️ Cập nhật hành trình']
+              ].map(([key, label]) => {
+                const isActive = activeTab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setActiveTab(key);
+                      setFilterStatus('all');
+                    }}
+                    className={`px-5 py-2.5 rounded-xl text-sm font-extrabold tracking-wide transition-all border-none ${
+                      isActive 
+                        ? 'bg-white text-[#004b87] shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* ====================================================== */}
             {/* CARGO TAB CONTENT */}
             {/* ====================================================== */}
             {activeTab === 'cargo' && (
-              <div className="card shadow-sm p-4">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <p className="text-muted mb-0">Xem danh sách các đơn hàng ký gửi của khách cần xác nhận hoặc vận chuyển</p>
+              <Card className="border-slate-100 shadow-sm">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <CardTitle className="text-lg font-extrabold text-slate-800">Danh sách đơn ký gửi cần vận chuyển</CardTitle>
+                  </div>
                   
                   {/* Status Filters */}
-                  <div className="btn-group btn-group-sm">
-                    <button className={`btn btn-outline-secondary ${filterStatus === 'all' ? 'active' : ''}`} onClick={() => setFilterStatus('all')}>Tất cả</button>
-                    <button className={`btn btn-outline-secondary ${filterStatus === 'pending' ? 'active' : ''}`} onClick={() => setFilterStatus('pending')}>Chờ xác nhận</button>
-                    <button className={`btn btn-outline-secondary ${filterStatus === 'active' ? 'active' : ''}`} onClick={() => setFilterStatus('active')}>Đang chạy</button>
-                    <button className={`btn btn-outline-secondary ${filterStatus === 'completed' ? 'active' : ''}`} onClick={() => setFilterStatus('completed')}>Hoàn thành/Hủy</button>
+                  <div className="flex flex-wrap gap-1.5 bg-slate-100/80 p-1 rounded-2xl w-fit border border-slate-200/50">
+                    {[
+                      { key: 'all', label: 'Tất cả' },
+                      { key: 'pending', label: 'Chờ xác nhận' },
+                      { key: 'active', label: 'Đang chạy' },
+                      { key: 'completed', label: 'Hoàn thành/Hủy' }
+                    ].map(f => (
+                      <button
+                        key={f.key}
+                        onClick={() => setFilterStatus(f.key)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border-none ${
+                          filterStatus === f.key ? 'bg-white text-[#004b87] shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
                   </div>
-                </div>
-
-                {loadingCargo ? (
-                  <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
-                ) : getFilteredCargo().length === 0 ? (
-                  <div className="text-center py-5 text-muted">Không tìm thấy yêu cầu ký gửi nào khớp với bộ lọc</div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="table-light text-xs uppercase text-slate-500">
-                        <tr>
-                          <th>Mã đơn</th>
-                          <th>Dịch vụ</th>
-                          <th>Hành trình</th>
-                          <th>Thông tin hàng hóa</th>
-                          <th>Khách hàng</th>
-                          <th>Tổng tiền</th>
-                          <th>Thanh toán</th>
-                          <th>Trạng thái</th>
-                          <th>Hành động</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {loadingCargo ? (
+                    <div className="flex justify-center py-16">
+                      <div className="h-8 w-8 border-4 border-[#004b87] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : getFilteredCargo().length === 0 ? (
+                    <div className="text-center py-16 text-slate-400 font-semibold">
+                      <Inbox className="h-8 w-8 mx-auto mb-2 text-slate-350" />
+                      Không tìm thấy yêu cầu ký gửi nào
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader className="bg-slate-50">
+                        <TableRow>
+                          <TableHead className="font-extrabold text-slate-600">Mã đơn</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Dịch vụ</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Hành trình</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Thông tin hàng hóa</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Khách hàng</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Tổng tiền</TableHead>
+                          <TableHead className="font-extrabold text-slate-600 text-center">Thanh toán</TableHead>
+                          <TableHead className="font-extrabold text-slate-600 text-center">Trạng thái</TableHead>
+                          <TableHead className="font-extrabold text-slate-600 text-end">Hành động</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {getFilteredCargo().map(cargo => {
                           const orderId = cargo.consignmentId || cargo.id;
                           const isPaid = cargo.trangThaiThanhToan === 'paid';
@@ -281,176 +342,212 @@ function DriverCargoPage({ defaultTab = 'cargo' }) {
                           const isCancelled = cargo.trangThaiKyGui === 'failed';
 
                           return (
-                            <tr key={orderId}>
-                              <td className="fw-bold">#{orderId}</td>
-                              <td>
-                                <span className={`badge ${cargo.loaiDichVu === 'gui_kem' ? 'bg-light text-dark' : 'bg-dark text-white'}`}>
+                            <TableRow key={orderId} className="hover:bg-slate-50/50">
+                              <TableCell className="font-bold text-slate-500">#{orderId}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={cargo.loaiDichVu === 'gui_kem' ? 'secondary' : 'default'}
+                                  className="font-bold rounded-lg text-xs"
+                                >
                                   {cargo.loaiDichVu === 'gui_kem' ? '🚌 Gửi kèm' : '🚚 Vận tải'}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="text-slate-800 fw-bold">{cargo.diemGui} ➔ {cargo.diemNhan}</div>
-                                <div className="text-[11px] text-slate-400">
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-slate-800 font-bold flex items-center gap-1.5">
+                                  {cargo.diemGui}
+                                  <span>➔</span>
+                                  {cargo.diemNhan}
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-bold mt-0.5">
                                   {cargo.ngayGui ? new Date(cargo.ngayGui).toLocaleDateString('vi-VN') : ''}
                                 </div>
-                              </td>
-                              <td>
-                                <div className="fw-semibold text-slate-700">
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-bold text-slate-700 text-sm">
                                   {cargo.loaiHangHoa === 'bulky' && 'Hàng cồng kềnh'}
                                   {cargo.loaiHangHoa === 'documents' && 'Tài liệu'}
                                   {cargo.loaiHangHoa === 'fragile' && 'Hàng dễ vỡ'}
                                   {cargo.loaiHangHoa === 'motorcycle' && 'Xe máy'} 
                                   {` (${cargo.trongLuong} kg)`}
                                 </div>
-                                <div className="text-[11px] text-slate-500">SL: {cargo.soLuong} kiện</div>
-                              </td>
-                              <td>
-                                <div className="fw-bold text-slate-700">{cargo.tenNguoiGui || cargo.tenKhachHang}</div>
-                                <div className="text-[11px] text-slate-400">{cargo.soDienThoaiNguoiGui}</div>
-                              </td>
-                              <td className="fw-bold text-slate-800">{FormatUtil.formatCurrency(cargo.tongTien)}</td>
-                              <td>
-                                <span className={`badge bg-${isPaid ? 'success' : 'secondary'}`}>
+                                <div className="text-[11px] text-slate-400 font-semibold mt-0.5">SL: {cargo.soLuong} kiện</div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="font-bold text-slate-700">{cargo.tenNguoiGui || cargo.tenKhachHang}</div>
+                                <div className="text-[11px] text-slate-400 font-semibold">{cargo.soDienThoaiNguoiGui}</div>
+                              </TableCell>
+                              <TableCell className="font-black text-[#004b87]">{FormatUtil.formatCurrency(cargo.tongTien)}</TableCell>
+                              <TableCell className="text-center">
+                                <Badge variant={isPaid ? 'success' : 'secondary'} className="font-bold rounded-lg text-xs">
                                   {isPaid ? 'Đã trả' : 'Chưa trả'}
-                                </span>
-                              </td>
-                              <td>{getStatusBadge(cargo.trangThaiKyGui)}</td>
-                              <td>
-                                <div className="d-flex gap-1.5">
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">{getStatusBadge(cargo.trangThaiKyGui)}</TableCell>
+                              <TableCell className="text-end">
+                                <div className="flex justify-end gap-1.5">
                                   {isPending && (
-                                    <button 
-                                      className="btn btn-sm btn-primary py-1 px-2.5 text-xs fw-bold" 
+                                    <Button 
+                                      size="sm" 
                                       onClick={() => handleConfirmCargo(orderId)}
+                                      className="bg-green-650 hover:bg-green-700 text-white font-extrabold h-8 rounded-lg text-xs px-3 border-none flex items-center gap-1 shadow-sm"
                                     >
-                                      ✓ Duyệt đơn
-                                    </button>
+                                      <Check className="h-3 w-3" /> Duyệt đơn
+                                    </Button>
                                   )}
                                   {!isPending && !isCancelled && (
-                                    <button 
-                                      className="btn btn-sm btn-outline-secondary py-1 px-2 text-xs" 
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
                                       onClick={() => openStatusModal(cargo)}
+                                      className="border-slate-200 text-slate-600 hover:bg-slate-50 font-bold h-8 rounded-lg text-xs px-2.5"
                                     >
                                       🔄 Cập nhật
-                                    </button>
+                                    </Button>
                                   )}
                                 </div>
-                              </td>
-                            </tr>
+                              </TableCell>
+                            </TableRow>
                           );
                         })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             {/* ====================================================== */}
             {/* SCHEDULES TAB CONTENT */}
             {/* ====================================================== */}
             {activeTab === 'schedule' && (
-              <div className="card shadow-sm p-4">
-                <p className="text-muted mb-4">Danh sách chuyến xe (xe khách) hoặc tuyến chạy xe tải bạn được phân công điều khiển</p>
-                {loadingTrips ? (
-                  <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
-                ) : trips.length === 0 ? (
-                  <div className="text-center py-5 text-muted">Bạn chưa được phân công chuyến chạy nào</div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Mã chuyến</th>
-                          <th>Hành trình</th>
-                          <th>Thời gian chạy</th>
-                          <th>Biển số xe</th>
-                          <th>Trạng thái xe</th>
-                          <th>Ghế trống</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+              <Card className="border-slate-100 shadow-sm">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg font-extrabold text-slate-800">Danh sách chuyến chạy được phân công</CardTitle>
+                  <Button variant="outline" size="sm" onClick={fetchTrips} className="border-slate-200 bg-white">
+                    <RefreshCw className="h-4 w-4 mr-1.5" /> Làm mới
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {loadingTrips ? (
+                    <div className="flex justify-center py-16">
+                      <div className="h-8 w-8 border-4 border-[#004b87] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : trips.length === 0 ? (
+                    <div className="text-center py-16 text-slate-400 font-semibold">
+                      <Inbox className="h-8 w-8 mx-auto mb-2 text-slate-350" />
+                      Bạn chưa được phân công chuyến chạy nào
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader className="bg-slate-50">
+                        <TableRow>
+                          <TableHead className="font-extrabold text-slate-600">Mã chuyến</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Hành trình</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Thời gian chạy</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Biển số xe</TableHead>
+                          <TableHead className="font-extrabold text-slate-600 text-center">Ghế trống</TableHead>
+                          <TableHead className="font-extrabold text-slate-600 text-center">Trạng thái</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {trips.map(trip => (
-                          <tr key={trip.maChuyenXe}>
-                            <td className="fw-bold">#{trip.maChuyenXe}</td>
-                            <td className="fw-bold">{trip.diemDi} ➔ {trip.diemDen}</td>
-                            <td>{new Date(trip.thoiGianDi).toLocaleString('vi-VN')}</td>
-                            <td><span className="badge bg-dark px-2 py-1.5">{trip.bienSoXe}</span></td>
-                            <td>
-                              <span className={`badge bg-${trip.trangThaiChuyen === 'da_len_lich' ? 'secondary' : trip.trangThaiChuyen === 'dang_khoi_hanh' ? 'primary' : 'success'}`}>
-                                {trip.trangThaiChuyen === 'da_len_lich' && 'Đã lên lịch'}
-                                {trip.trangThaiChuyen === 'dang_khoi_hanh' && 'Đang chạy'}
-                                {trip.trangThaiChuyen === 'da_hoan_thanh' && 'Đã hoàn thành'}
-                              </span>
-                            </td>
-                            <td>{trip.soGheConTrong} ghế</td>
-                          </tr>
+                          <TableRow key={trip.maChuyenXe} className="hover:bg-slate-50/50">
+                            <TableCell className="font-bold text-slate-500">#{trip.maChuyenXe}</TableCell>
+                            <TableCell className="font-bold text-slate-800 flex items-center gap-1.5">
+                              {trip.diemDi}
+                              <span>➔</span>
+                              {trip.diemDen}
+                            </TableCell>
+                            <TableCell className="font-semibold text-slate-600 text-sm">
+                              {new Date(trip.thoiGianDi).toLocaleString('vi-VN')}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="font-black border-slate-300 text-slate-700 bg-slate-50 rounded-lg py-1 px-2.5">
+                                {trip.bienSoXe}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-bold text-slate-650 text-center">{trip.soGheConTrong} ghế</TableCell>
+                            <TableCell className="text-center">
+                              {getTripStatusBadge(trip.trangThaiChuyen)}
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             {/* ====================================================== */}
             {/* TRIP STATUS UPDATE TAB CONTENT */}
             {/* ====================================================== */}
             {activeTab === 'trip-status' && (
-              <div className="card shadow-sm p-4">
-                <p className="text-muted mb-4">Cập nhật nhanh tiến trình di chuyển của chuyến xe để hành khách và người gửi hàng theo dõi hành trình thời gian thực</p>
+              <div className="space-y-4">
                 {loadingTrips ? (
-                  <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+                  <div className="flex justify-center py-16">
+                    <div className="h-8 w-8 border-4 border-[#004b87] border-t-transparent rounded-full animate-spin" />
+                  </div>
                 ) : trips.length === 0 ? (
-                  <div className="text-center py-5 text-muted">Bạn không có chuyến xe nào để cập nhật hành trình</div>
+                  <Card className="border-slate-100 p-12 text-center text-slate-400 font-semibold">
+                    <Inbox className="h-8 w-8 mx-auto mb-2 text-slate-350" />
+                    Bạn không có chuyến chạy nào để cập nhật hành trình
+                  </Card>
                 ) : (
-                  <div className="row g-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {trips.map(trip => {
                       const isCreated = trip.trangThaiChuyen === 'da_len_lich';
                       const isRunning = trip.trangThaiChuyen === 'dang_khoi_hanh';
                       const isDone = trip.trangThaiChuyen === 'da_hoan_thanh';
 
                       return (
-                        <div className="col-md-6" key={trip.maChuyenXe}>
-                          <div className="card border p-3.5 shadow-sm rounded-3">
-                            <div className="d-flex justify-content-between align-items-start mb-3">
+                        <Card key={trip.maChuyenXe} className="border-slate-150 shadow-sm relative overflow-hidden bg-white/70">
+                          <CardContent className="p-6 space-y-4">
+                            <div className="flex justify-between items-start mb-2 gap-2">
                               <div>
-                                <h5 className="fw-bold m-0 text-slate-800">{trip.diemDi} ➔ {trip.diemDen}</h5>
-                                <small className="text-slate-500">Chuyến #{trip.maChuyenXe} • Xe {trip.bienSoXe}</small>
+                                <h3 className="font-black text-slate-800 text-lg flex items-center gap-1.5">
+                                  {trip.diemDi} ➔ {trip.diemDen}
+                                </h3>
+                                <small className="text-slate-400 font-bold">Chuyến #{trip.maChuyenXe} • Xe {trip.bienSoXe}</small>
                               </div>
-                              <span className={`badge px-2 py-1.5 ${isCreated ? 'bg-secondary' : isRunning ? 'bg-primary' : 'bg-success'}`}>
-                                {isCreated ? 'Chờ xuất bến' : isRunning ? 'Đang chạy' : 'Đã hoàn thành'}
-                              </span>
+                              {getTripStatusBadge(trip.trangThaiChuyen)}
                             </div>
                             
-                            <p className="text-xs text-slate-600 mb-4">
+                            <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-slate-400" />
                               Khởi hành: <strong>{new Date(trip.thoiGianDi).toLocaleString('vi-VN')}</strong>
                             </p>
 
-                            <div className="d-flex gap-2">
+                            <div className="h-px bg-slate-100" />
+
+                            <div className="flex gap-2">
                               {isCreated && (
-                                <button 
-                                  className="btn btn-primary btn-sm fw-bold w-100 py-2" 
+                                <Button 
                                   onClick={() => handleUpdateTripStatus(trip.maChuyenXe, 'da_len_lich')}
+                                  className="bg-[#004b87] hover:bg-[#003d72] text-white font-black w-full py-2 border-none rounded-xl"
                                 >
                                   ▶ Xuất bến (Khởi hành)
-                                </button>
+                                </Button>
                               )}
                               {isRunning && (
-                                <button 
-                                  className="btn btn-success btn-sm fw-bold w-100 py-2" 
+                                <Button 
                                   onClick={() => handleUpdateTripStatus(trip.maChuyenXe, 'dang_khoi_hanh')}
+                                  className="bg-green-650 hover:bg-green-700 text-white font-black w-full py-2 border-none rounded-xl shadow-md shadow-green-500/10"
                                 >
                                   ✓ Cập nhật đã đến nơi (Hoàn thành)
-                                </button>
+                                </Button>
                               )}
                               {isDone && (
-                                <button className="btn btn-outline-secondary btn-sm w-100 py-2" disabled>
+                                <Button 
+                                  disabled
+                                  className="bg-slate-50 border border-slate-200 text-slate-400 font-bold w-full py-2 rounded-xl"
+                                >
                                   ✓ Đã hoàn tất hành trình
-                                </button>
+                                </Button>
                               )}
                             </div>
-                          </div>
-                        </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
                   </div>
@@ -463,51 +560,51 @@ function DriverCargoPage({ defaultTab = 'cargo' }) {
       </div>
 
       {/* ====================================================== */}
-      {/* STATUS UPDATE MODAL */}
+      {/* STATUS UPDATE DIALOG */}
       {/* ====================================================== */}
-      {showStatusModal && selectedCargo && (
-        <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)', zIndex: '1050' }} onClick={() => setShowStatusModal(false)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
-            <div className="modal-content border-0 rounded-4 shadow-lg">
-              <div className="modal-header border-bottom">
-                <h5 className="modal-title fw-bold">📦 Cập nhật vận đơn #{selectedCargo.consignmentId || selectedCargo.id}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowStatusModal(false)} />
+      <Dialog open={showStatusModal} onOpenChange={setShowStatusModal}>
+        <DialogContent className="max-w-md rounded-2xl bg-white border border-slate-200 p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="bg-slate-900 text-white p-6 pb-4">
+            <DialogTitle className="text-lg font-black text-white flex items-center gap-2">
+              <Package className="h-5 w-5 text-sky-400" />
+              Cập nhật vận đơn #{selectedCargo?.consignmentId || selectedCargo?.id}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateStatus}>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Trạng thái vận chuyển *</label>
+                <select className={selectCls} value={newStatus} onChange={e => setNewStatus(e.target.value)}>
+                  <option value="da_xac_nhan">Đã xác nhận (Chờ xếp lên xe)</option>
+                  <option value="received_at_station">Đã nhận kho tại trạm gửi</option>
+                  <option value="in_transit">Đang vận chuyển trên đường</option>
+                  <option value="delivered">Đã giao hàng thành công</option>
+                  <option value="failed">Hủy / Giao hàng thất bại</option>
+                </select>
               </div>
-              <form onSubmit={handleUpdateStatus}>
-                <div className="modal-body p-4">
-                  <div className="mb-3">
-                    <label className="form-label fw-bold">Trạng thái vận chuyển *</label>
-                    <select className="form-select" value={newStatus} onChange={e => setNewStatus(e.target.value)}>
-                      <option value="da_xac_nhan">Đã xác nhận (Chờ xếp lên xe)</option>
-                      <option value="received_at_station">Đã nhận kho tại trạm gửi</option>
-                      <option value="in_transit">Đang vận chuyển trên đường</option>
-                      <option value="delivered">Đã giao hàng thành công</option>
-                      <option value="failed">Hủy / Giao hàng thất bại</option>
-                    </select>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label fw-bold">Vị trí hiện tại (Lịch trình tracking) *</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="Ví dụ: Đang đi qua trạm trung chuyển Huế"
-                      value={newLocation} 
-                      onChange={e => setNewLocation(e.target.value)} 
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="modal-footer border-top bg-light">
-                  <button type="button" className="btn btn-secondary text-xs px-4 py-2" onClick={() => setShowStatusModal(false)}>Hủy</button>
-                  <button type="submit" className="btn btn-primary text-xs px-4 py-2" disabled={updatingStatus}>
-                    {updatingStatus ? 'Đang lưu...' : 'Lưu cập nhật'}
-                  </button>
-                </div>
-              </form>
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Vị trí hiện tại (Lịch trình tracking) *</label>
+                <input 
+                  type="text" 
+                  className={inputCls} 
+                  placeholder="Ví dụ: Đang đi qua trạm trung chuyển Huế"
+                  value={newLocation} 
+                  onChange={e => setNewLocation(e.target.value)} 
+                  required
+                />
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+            <DialogFooter className="bg-slate-50 p-4 border-t border-slate-100 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowStatusModal(false)} className="rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-100 h-10 px-5 shadow-none">
+                Hủy
+              </Button>
+              <Button type="submit" disabled={updatingStatus} className="bg-[#004b87] hover:bg-[#003b6b] text-white font-extrabold h-10 px-5 rounded-xl border-none">
+                {updatingStatus ? 'Đang lưu...' : 'Lưu cập nhật'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

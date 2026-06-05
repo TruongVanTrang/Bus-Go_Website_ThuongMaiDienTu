@@ -16,12 +16,9 @@ import {
   Search,
   Users,
   X,
-  XCircle,
   Menu,
   ChevronRight,
-  MapPin,
   ArrowRight,
-  UserCheck,
   Bell,
   Calendar
 } from 'lucide-react'

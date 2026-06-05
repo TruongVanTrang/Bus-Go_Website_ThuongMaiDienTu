@@ -5,7 +5,7 @@ import { AuthUtil } from '../../utils/helpers'
 import {
   MessageCircle, FileText, LogOut, Menu, X, Send, Search, Bell,
   CheckCircle, AlertCircle, Clock, DollarSign, Phone, Mail, MapPin,
-  BarChart3, Users, Ticket, Calendar, ChevronRight, ArrowRight, Grid, User, RefreshCw
+  Users, Ticket, Calendar, ChevronRight, ArrowRight, Grid, User, RefreshCw
 } from 'lucide-react'
 
 // Import custom UI components

@@ -52,7 +52,15 @@ export default function DriverDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Shift working status
-  const [onShift, setOnShift] = useState(() => AuthUtil.getCurrentUser()?.role === 'TRUCK_DRIVER')
+  const [onShift, setOnShift] = useState(() => {
+    const user = AuthUtil.getCurrentUser()
+    if (!user) return false
+    const saved = localStorage.getItem(`driver_on_shift_${user.id}`)
+    if (saved !== null) {
+      return saved === 'true'
+    }
+    return user.role === 'TRUCK_DRIVER'
+  })
 
   // Loading skeleton state
   const [isLoading, setIsLoading] = useState(true)
@@ -1164,8 +1172,8 @@ export default function DriverDashboard() {
                                         variant="outline" 
                                         size="sm"
                                         onClick={() => {
-                                          setSelectedTripId(upcomingTrip.id)
-                                          setActiveTab('passengers')
+                                          setDetailTrip(upcomingTrip)
+                                          setIsDetailDialogOpen(true)
                                         }}
                                         className="flex-1 sm:flex-none border-[#004b87]/30 text-[#004b87] hover:bg-[#004b87]/5"
                                       >
@@ -1308,7 +1316,7 @@ export default function DriverDashboard() {
                                   <TableHead>Loại xe</TableHead>
                                   <TableHead>Hành khách</TableHead>
                                   <TableHead>Trạng thái</TableHead>
-                                  <TableHead className="text-right">Hành động</TableHead>
+                                  <TableHead className="text-right whitespace-nowrap">Hành động</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -1349,8 +1357,8 @@ export default function DriverDashboard() {
                                             {statusInfo.text}
                                           </Badge>
                                         </TableCell>
-                                        <TableCell className="text-right">
-                                          <div className="flex justify-end gap-2">
+                                        <TableCell className="text-right whitespace-nowrap">
+                                          <div className="flex justify-end gap-2 flex-nowrap">
                                             <Button
                                               variant="outline"
                                               size="sm"
@@ -3047,14 +3055,42 @@ window.addEventListener('message', function(e) {
             const startLog = detailTrip.journeyLogs?.find(l => l.type === 'START')
             const endLog = detailTrip.journeyLogs?.find(l => l.type === 'END')
             const totalKm = (endLog?.km && startLog?.km) ? endLog.km - startLog.km : null
+            
+            const isCompleted = detailTrip.status === 'COMPLETED'
+            const isRunning = detailTrip.status === 'DEPARTED' || detailTrip.status === 'INCIDENT'
+            const isScheduled = detailTrip.status === 'SCHEDULED'
+            const isCancelled = detailTrip.status === 'CANCELLED'
+
+            let dialogTitle = 'Chi tiết chuyến xe'
+            let iconColor = 'bg-blue-50 text-[#004b87]'
+            let statusIcon = <Info className="h-5 w-5" />
+
+            if (isCompleted) {
+              dialogTitle = 'Chi tiết chuyến đã hoàn thành'
+              iconColor = 'bg-green-100 text-green-600'
+              statusIcon = <CheckCircle className="h-5 w-5" />
+            } else if (isRunning) {
+              dialogTitle = 'Chi tiết chuyến đang vận hành'
+              iconColor = 'bg-amber-100 text-amber-600 animate-pulse'
+              statusIcon = <Clock className="h-5 w-5" />
+            } else if (isScheduled) {
+              dialogTitle = 'Chi tiết chuyến đã lên lịch'
+              iconColor = 'bg-sky-100 text-sky-700'
+              statusIcon = <Calendar className="h-5 w-5" />
+            } else if (isCancelled) {
+              dialogTitle = 'Chi tiết chuyến đã hủy'
+              iconColor = 'bg-red-100 text-red-600'
+              statusIcon = <X className="h-5 w-5" />
+            }
+
             return (
               <>
                 <DialogHeader className="pb-3">
                   <DialogTitle className="flex items-center gap-2 text-lg font-black text-slate-800">
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-600">
-                      <CheckCircle className="h-5 w-5" />
+                    <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${iconColor}`}>
+                      {statusIcon}
                     </span>
-                    Chi tiết chuyến đã hoàn thành
+                    {dialogTitle}
                   </DialogTitle>
                   <DialogDescription className="text-slate-500">
                     {detailTrip.from} → {detailTrip.to} • {detailTrip.licensePlate}
@@ -3194,7 +3230,7 @@ window.addEventListener('message', function(e) {
                 </div>
               </>
             )
-          })}
+          })()}
         </DialogContent>
       </Dialog>
       {/* ==================== DIALOG: BÁO CÁO SỰ CỐ CHUYẾN XE ==================== */}

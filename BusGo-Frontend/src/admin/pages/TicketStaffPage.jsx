@@ -16,9 +16,13 @@ import {
   Search,
   Users,
   X,
+  XCircle,
   Menu,
   ChevronRight,
+  MapPin,
   ArrowRight,
+  ArrowLeft,
+  UserCheck,
   Bell,
   Calendar
 } from 'lucide-react'
@@ -46,33 +50,36 @@ const NAV_ITEMS = [
 ]
 
 const INITIAL_PASSENGERS = [
+  // HN → HP 08:00 (6 passengers, 3 boarded)
   { id: 'BG-001', name: 'Nguyễn Văn A', phone: '0912 345 678', seat: 'A01', trip: 'HN → HP', time: '08:00', status: 'boarded' },
-  { id: 'BG-002', name: 'Trần Thị B', phone: '0987 654 321', seat: 'A02', trip: 'HN → HP', time: '08:00', status: 'boarded' },
-  { id: 'BG-003', name: 'Lê Văn C', phone: '0901 234 567', seat: 'B01', trip: 'HN → HCM', time: '10:30', status: 'not_boarded' },
-  { id: 'BG-004', name: 'Phạm Thị D', phone: '0933 111 222', seat: 'B02', trip: 'HN → HCM', time: '10:30', status: 'boarded' },
-  { id: 'BG-005', name: 'Hoàng Văn E', phone: '0944 555 666', seat: 'C01', trip: 'HN → HP', time: '14:00', status: 'not_boarded' },
-  { id: 'BG-006', name: 'Vũ Thị F', phone: '0955 777 888', seat: 'C02', trip: 'HN → HP', time: '14:00', status: 'boarded' },
-  { id: 'BG-007', name: 'Đặng Văn G', phone: '0966 999 000', seat: 'D01', trip: 'HN → HCM', time: '16:00', status: 'boarded' },
-  { id: 'BG-008', name: 'Bùi Thị H', phone: '0977 123 456', seat: 'D02', trip: 'HN → HCM', time: '16:00', status: 'not_boarded' }
+  { id: 'BG-002', name: 'Trần Thị B', phone: '0923 456 789', seat: 'A02', trip: 'HN → HP', time: '08:00', status: 'boarded' },
+  { id: 'BG-003', name: 'Lê Văn C', phone: '0934 567 890', seat: 'B01', trip: 'HN → HP', time: '08:00', status: 'not_boarded' },
+  { id: 'BG-004', name: 'Phạm Thị D', phone: '0945 678 901', seat: 'B02', trip: 'HN → HP', time: '08:00', status: 'not_boarded' },
+  { id: 'BG-005', name: 'Hoàng Văn E', phone: '0956 789 012', seat: 'C01', trip: 'HN → HP', time: '08:00', status: 'boarded' },
+  { id: 'BG-006', name: 'Vũ Thị F', phone: '0967 890 123', seat: 'C02', trip: 'HN → HP', time: '08:00', status: 'not_boarded' },
+
+  // HN → HCM 10:30 (5 passengers, 2 boarded)
+  { id: 'BG-101', name: 'Trần Văn G', phone: '0988 111 222', seat: 'A01', trip: 'HN → HCM', time: '10:30', status: 'boarded' },
+  { id: 'BG-102', name: 'Lê Thị H', phone: '0988 333 444', seat: 'A02', trip: 'HN → HCM', time: '10:30', status: 'boarded' },
+  { id: 'BG-103', name: 'Phạm Văn I', phone: '0988 555 666', seat: 'B01', trip: 'HN → HCM', time: '10:30', status: 'not_boarded' },
+  { id: 'BG-104', name: 'Nguyễn Thị K', phone: '0988 777 888', seat: 'B02', trip: 'HN → HCM', time: '10:30', status: 'not_boarded' },
+  { id: 'BG-105', name: 'Vũ Văn L', phone: '0988 999 000', seat: 'C01', trip: 'HN → HCM', time: '10:30', status: 'not_boarded' },
+
+  // HN → DN 14:00 (4 passengers, 1 boarded)
+  { id: 'BG-201', name: 'Đặng Thị M', phone: '0977 111 222', seat: 'A01', trip: 'HN → DN', time: '14:00', status: 'boarded' },
+  { id: 'BG-202', name: 'Bùi Văn N', phone: '0977 333 444', seat: 'A02', trip: 'HN → DN', time: '14:00', status: 'not_boarded' },
+  { id: 'BG-203', name: 'Ngô Thị O', phone: '0977 555 666', seat: 'B01', trip: 'HN → DN', time: '14:00', status: 'not_boarded' },
+  { id: 'BG-204', name: 'Đỗ Văn P', phone: '0977 777 888', seat: 'B02', trip: 'HN → DN', time: '14:00', status: 'not_boarded' }
 ]
 
-const INITIAL_SCAN_RESULTS = [
-  { id: 'BG-2024-001', name: 'Nguyễn Văn A', route: 'HN → HP', time: '10:30', valid: true },
-  { id: 'BG-2024-002', name: 'Trần Thị B', route: 'HN → HP', time: '10:28', valid: true },
-  { id: 'BG-2024-003', name: 'Lê Văn C', route: 'HN → HCM', time: '10:25', valid: false },
-  { id: 'BG-2024-004', name: 'Phạm Thị D', route: 'HN → HCM', time: '10:22', valid: true },
-  { id: 'BG-2024-005', name: 'Hoàng Văn E', route: 'HN → HP', time: '10:18', valid: false },
-  { id: 'BG-2024-006', name: 'Vũ Thị F', route: 'HN → HP', time: '10:15', valid: true }
+const TRIPS = [
+  { id: 'trip-1', code: 'HN → HP', routeName: 'Hà Nội → Hải Phòng', time: '08:00', dateLabel: 'Hôm nay' },
+  { id: 'trip-2', code: 'HN → HCM', routeName: 'Hà Nội → TP. Hồ Chí Minh', time: '10:30', dateLabel: 'Hôm nay' },
+  { id: 'trip-3', code: 'HN → DN', routeName: 'Hà Nội → Đà Nẵng', time: '14:00', dateLabel: 'Hôm nay' }
 ]
 
-const KNOWN_TICKETS = {
-  'BG-2024-001': { name: 'Nguyễn Văn A', route: 'HN → HP', valid: true },
-  'BG-2024-002': { name: 'Trần Thị B', route: 'HN → HP', valid: true },
-  'BG-2024-004': { name: 'Phạm Thị D', route: 'HN → HCM', valid: true },
-  'BG-2024-006': { name: 'Vũ Thị F', route: 'HN → HP', valid: true },
-  'BG-001': { name: 'Nguyễn Văn A', route: 'HN → HP', valid: true },
-  'BG-002': { name: 'Trần Thị B', route: 'HN → HP', valid: true }
-}
+const INITIAL_SCAN_RESULTS = []
+
 
 function getViewFromPath(pathname) {
   return PATH_VIEWS[pathname] || 'dashboard'
@@ -95,6 +102,7 @@ export default function TicketStaffPage() {
   const [userName, setUserName] = useState('')
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [passengers, setPassengers] = useState(INITIAL_PASSENGERS)
 
   const activeView = getViewFromPath(location.pathname)
 
@@ -287,8 +295,20 @@ export default function TicketStaffPage() {
         {/* ==================== VIEW CONTENT ==================== */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8 bg-slate-50">
           {activeView === 'dashboard' && <DashboardView onNavigate={handleNav} />}
-          {activeView === 'scan' && <ScanView onGoPassengers={() => handleNav('/admin/staff/passengers')} />}
-          {activeView === 'passengers' && <PassengersView searchQuery={searchQuery} />}
+          {activeView === 'scan' && (
+            <ScanView 
+              passengers={passengers} 
+              setPassengers={setPassengers} 
+              onGoPassengers={() => handleNav('/admin/staff/passengers')} 
+            />
+          )}
+          {activeView === 'passengers' && (
+            <PassengersView 
+              passengers={passengers} 
+              setPassengers={setPassengers} 
+              searchQuery={searchQuery} 
+            />
+          )}
         </main>
       </div>
     </div>
@@ -428,17 +448,17 @@ function DashboardView({ onNavigate }) {
   )
 }
 
-function ScanView({ onGoPassengers }) {
+function ScanView({ passengers, setPassengers, onGoPassengers }) {
+  const [selectedTrip, setSelectedTrip] = useState(null)
   const [cameraOn, setCameraOn] = useState(true)
   const [scanning, setScanning] = useState(true)
   const [showManualModal, setShowManualModal] = useState(false)
   const [manualCode, setManualCode] = useState('')
-  const [scanResults, setScanResults] = useState(INITIAL_SCAN_RESULTS)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [scanMessage, setScanMessage] = useState(null)
+
   const videoRef = useRef(null)
   const streamRef = useRef(null)
-
-  const validCount = scanResults.filter((r) => r.valid).length
-  const invalidCount = scanResults.filter((r) => !r.valid).length
 
   const startCamera = async () => {
     try {
@@ -471,24 +491,59 @@ function ScanView({ onGoPassengers }) {
   }
 
   useEffect(() => {
-    startCamera()
+    if (selectedTrip) {
+      startCamera()
+    } else {
+      stopCamera()
+    }
     return () => stopCamera()
-  }, [])
+  }, [selectedTrip])
 
-  const addScanResult = (ticketId) => {
-    const known = KNOWN_TICKETS[ticketId.trim().toUpperCase()] || KNOWN_TICKETS[ticketId.trim()]
-    const entry = known
-      ? { id: ticketId, name: known.name, route: known.route, time: formatTime(), valid: known.valid }
-      : { id: ticketId, name: 'Không xác định', route: '—', time: formatTime(), valid: false }
+  const handleScanOrInput = (code) => {
+    if (!selectedTrip) return
+    const cleanCode = code.trim().toUpperCase()
 
-    setScanResults((prev) => [entry, ...prev].slice(0, 20))
+    // Find passenger in this trip
+    const passengerIdx = passengers.findIndex(
+      (p) =>
+        p.trip === selectedTrip.code &&
+        p.time === selectedTrip.time &&
+        p.id.toUpperCase() === cleanCode
+    )
+
+    if (passengerIdx !== -1) {
+      const passenger = passengers[passengerIdx]
+      if (passenger.status === 'boarded') {
+        setScanMessage({
+          type: 'info',
+          text: `Vé #${passenger.id} (${passenger.name}) đã soát trước đó.`
+        })
+      } else {
+        const updated = [...passengers]
+        updated[passengerIdx] = { ...passenger, status: 'boarded' }
+        setPassengers(updated)
+        setScanMessage({
+          type: 'success',
+          text: `Thành công: ${passenger.name} (${passenger.seat}) đã lên xe.`
+        })
+      }
+    } else {
+      setScanMessage({
+        type: 'error',
+        text: `Mã vé "${code}" không hợp lệ cho chuyến xe này.`
+      })
+    }
+
+    setTimeout(() => {
+      setScanMessage(null)
+    }, 4500)
     setScanning(true)
   }
 
   const handleManualSubmit = (e) => {
     e.preventDefault()
     if (!manualCode.trim()) return
-    addScanResult(manualCode.trim())
+    handleScanOrInput(manualCode.trim())
     setManualCode('')
     setShowManualModal(false)
   }
@@ -501,30 +556,130 @@ function ScanView({ onGoPassengers }) {
     }
   }
 
+  const tripPassengers = useMemo(() => {
+    if (!selectedTrip) return []
+    return passengers.filter((p) => p.trip === selectedTrip.code && p.time === selectedTrip.time)
+  }, [passengers, selectedTrip])
+
+  const boardedCount = useMemo(() => {
+    return tripPassengers.filter((p) => p.status === 'boarded').length
+  }, [tripPassengers])
+
+  const notBoardedCount = useMemo(() => {
+    return tripPassengers.filter((p) => p.status === 'not_boarded').length
+  }, [tripPassengers])
+
+  const filteredPassengers = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim()
+    return tripPassengers.filter((p) => {
+      return (
+        !q ||
+        p.id.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q) ||
+        p.phone.replace(/\s/g, '').includes(q.replace(/\s/g, '')) ||
+        p.seat.toLowerCase().includes(q)
+      )
+    })
+  }, [tripPassengers, searchQuery])
+
+  if (!selectedTrip) {
+    return (
+      <div className="space-y-6 animate-fadeIn">
+        <div>
+          <h1 className="text-2xl font-black text-slate-800 animate-slideDown">Quét mã QR soát vé</h1>
+          <p className="text-slate-400 text-xs font-semibold mt-1">Chọn chuyến xe bạn muốn soát vé</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fadeIn">
+          {TRIPS.map((trip) => {
+            const currentTripPassengers = passengers.filter(
+              (p) => p.trip === trip.code && p.time === trip.time
+            )
+            const totalCount = currentTripPassengers.length
+            const boarded = currentTripPassengers.filter((p) => p.status === 'boarded').length
+
+            return (
+              <Card
+                key={trip.id}
+                onClick={() => setSelectedTrip(trip)}
+                className="hover:shadow-md border-slate-100 hover:border-slate-200 transition-all cursor-pointer bg-white relative group"
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <Badge className="bg-sky-50 text-[#004b87] hover:bg-sky-50 font-extrabold text-xs px-3 py-1 border-none rounded-lg">
+                      {trip.code}
+                    </Badge>
+                    <ChevronRight className="h-5 w-5 text-slate-350 group-hover:text-[#004b87] group-hover:translate-x-0.5 transition-all" />
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center gap-2 text-slate-650 font-bold text-xs">
+                      <MapPin className="h-4 w-4 text-slate-400" />
+                      <span>{trip.routeName}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-slate-650 font-bold text-xs">
+                      <Clock className="h-4 w-4 text-slate-400" />
+                      <span>{trip.time} • {trip.dateLabel}</span>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-slate-100 my-4" />
+
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                    <div className="flex items-center gap-1.5">
+                      <Users className="h-4 w-4 text-slate-400" />
+                      <span>{totalCount} hành khách</span>
+                    </div>
+                    <span className="text-green-600 font-extrabold">{boarded} đã lên xe</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Title block with back btn */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => setSelectedTrip(null)}
+          className="w-10 h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-full flex items-center justify-center shadow-sm cursor-pointer transition-all"
+        >
+          <ArrowLeft className="h-5 w-5 text-slate-650" />
+        </button>
         <div>
-          <h1 className="text-2xl font-black text-slate-800">Quét mã QR soát vé</h1>
-          <p className="text-slate-400 text-xs font-semibold mt-1">Đưa mã QR trên vé của khách hàng vào khung quét để tự động soát vé.</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black text-slate-800">Quét mã QR soát vé</h1>
+            <Badge className="bg-sky-50 text-[#004b87] hover:bg-sky-50 font-black text-xs px-2.5 py-0.5 border-none rounded-lg">
+              {selectedTrip.code}
+            </Badge>
+          </div>
+          <p className="text-slate-400 text-xs font-semibold mt-1">
+            {selectedTrip.routeName} • {selectedTrip.time} {selectedTrip.dateLabel}
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start animate-fadeIn">
         {/* Left Side: Camera viewport */}
-        <Card className="lg:col-span-2 border-slate-100 shadow-sm overflow-hidden">
+        <Card className="lg:col-span-2 border-slate-100 shadow-sm overflow-hidden bg-white">
           <CardHeader className="border-b border-slate-100 flex flex-row items-center justify-between py-4 bg-slate-50/20">
-            <CardTitle className="text-sm font-black text-slate-850">Khung quét Camera</CardTitle>
+            <CardTitle className="text-sm font-black text-slate-850">Khung quét</CardTitle>
             <Badge className={`text-[9px] font-black py-0.5 border-none ${
               cameraOn ? 'bg-green-50 text-green-650' : 'bg-slate-100 text-slate-450'
             }`}>
-              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 inline-block ${cameraOn ? 'bg-green-500 animate-pulse' : 'bg-slate-405'}`} />
+              <span className={`w-1.5 h-1.5 rounded-full mr-1.5 inline-block ${cameraOn ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`} />
               {cameraOn ? 'CAMERA ĐANG BẬT' : 'CAMERA ĐANG TẮT'}
             </Badge>
           </CardHeader>
           <CardContent className="p-6 flex flex-col items-center justify-center">
             {/* Viewport Frame */}
-            <div className="relative w-full aspect-square max-w-[420px] bg-[#0f172a] rounded-2xl overflow-hidden border border-slate-200 flex items-center justify-center shadow-inner">
+            <div className="relative w-full aspect-square max-w-[420px] bg-[#0f172a] rounded-2xl overflow-hidden border border-slate-200 flex items-center justify-center shadow-inner animate-pulseFast">
               {cameraOn && (
                 <video ref={videoRef} playsInline muted className="w-full h-full object-cover" aria-label="Camera quét QR" />
               )}
@@ -541,9 +696,9 @@ function ScanView({ onGoPassengers }) {
               </div>
 
               {cameraOn && scanning && (
-                <div className="absolute bottom-4 bg-slate-900/60 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 text-[10px] text-white font-black flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                  ĐANG PHÂN TÍCH QR CODE...
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 pointer-events-none">
+                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="text-white text-xs font-bold tracking-wide">Đang quét...</span>
                 </div>
               )}
 
@@ -551,6 +706,26 @@ function ScanView({ onGoPassengers }) {
                 <div className="text-center text-slate-500 space-y-2 select-none">
                   <CameraOff size={36} className="mx-auto opacity-30" />
                   <p className="text-xs font-bold">Hình ảnh camera đã tắt</p>
+                </div>
+              )}
+
+              {/* Success/Error scan feedback overlay */}
+              {scanMessage && (
+                <div className={`absolute bottom-4 left-4 right-4 backdrop-blur-md px-3.5 py-2.5 rounded-xl border text-[11px] font-black flex items-center gap-2 animate-fadeIn z-10 ${
+                  scanMessage.type === 'success'
+                    ? 'bg-emerald-950/85 border-emerald-500 text-emerald-300'
+                    : scanMessage.type === 'info'
+                    ? 'bg-blue-950/85 border-blue-500 text-blue-300'
+                    : 'bg-red-950/85 border-red-500 text-red-300'
+                }`}>
+                  {scanMessage.type === 'success' ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  ) : scanMessage.type === 'info' ? (
+                    <Info className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                  )}
+                  <span className="truncate">{scanMessage.text}</span>
                 </div>
               )}
             </div>
@@ -576,59 +751,98 @@ function ScanView({ onGoPassengers }) {
           </CardContent>
         </Card>
 
-        {/* Right Side: Recent Scan list */}
+        {/* Right Side: Passengers Registered list */}
         <Card className="border-slate-100 shadow-sm flex flex-col max-h-[580px] bg-white">
           <CardHeader className="border-b border-slate-100 bg-slate-50/20 py-4">
             <CardTitle className="text-sm font-black flex items-center gap-2 text-slate-800">
-              <Clock className="w-4 h-4 text-[#004b87]" /> Kết quả quét gần đây
+              <Users className="w-4 h-4 text-[#004b87]" /> Hành khách đăng ký
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 flex flex-col flex-1 overflow-hidden space-y-4">
             {/* Stats summary boxes */}
             <div className="grid grid-cols-2 gap-3 flex-shrink-0">
               <div className="bg-green-50/50 border border-green-100 p-3 rounded-xl text-center">
-                <p className="text-[10px] text-slate-400 font-bold">HỢP LỆ</p>
-                <p className="text-xl font-black text-green-650 mt-0.5">{validCount}</p>
+                <p className="text-[10px] text-green-650 font-bold">Đã lên xe</p>
+                <p className="text-xl font-black text-green-650 mt-0.5">{boardedCount}</p>
               </div>
-              <div className="bg-red-50/50 border border-red-100 p-3 rounded-xl text-center">
-                <p className="text-[10px] text-slate-400 font-bold">LỖI / SAI VÉ</p>
-                <p className="text-xl font-black text-red-500 mt-0.5">{invalidCount}</p>
+              <div className="bg-orange-50/50 border border-orange-100 p-3 rounded-xl text-center">
+                <p className="text-[10px] text-orange-600 font-bold">Chưa lên xe</p>
+                <p className="text-xl font-black text-orange-600 mt-0.5">{notBoardedCount}</p>
               </div>
             </div>
 
-            {/* Scan lists container */}
-            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1.5 scrollbar-thin">
-              {scanResults.map((item, idx) => (
-                <div 
-                  key={`${item.id}-${idx}`} 
-                  className={`p-3 rounded-xl border flex items-center gap-3 relative bg-gradient-to-br from-white to-slate-50/30 transition-all ${
-                    item.valid ? 'border-green-100 hover:border-green-200' : 'border-red-100 hover:border-red-200'
-                  }`}
+            {/* Search Input Box */}
+            <div className="relative flex-shrink-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Tìm tên, SĐT, mã vé, ghế..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-1.5 border border-slate-200 rounded-xl bg-slate-50/50 text-slate-700 font-semibold text-xs focus:outline-none focus:border-[#004b87] focus:bg-white transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 bg-transparent border-none cursor-pointer"
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    item.valid ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-650'
-                  }`}>
-                    {item.valid ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Passengers lists container */}
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1.5 scrollbar-thin max-h-[350px]">
+              {filteredPassengers.map((passenger) => {
+                const isBoarded = passenger.status === 'boarded'
+                return (
+                  <div
+                    key={passenger.id}
+                    className={`p-3 rounded-xl border flex items-center justify-between transition-all bg-gradient-to-br from-white to-slate-50/20 ${
+                      isBoarded ? 'border-green-100 hover:border-green-200' : 'border-slate-100 hover:border-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Status Circle Icon */}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border ${
+                        isBoarded ? 'bg-green-50 border-green-100 text-green-600' : 'bg-slate-50 border-slate-100 text-slate-400'
+                      }`}>
+                        {isBoarded ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                          <span className="truncate">{passenger.name}</span>
+                          <span className="bg-sky-50 text-[#004b87] px-1.5 py-0.5 rounded text-[9px] font-black flex-shrink-0">
+                            {passenger.seat}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-bold truncate mt-1">
+                          {passenger.id} • {passenger.phone}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded flex-shrink-0 ${
+                      isBoarded ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-600'
+                    }`}>
+                      {isBoarded ? 'Đã lên xe' : 'Chưa lên'}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-extrabold text-slate-800 text-xs">{item.id}</div>
-                    <div className="text-[10px] text-slate-400 font-bold truncate mt-0.5">{item.name} • {item.route}</div>
-                  </div>
-                  <span className="text-[9px] font-bold text-slate-400 flex-shrink-0 align-self-start pt-0.5">{item.time}</span>
-                  
-                  {/* Badge */}
-                  <span className={`absolute bottom-2 right-3 text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
-                    item.valid ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
-                  }`}>
-                    {item.valid ? 'Hợp lệ' : 'Sai vé'}
-                  </span>
+                )
+              })}
+
+              {filteredPassengers.length === 0 && (
+                <div className="p-12 text-center text-slate-400 space-y-2 select-none">
+                  <Info className="h-10 w-10 text-slate-350 mx-auto" />
+                  <p className="font-bold text-xs">Không tìm thấy hành khách nào khớp</p>
                 </div>
-              ))}
+              )}
             </div>
 
             <button
               onClick={onGoPassengers}
-              className="text-xs font-black text-[#004b87] hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer self-start flex-shrink-0"
+              className="text-xs font-black text-[#004b87] hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer self-start flex-shrink-0 pt-2"
             >
               Xem danh sách hành khách đi xe <ArrowRight className="w-3.5 h-3.5" />
             </button>
@@ -643,7 +857,7 @@ function ScanView({ onGoPassengers }) {
           onClick={() => setShowManualModal(false)}
         >
           <Card 
-            className="w-full max-w-sm border-slate-100 shadow-xl"
+            className="w-full max-w-sm border-slate-100 shadow-xl bg-white"
             onClick={(e) => e.stopPropagation()}
           >
             <CardHeader>
@@ -654,7 +868,7 @@ function ScanView({ onGoPassengers }) {
               <CardContent className="space-y-4">
                 <input
                   type="text"
-                  placeholder="Ví dụ: BG-2024-001"
+                  placeholder="Ví dụ: BG-003"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-[#004b87] focus:ring-4 focus:ring-[#004b87]/5"
@@ -686,22 +900,22 @@ function ScanView({ onGoPassengers }) {
   )
 }
 
-function PassengersView({ searchQuery }) {
+function PassengersView({ passengers, setPassengers, searchQuery }) {
   const [search, setSearch] = useState('')
   const [tripFilter, setTripFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedPassenger, setSelectedPassenger] = useState(null)
 
   const trips = useMemo(() => {
-    const set = new Set(INITIAL_PASSENGERS.map((p) => `${p.trip} ${p.time}`))
+    const set = new Set(passengers.map((p) => `${p.trip} ${p.time}`))
     return ['all', ...set]
-  }, [])
+  }, [passengers])
 
   // Combine local search and topbar search
   const activeSearch = searchQuery || search
 
   const filtered = useMemo(() => {
-    return INITIAL_PASSENGERS.filter((p) => {
+    return passengers.filter((p) => {
       const q = activeSearch.toLowerCase().trim()
       const matchSearch =
         !q ||
@@ -716,7 +930,7 @@ function PassengersView({ searchQuery }) {
         (statusFilter === 'not_boarded' && p.status === 'not_boarded')
       return matchSearch && matchTrip && matchStatus
     })
-  }, [activeSearch, tripFilter, statusFilter])
+  }, [passengers, activeSearch, tripFilter, statusFilter])
 
   const boarded = filtered.filter((p) => p.status === 'boarded').length
   const notBoarded = filtered.filter((p) => p.status === 'not_boarded').length

@@ -568,7 +568,7 @@ export default function UserHistory() {
               </div>
             ) : (
               <div className="empty-state">
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
+                <div style={{ fontSize: '3rem', }}>📋</div>
                 <h5 className="fw-bold text-neutral-900 mb-2">Không có vé</h5>
                 <p className="text-muted mb-4">Chưa có chuyến xe nào với trạng thái này.</p>
               </div>
@@ -672,7 +672,7 @@ export default function UserHistory() {
               </div>
             ) : (
               <div className="empty-state">
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💔</div>
+                <div style={{ fontSize: '3rem', }}>💔</div>
                 <h5 className="fw-bold text-neutral-900 mb-2">Chưa có chuyến xe yêu thích</h5>
                 <p className="text-muted mb-4">Hãy thêm các chuyến xe yêu thích của bạn để theo dõi!</p>
               </div>
@@ -718,7 +718,7 @@ export default function UserHistory() {
             </div>
 
             {filteredConsignments.length > 0 ? (
-              <div className="consignments-list">
+              <div className="consignments-list grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
                 {filteredConsignments.map(consignment => {
                   const statusBadge = getCargoStatusBadgeInfo(consignment.cargoStatus)
                   const cargoTypeMap = {
@@ -729,7 +729,7 @@ export default function UserHistory() {
                   }
                   
                   return (
-                    <div key={consignment.id} className="consignment-card" style={{ border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1rem', marginBottom: '1rem' }}>
+                    <div key={consignment.id} className="consignment-card" style={{ border: '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1rem', }}>
                       {/* Status Badge */}
                       <div className="status-badge" style={statusBadge}>
                         {statusBadge.text}
@@ -738,13 +738,13 @@ export default function UserHistory() {
                       {/* Card Content */}
                       <div className="consignment-card-content" style={{ marginTop: '1rem' }}>
                         {/* Consignment ID */}
-                        <div className="consignment-id-section" style={{ marginBottom: '1rem' }}>
+                        <div className="consignment-id-section" style={{ }}>
                           <div className="small text-muted">Mã ký gửi</div>
                           <div className="fw-bold">{consignment.id}</div>
                         </div>
 
                         {/* Route Info */}
-                        <div className="route-section" style={{ marginBottom: '1rem' }}>
+                        <div className="route-section" style={{ }}>
                           <div className="route-info">
                             <div className="stop">
                               <div className="stop-name text-muted fw-bold">{consignment.from}</div>
@@ -762,7 +762,7 @@ export default function UserHistory() {
                         <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '1rem 0' }}></div>
 
                         {/* Cargo Details */}
-                        <div className="cargo-details" style={{ marginBottom: '1rem' }}>
+                        <div className="cargo-details" style={{ }}>
                           <div style={{ marginBottom: '0.5rem' }}>
                             <span className="small text-muted">Loại hàng:</span>
                             <span className="fw-600 ms-2">{cargoTypeMap[consignment.type] || consignment.type}</span>
@@ -789,7 +789,7 @@ export default function UserHistory() {
                         <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '1rem 0' }}></div>
 
                         {/* Sender/Receiver Info */}
-                        <div className="sender-receiver-info" style={{ marginBottom: '1rem' }}>
+                        <div className="sender-receiver-info" style={{ }}>
                           <div style={{ marginBottom: '0.75rem' }}>
                             <div className="small fw-600 text-neutral-700">Người gửi</div>
                             <div className="small text-muted">{consignment.senderName} • {consignment.senderPhone}</div>
@@ -820,7 +820,7 @@ export default function UserHistory() {
               </div>
             ) : (
               <div className="empty-state">
-                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📦</div>
+                <div style={{ fontSize: '3rem', }}>📦</div>
                 <h5 className="fw-bold text-neutral-900 mb-2">Chưa có ký gửi hàng hóa</h5>
                 <p className="text-muted mb-4">Hãy ký gửi hàng hóa để theo dõi!</p>
               </div>
@@ -1363,55 +1363,87 @@ export default function UserHistory() {
 
               {/* Timeline & Images Section */}
               <div className="section mb-4 mt-4">
-                <h6 className="fw-bold mb-3">🕒 Lịch Trình & Hình Ảnh</h6>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.5rem', borderLeft: '2px solid #e5e7eb', marginLeft: '0.5rem' }}>
-                  
-                  {/* Step 1: Đã gửi yêu cầu */}
-                  <div style={{ display: 'flex', gap: '1rem', opacity: ['pending', 'confirmed', 'in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
-                    <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>⏳</div>
-                    <div>
-                      <div className="fw-600">Đã gửi yêu cầu</div>
-                      <div className="small text-muted">Đang chờ tài xế duyệt</div>
-                    </div>
-                  </div>
-                  
-                  {/* Step 2: Đã duyệt */}
-                  <div style={{ display: 'flex', gap: '1rem', opacity: ['confirmed', 'in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
-                    <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>✅</div>
-                    <div>
-                      <div className="fw-600">Đã duyệt (Chờ nhận hàng)</div>
-                      <div className="small text-muted">Tài xế đã đồng ý và đang chờ lấy hàng</div>
-                    </div>
-                  </div>
-                  
-                  {/* Step 3: Đang vận chuyển */}
-                  <div style={{ display: 'flex', gap: '1rem', opacity: ['in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
-                    <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>🚚</div>
-                    <div>
-                      <div className="fw-600">Đã lấy hàng & Đang vận chuyển</div>
-                      <div className="small text-muted">Tài xế đã xác nhận nhận hàng</div>
-                      {selectedConsignment.images?.[0] && ['in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) && (
-                        <div className="mt-2">
-                          <img src={selectedConsignment.images[0]} alt="Hình ảnh nhận hàng" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', objectFit: 'cover' }} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                {(() => {
+                  const imgs = selectedConsignment.images || [];
+                  let customerImages = imgs;
+                  let pickupImage = null;
+                  let deliveryImage = null;
 
-                  {/* Step 4: Đã giao */}
-                  <div style={{ display: 'flex', gap: '1rem', opacity: ['delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
-                    <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>🎉</div>
-                    <div>
-                      <div className="fw-600">Đã giao thành công</div>
-                      <div className="small text-muted">Hàng đã đến tay người nhận</div>
-                      {selectedConsignment.images?.[1] && selectedConsignment.cargoStatus === 'delivered' && (
-                        <div className="mt-2">
-                          <img src={selectedConsignment.images[1]} alt="Hình ảnh giao hàng" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', objectFit: 'cover' }} />
+                  if (selectedConsignment.cargoStatus === 'delivered' && imgs.length >= 2) {
+                    deliveryImage = imgs[imgs.length - 1];
+                    pickupImage = imgs[imgs.length - 2];
+                    customerImages = imgs.slice(0, imgs.length - 2);
+                  } else if (selectedConsignment.cargoStatus === 'delivered' && imgs.length === 1) {
+                    deliveryImage = imgs[0];
+                    customerImages = [];
+                  } else if (['in_transit', 'received_at_station'].includes(selectedConsignment.cargoStatus) && imgs.length >= 1) {
+                    pickupImage = imgs[imgs.length - 1];
+                    customerImages = imgs.slice(0, imgs.length - 1);
+                  }
+
+                  return (
+                    <>
+                      <div className="mb-4">
+                        <h6 className="fw-bold mb-3">📦 Hình Ảnh Của Bạn (Lúc Gửi)</h6>
+                        {customerImages.length > 0 ? (
+                          <div className="d-flex flex-wrap gap-2">
+                            {customerImages.map((img, i) => (
+                              <img key={i} src={img} alt={"Hình ảnh khách gửi " + (i+1)} style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', objectFit: 'cover' }} />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-muted small italic">Không có hình ảnh đính kèm</div>
+                        )}
+                      </div>
+
+                      <h6 className="fw-bold mb-3">🕒 Lịch Trình & Hình Ảnh (Tài xế)</h6>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.5rem', borderLeft: '2px solid #e5e7eb', marginLeft: '0.5rem' }}>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', opacity: ['pending', 'confirmed', 'received_at_station', 'in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
+                          <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>⏳</div>
+                          <div>
+                            <div className="fw-600">Đã gửi yêu cầu</div>
+                            <div className="small text-muted">Đang chờ tài xế duyệt</div>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', opacity: ['confirmed', 'received_at_station', 'in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
+                          <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>✅</div>
+                          <div>
+                            <div className="fw-600">Đã duyệt (Chờ nhận hàng)</div>
+                            <div className="small text-muted">Tài xế đã đồng ý và đang chờ lấy hàng</div>
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', opacity: ['in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
+                          <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>🚚</div>
+                          <div>
+                            <div className="fw-600">Đã lấy hàng & Đang vận chuyển</div>
+                            <div className="small text-muted">Tài xế đã xác nhận nhận hàng</div>
+                            {pickupImage && ['in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) && (
+                              <div className="mt-2">
+                                <img src={pickupImage} alt="Hình ảnh nhận hàng" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', objectFit: 'cover' }} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem', opacity: ['delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
+                          <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>🎉</div>
+                          <div>
+                            <div className="fw-600">Đã giao thành công</div>
+                            <div className="small text-muted">Hàng đã đến tay người nhận</div>
+                            {deliveryImage && selectedConsignment.cargoStatus === 'delivered' && (
+                              <div className="mt-2">
+                                <img src={deliveryImage} alt="Hình ảnh giao hàng" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', objectFit: 'cover' }} />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 

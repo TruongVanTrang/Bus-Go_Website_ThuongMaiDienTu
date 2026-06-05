@@ -8,10 +8,10 @@ import BackButton from '../../components/common/BackButton'
 import { CITY_STOPS, INTERCITY_ROUTES } from '../../utils/constants'
 import './CargoConsignmentPage.css'
 
-export default function CargoConsignmentPage() {
+export default function EditConsignmentPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [isEditingMode, setIsEditingMode] = useState(false)
+  const [isEditingMode, setIsEditingMode] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const canvasRef = useRef(null)
   const qrRef = useRef(null)
@@ -869,15 +869,7 @@ export default function CargoConsignmentPage() {
   return (
     <div className="cargo-consignment-page pb-5">
       {/* Stepper header */}
-      <Stepper
-        currentStep={currentStep > 4 ? 4 : currentStep}
-        steps={[
-          { title: 'Tuyến đường', description: 'Chọn tuyến & dịch vụ' },
-          { title: 'Hàng hóa', description: 'Khai báo & Đính kèm' },
-          { title: 'Người gửi/nhận', description: 'CCCD & Liên hệ' },
-          { title: 'Phê duyệt & Trả phí', description: isEditingMode ? 'Ký số & Cập nhật' : 'Ký số & Thanh toán' }
-        ]}
-      />
+      
 
       <div className="container-fluid px-md-5 px-3 py-4">
         {/* Back Button */}

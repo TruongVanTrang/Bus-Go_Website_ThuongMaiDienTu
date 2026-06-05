@@ -1,4 +1,4 @@
-const { sql } = require('../config/db');
+const { sql, getPool } = require('../config/db');
 
 // Helper function to format duration
 const calculateDuration = (startTime, endTime) => {
@@ -133,13 +133,13 @@ const releaseExpiredSeats = async (pool) => {
 // @route   GET /api/trips/search
 // @access  Public
 const searchTrips = async (req, res) => {
-  const { diemDi, diemDen, date, category } = req.query;
+  const { diemDi, diemDen, date, category, busType } = req.query;
 
   try {
-    const pool = await sql.connect();
+    const pool = getPool();
     
-    // Tự động dọn dẹp các vé đã quá hạn giữ chỗ (5 phút)
-    await releaseExpiredSeats(pool);
+    // Tự động dọn dẹp các vé đã quá hạn giữ chỗ (5 phút) - Đã chuyển sang chạy ngầm trong Scheduler
+    // await releaseExpiredSeats(pool);
 
     // Create default trips for testing if none exist
     if (diemDi && diemDen && date) {
@@ -147,21 +147,20 @@ const searchTrips = async (req, res) => {
     }
 
     let queryStr = `
-      SELECT cx.*, td.danhSachTramDung, pt.tienIch as vehicleAmenities, pt.bienSoXe, nd.tenNguoiDung AS tenNhanVien
-      FROM vw_ChuyenXeChiTiet cx
-      LEFT JOIN ChuyenXe realCx ON cx.maChuyenXe = realCx.maChuyenXe
-      LEFT JOIN TuyenDuong td ON realCx.maTuyenDuong = td.maTuyenDuong
-      LEFT JOIN PhuongTien pt ON realCx.maPhuongTien = pt.maPhuongTien
-      LEFT JOIN NguoiDung nd ON realCx.maNhanVien = nd.maNguoiDung
+      SELECT TOP 200 cx.*, td.danhSachTramDung, pt.tienIch as vehicleAmenities, pt.bienSoXe, nd.tenNguoiDung AS tenNhanVien
+      FROM vw_ChuyenXeChiTiet cx WITH (NOLOCK)
+      LEFT JOIN ChuyenXe realCx WITH (NOLOCK) ON cx.maChuyenXe = realCx.maChuyenXe
+      LEFT JOIN TuyenDuong td WITH (NOLOCK) ON realCx.maTuyenDuong = td.maTuyenDuong
+      LEFT JOIN PhuongTien pt WITH (NOLOCK) ON realCx.maPhuongTien = pt.maPhuongTien
+      LEFT JOIN NguoiDung nd WITH (NOLOCK) ON realCx.maNhanVien = nd.maNguoiDung
     `;
 
     const request = pool.request();
     const conditions = [];
 
-    // Tối ưu: Nếu không có tham số tìm kiếm, chỉ lấy chuyến xe từ hôm nay trở đi để giảm tải
-    if (!date) {
-        conditions.push("CAST(cx.thoiGianDi AS DATE) >= CAST(GETDATE() AS DATE)");
-    }
+    // Luôn luôn chỉ hiển thị các chuyến xe chưa khởi hành
+    // Đổi lại thành GETDATE() của SQL Server vì Node.js new Date() sinh ra giờ UTC gây sai lệch múi giờ
+    conditions.push("cx.thoiGianDi > GETDATE()");
 
     if (diemDi) {
       request.input('from', sql.NVarChar, diemDi);
@@ -178,6 +177,10 @@ const searchTrips = async (req, res) => {
     if (category) {
       request.input('category', sql.NVarChar, category);
       conditions.push('cx.loaiDichVu = @category');
+    }
+    if (busType) {
+      request.input('busType', sql.NVarChar, busType);
+      conditions.push('cx.loaiXe = @busType');
     }
 
     if (conditions.length > 0) {
@@ -200,7 +203,7 @@ const searchTrips = async (req, res) => {
       const idsString = tripIds.join(',');
       const bulkSeatResult = await pool.request().query(`
         SELECT maChuyenXe, soGhe 
-        FROM GheNgoi 
+        FROM GheNgoi WITH (NOLOCK)
         WHERE maChuyenXe IN (${idsString}) AND trangThaiGhe != 'trong'
       `);
       allOccupiedSeats = bulkSeatResult.recordset;
@@ -278,10 +281,10 @@ const getTripById = async (req, res) => {
   const { id } = req.params;
 
   try {
-    const pool = await sql.connect();
+    const pool = getPool();
     
-    // Tự động dọn dẹp các vé đã quá hạn giữ chỗ (5 phút)
-    await releaseExpiredSeats(pool);
+    // Tự động dọn dẹp các vé đã quá hạn giữ chỗ (5 phút) - Đã chuyển sang chạy ngầm
+    // await releaseExpiredSeats(pool);
 
     const result = await pool.request()
       .input('maChuyenXe', sql.Int, id)
@@ -375,7 +378,7 @@ const getDriverTrips = async (req, res) => {
   }
 
   try {
-    const pool = await sql.connect();
+    const pool = getPool();
     const result = await pool.request()
       .input('driverId', sql.Int, parseInt(driverId))
       .query(`
@@ -423,5 +426,6 @@ const getDriverTrips = async (req, res) => {
 module.exports = {
   searchTrips,
   getTripById,
-  getDriverTrips
+  getDriverTrips,
+  releaseExpiredSeats
 };

@@ -1,0 +1,44 @@
+/* Custom animations for LiveChatPageNew */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Scrollbar styling */
+.space-y-4::-webkit-scrollbar,
+.space-y-3::-webkit-scrollbar {
+  width: 6px;
+}
+
+.space-y-4::-webkit-scrollbar-track,
+.space-y-3::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.space-y-4::-webkit-scrollbar-thumb,
+.space-y-3::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.space-y-4::-webkit-scrollbar-thumb:hover,
+.space-y-3::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-width: thin;
+}

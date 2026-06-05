@@ -22,9 +22,11 @@ const config = {
   },
 };
 
+let pool = null;
+
 const connectDB = async () => {
   try {
-    const pool = await sql.connect(config);
+    pool = await sql.connect(config);
     console.log('✅ Kết nối Database thành công!');
     return pool;
   } catch (err) {
@@ -33,7 +35,16 @@ const connectDB = async () => {
   }
 };
 
+const getPool = () => {
+  if (!pool) {
+    throw new Error('Database chưa được kết nối');
+  }
+  return pool;
+};
+
 module.exports = {
   sql,
-  connectDB
+  connectDB,
+  getPool,
+  config
 };

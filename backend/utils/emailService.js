@@ -371,9 +371,190 @@ const sendOTPEmail = async (email, otp) => {
   return sendEmail({ to: email, subject, html });
 };
 
+/**
+ * Gửi email thông báo phê duyệt hủy vé
+ */
+const sendCancellationApprovedEmail = async (customerEmail, customerName, cancellationData) => {
+  const { maVe, soVe, diemDi, diemDen, soTienHoan, phanTramHoan, thoiGianDi } = cancellationData;
+  
+  const formattedRefund = new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  }).format(soTienHoan);
+
+  const subject = `[BusGo] ✅ Yêu cầu hủy vé #${maVe} đã được phê duyệt`;
+  
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; background-color: #f8fafc; padding: 20px;">
+      <div style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border: 2px solid #e2e8f0;">
+        
+        <!-- Header - Success -->
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 24px; text-align: center; color: white;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px;">✅ Yêu Cầu Hủy Vé Được Phê Duyệt</h1>
+          <p style="margin: 10px 0 0; font-size: 16px; opacity: 0.9;">Hoàn tiền sẽ được xử lý trong 3-5 ngày làm việc</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div style="padding: 32px;">
+          <p style="font-size: 16px; color: #334155; margin-bottom: 24px;">Xin chào <strong>${customerName}</strong>,</p>
+          <p style="font-size: 16px; color: #334155; margin-bottom: 32px;">Yêu cầu hủy vé của quý khách đã được <strong>phê duyệt thành công</strong>. Chúng tôi sẽ hoàn tiền lại cho quý khách trong thời gian sớm nhất.</p>
+          
+          <!-- Cancellation Details Card -->
+          <div style="border: 2px solid #10b981; border-radius: 12px; padding: 24px; background-color: #f0fdf4;">
+            <h3 style="margin-top: 0; color: #059669; font-size: 18px;">Thông Tin Hủy Vé</h3>
+            
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+              <tr>
+                <td style="padding: 12px 0; border-bottom: 1px solid #d1fae5; width: 50%;">
+                  <div style="font-size: 12px; font-weight: bold; color: #059669; text-transform: uppercase;">Mã Vé</div>
+                  <div style="font-size: 18px; font-weight: bold; color: #0f172a; margin-top: 4px;">#${maVe}</div>
+                </td>
+                <td style="padding: 12px 0; border-bottom: 1px solid #d1fae5; width: 50%; padding-left: 20px;">
+                  <div style="font-size: 12px; font-weight: bold; color: #059669; text-transform: uppercase;">Số Vé Hủy</div>
+                  <div style="font-size: 18px; font-weight: bold; color: #0f172a; margin-top: 4px;">${soVe} vé</div>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 0; border-bottom: 1px solid #d1fae5; width: 50%;">
+                  <div style="font-size: 12px; font-weight: bold; color: #059669; text-transform: uppercase;">Tuyến Đường</div>
+                  <div style="font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 4px;">${diemDi} ➔ ${diemDen}</div>
+                </td>
+                <td style="padding: 12px 0; border-bottom: 1px solid #d1fae5; width: 50%; padding-left: 20px;">
+                  <div style="font-size: 12px; font-weight: bold; color: #059669; text-transform: uppercase;">Ngày Khởi Hành</div>
+                  <div style="font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 4px;">${moment(thoiGianDi).format('DD/MM/YYYY HH:mm')}</div>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding: 12px 0;">
+                  <div style="font-size: 12px; font-weight: bold; color: #059669; text-transform: uppercase;">Phần Trăm Hoàn Tiền</div>
+                  <div style="font-size: 18px; font-weight: bold; color: #0f172a; margin-top: 4px;">${phanTramHoan}%</div>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Refund Amount -->
+            <div style="background-color: #ecfdf5; padding: 16px; border-radius: 8px; border: 2px solid #10b981; margin-top: 20px; text-align: center;">
+              <div style="font-size: 14px; font-weight: bold; color: #059669; text-transform: uppercase;">Số Tiền Hoàn Lại</div>
+              <div style="font-size: 32px; font-weight: 900; color: #059669; margin-top: 8px;">${formattedRefund}</div>
+            </div>
+          </div>
+
+          <!-- Important Info -->
+          <div style="background-color: #e0f2fe; border: 2px solid #0284c7; border-radius: 8px; padding: 20px; margin-top: 32px;">
+            <h4 style="margin-top: 0; color: #0c4a6e; font-size: 16px;">📌 Thông Tin Quan Trọng</h4>
+            <ul style="color: #0c4a6e; padding-left: 20px; margin-bottom: 0; font-size: 14px; line-height: 1.8;">
+              <li><strong>Thời gian hoàn tiền:</strong> 3-5 ngày làm việc (không tính thứ 7, chủ nhật)</li>
+              <li><strong>Phương thức hoàn tiền:</strong> Sẽ được hoàn lại vào tài khoản thanh toán gốc của quý khách</li>
+              <li><strong>Trạng thái vé:</strong> Sẽ được cập nhật thành "Đã Hủy" trong lịch sử đặt vé</li>
+              <li><strong>Cần hỗ trợ:</strong> Liên hệ hotline 1900 1234 (24/7)</li>
+            </ul>
+          </div>
+
+          <!-- Footer Message -->
+          <p style="color: #64748b; font-size: 14px; margin-top: 32px; text-align: center;">Cảm ơn quý khách đã sử dụng dịch vụ BusGo. Chúc quý khách có những chuyến đi vui vẻ!</p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color: #f1f5f9; padding: 24px; text-align: center; color: #64748b; font-size: 13px; border-top: 1px solid #e2e8f0;">
+          <strong>BusGo</strong> - Nền tảng đặt vé xe thông minh<br/>
+          &copy; ${new Date().getFullYear()} BusGo. All rights reserved.<br/>
+          <span style="opacity: 0.8; font-size: 12px; display: block; margin-top: 8px;">Email này được gửi tự động, vui lòng không phản hồi trực tiếp vào địa chỉ này.</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({ to: customerEmail, subject, html });
+};
+
+/**
+ * Gửi email thông báo từ chối hủy vé
+ */
+const sendCancellationRejectedEmail = async (customerEmail, customerName, cancellationData) => {
+  const { maVe, diemDi, diemDen, lyDoTuChoi, thoiGianDi } = cancellationData;
+
+  const subject = `[BusGo] ❌ Yêu cầu hủy vé #${maVe} không được chấp nhận`;
+  
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; background-color: #f8fafc; padding: 20px;">
+      <div style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border: 2px solid #e2e8f0;">
+        
+        <!-- Header - Rejected -->
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 30px 24px; text-align: center; color: white;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 1px;">❌ Yêu Cầu Hủy Vé Không Được Chấp Nhận</h1>
+          <p style="margin: 10px 0 0; font-size: 16px; opacity: 0.9;">Vé của quý khách vẫn có hiệu lực</p>
+        </div>
+        
+        <!-- Main Content -->
+        <div style="padding: 32px;">
+          <p style="font-size: 16px; color: #334155; margin-bottom: 24px;">Xin chào <strong>${customerName}</strong>,</p>
+          <p style="font-size: 16px; color: #334155; margin-bottom: 32px;">Yêu cầu hủy vé của quý khách <strong>không được chấp nhận</strong> lý do sau đây:</p>
+          
+          <!-- Rejection Details Card -->
+          <div style="border: 2px solid #ef4444; border-radius: 12px; padding: 24px; background-color: #fef2f2;">
+            <h3 style="margin-top: 0; color: #dc2626; font-size: 18px;">Lý Do Từ Chối</h3>
+            
+            <div style="background-color: #fee2e2; padding: 16px; border-radius: 8px; border-left: 4px solid #ef4444; margin: 20px 0;">
+              <p style="margin: 0; color: #991b1b; font-size: 15px; line-height: 1.6;">${lyDoTuChoi}</p>
+            </div>
+
+            <!-- Ticket Info -->
+            <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #fecaca;">
+              <h4 style="margin-top: 0; color: #dc2626; font-size: 16px;">Thông Tin Vé</h4>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 12px 0; width: 50%;">
+                    <div style="font-size: 12px; font-weight: bold; color: #991b1b; text-transform: uppercase;">Mã Vé</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #0f172a; margin-top: 4px;">#${maVe}</div>
+                  </td>
+                  <td style="padding: 12px 0; width: 50%; padding-left: 20px;">
+                    <div style="font-size: 12px; font-weight: bold; color: #991b1b; text-transform: uppercase;">Ngày Khởi Hành</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 4px;">${moment(thoiGianDi).format('DD/MM/YYYY HH:mm')}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" style="padding: 12px 0;">
+                    <div style="font-size: 12px; font-weight: bold; color: #991b1b; text-transform: uppercase;">Tuyến Đường</div>
+                    <div style="font-size: 16px; font-weight: bold; color: #0f172a; margin-top: 4px;">${diemDi} ➔ ${diemDen}</div>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- Important Info -->
+          <div style="background-color: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; margin-top: 32px;">
+            <h4 style="margin-top: 0; color: #92400e; font-size: 16px;">📌 Điều Quan Trọng Cần Biết</h4>
+            <ul style="color: #92400e; padding-left: 20px; margin-bottom: 0; font-size: 14px; line-height: 1.8;">
+              <li><strong>Vé của quý khách vẫn có hiệu lực:</strong> Quý khách vẫn có thể sử dụng vé này để đi chuyến được đặt</li>
+              <li><strong>Yêu cầu hủy mới:</strong> Nếu muốn hủy, quý khách có thể gửi yêu cầu lần khác</li>
+              <li><strong>Hết hạn tự động:</strong> Khi hết hạn sử dụng, trạng thái vé sẽ tự cập nhật</li>
+              <li><strong>Cần hỗ trợ:</strong> Liên hệ hotline 1900 1234 (24/7) để được hỗ trợ thêm</li>
+            </ul>
+          </div>
+
+          <!-- Footer Message -->
+          <p style="color: #64748b; font-size: 14px; margin-top: 32px; text-align: center;">Nếu quý khách có thắc mắc, vui lòng liên hệ chúng tôi để được giải đáp chi tiết.</p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background-color: #f1f5f9; padding: 24px; text-align: center; color: #64748b; font-size: 13px; border-top: 1px solid #e2e8f0;">
+          <strong>BusGo</strong> - Nền tảng đặt vé xe thông minh<br/>
+          &copy; ${new Date().getFullYear()} BusGo. All rights reserved.<br/>
+          <span style="opacity: 0.8; font-size: 12px; display: block; margin-top: 8px;">Email này được gửi tự động, vui lòng không phản hồi trực tiếp vào địa chỉ này.</span>
+        </div>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({ to: customerEmail, subject, html });
+};
+
 module.exports = {
   sendTicketEmail,
   sendCargoContractEmail,
   sendEmail,
-  sendOTPEmail
+  sendOTPEmail,
+  sendCancellationApprovedEmail,
+  sendCancellationRejectedEmail
 };

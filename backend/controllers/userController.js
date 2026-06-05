@@ -1,4 +1,4 @@
-const { sql } = require('../config/db');
+const { sql, config } = require('../config/db');
 const { otpStore } = require('./authController');
 
 // @desc    Lấy thông tin profile người dùng
@@ -7,7 +7,7 @@ const { otpStore } = require('./authController');
 const getProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const pool = await sql.connect();
+    const pool = await sql.connect(config);
 
     const userResult = await pool.request()
       .input('maNguoiDung', sql.Int, userId)
@@ -58,7 +58,7 @@ const updateProfile = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const pool = await sql.connect();
+    const pool = await sql.connect(config);
 
     // Check if user exists and get current data
     const userResult = await pool.request()
@@ -147,7 +147,308 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// =============================================================================
+// CUSTOMER CHAT APIs
+// =============================================================================
+
+// @desc    Lấy phiên chat hiện tại của khách hàng
+// @route   GET /api/users/chat
+// @access  Private
+const getMyChatSession = async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request()
+      .input('maKhachHang', sql.Int, userId)
+      .query(`
+        SELECT TOP 1 * FROM ChatSession 
+        WHERE maKhachHang = @maKhachHang 
+        ORDER BY thoiGianCapNhat DESC
+      `);
+      
+    res.json({ session: result.recordset[0] || null });
+  } catch (error) {
+    console.error('Lỗi getMyChatSession:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// @desc    Tạo phiên chat mới cho khách hàng
+// @route   POST /api/users/chat
+// @access  Private
+const createMyChatSession = async (req, res) => {
+  const userId = req.user.id;
+  const { chuDeChat } = req.body;
+  try {
+    const pool = await sql.connect(config);
+    
+    // Để NULL ban đầu, support staff sẽ pick up sau
+    const insertResult = await pool.request()
+      .input('maKhachHang', sql.Int, userId)
+      .input('chuDeChat', sql.NVarChar, chuDeChat || 'Cần hỗ trợ')
+      .query(`
+        INSERT INTO ChatSession (maKhachHang, trangThai, chuDeChat)
+        VALUES (@maKhachHang, 'active', @chuDeChat);
+        SELECT SCOPE_IDENTITY() AS maChatSession;
+      `);
+      
+    res.status(201).json({ maChatSession: insertResult.recordset[0].maChatSession });
+  } catch (error) {
+    console.error('Lỗi createMyChatSession:', error);
+    res.status(500).json({ message: 'Lỗi server tạo phiên chat' });
+  }
+};
+
+// @desc    Lấy tin nhắn của phiên chat khách hàng
+// @route   GET /api/users/chat/:sessionId/messages
+// @access  Private
+const getMyChatMessages = async (req, res) => {
+  const { sessionId } = req.params;
+  const userId = req.user.id;
+  
+  console.log(`[DEBUG] getMyChatMessages: sessionId=${sessionId}, userId=${userId}`);
+  
+  try {
+    const pool = await sql.connect(config);
+    // Đánh dấu đã đọc tin nhắn của agent gửi cho khách
+    await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .query(`
+        UPDATE ChatMessage SET trangThaiDoc = 'read' 
+        WHERE maChatSession = @sessionId AND nguoiGui = 'agent' AND trangThaiDoc = 'sent'
+      `);
+      
+    const result = await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .input('userId', sql.Int, userId)
+      .query(`
+        SELECT m.* FROM ChatMessage m
+        INNER JOIN ChatSession s ON m.maChatSession = s.maChatSession
+        WHERE m.maChatSession = @sessionId AND s.maKhachHang = @userId
+        ORDER BY thoiGianGui ASC
+      `);
+    
+    console.log(`[DEBUG] messages count: ${result.recordset.length}`);
+      
+    res.json({ messages: result.recordset });
+  } catch (error) {
+    console.error('Lỗi getMyChatMessages:', error);
+    res.status(500).json({ message: 'Lỗi server lấy tin nhắn' });
+  }
+};
+
+// @desc    Gửi tin nhắn từ khách hàng
+// @route   POST /api/users/chat/:sessionId/messages
+// @access  Private
+const sendMyChatMessage = async (req, res) => {
+  const { sessionId } = req.params;
+  const { noiDung } = req.body;
+  const userId = req.user.id;
+  
+  if (!noiDung || !noiDung.trim()) return res.status(400).json({ message: 'Tin nhắn trống' });
+  
+  try {
+    const pool = await sql.connect(config);
+    
+    // Check session
+    const sessionCheck = await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .input('userId', sql.Int, userId)
+      .query(`SELECT trangThai FROM ChatSession WHERE maChatSession = @sessionId AND maKhachHang = @userId`);
+      
+    if (sessionCheck.recordset.length === 0) return res.status(404).json({ message: 'Không tìm thấy phiên chat' });
+    if (sessionCheck.recordset[0].trangThai === 'closed') return res.status(400).json({ message: 'Phiên chat đã đóng' });
+    
+    await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .input('maNguoiGui', sql.Int, userId)
+      .input('noiDung', sql.NVarChar, noiDung)
+      .query(`
+        INSERT INTO ChatMessage (maChatSession, nguoiGui, maNguoiGui, noiDung, trangThaiDoc)
+        VALUES (@sessionId, 'customer', @maNguoiGui, @noiDung, 'sent');
+        UPDATE ChatSession SET thoiGianCapNhat = GETDATE() WHERE maChatSession = @sessionId;
+      `);
+      
+    res.status(201).json({ message: 'Đã gửi tin' });
+  } catch (error) {
+    console.error('Lỗi sendMyChatMessage:', error);
+    res.status(500).json({ message: 'Lỗi server gửi tin nhắn' });
+  }
+};
+
+// =============================================================================
+// CUSTOMER CANCELLATION REQUEST
+// =============================================================================
+
+// @desc    Khách hàng yêu cầu hủy vé
+// @route   POST /api/users/tickets/:ticketId/cancel
+// @access  Private
+const requestTicketCancellation = async (req, res) => {
+  const { ticketId } = req.params;
+  const { lyDoHuy } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const pool = await sql.connect(config);
+    
+    // Tìm vé đầu tiên (để lấy maQR và thông tin chuyến)
+    const firstVeResult = await pool.request()
+      .input('ticketId', sql.VarChar, ticketId)
+      .input('ticketIdInt', sql.Int, parseInt(ticketId) || 0)
+      .input('maKhachHang', sql.Int, userId)
+      .query(`
+        SELECT TOP 1 v.maVe, v.maQR, v.maChuyenXe, v.ngayDatVe, v.trangThaiVe, v.giaVe, c.thoiGianDi 
+        FROM VeDienTu v
+        INNER JOIN ChuyenXe c ON v.maChuyenXe = c.maChuyenXe
+        WHERE (
+          v.maQR = @ticketId
+          OR v.maQR LIKE @ticketId + '%'
+          OR CAST(v.maVe AS VARCHAR) = @ticketId
+          OR v.maVe = @ticketIdInt
+        )
+        AND v.maKhachHang = @maKhachHang
+      `);
+
+    if (firstVeResult.recordset.length === 0) {
+      return res.status(404).json({ 
+        message: 'Không tìm thấy vé cần hủy'
+      });
+    }
+
+    const firstVe = firstVeResult.recordset[0];
+    
+    let allTicketsQuery = `
+      SELECT v.maVe, v.trangThaiVe, v.giaVe, v.giaThanhToan, c.thoiGianDi 
+      FROM VeDienTu v
+      INNER JOIN ChuyenXe c ON v.maChuyenXe = c.maChuyenXe
+      WHERE 1=1
+    `;
+    let allTicketsReq = pool.request()
+      .input('maChuyenXe', sql.Int, firstVe.maChuyenXe)
+      .input('maKhachHang', sql.Int, userId)
+      .input('ngayDatVe', sql.DateTime, firstVe.ngayDatVe || new Date());
+
+    if (firstVe.maQR && firstVe.maQR.trim()) {
+      const bookingId = firstVe.maQR.split('-')[0];
+      allTicketsQuery += ` AND v.maQR LIKE @bookingId + '%'`;
+      allTicketsReq.input('bookingId', sql.VarChar, bookingId);
+    } else {
+      allTicketsQuery += ` AND v.maChuyenXe = @maChuyenXe AND v.maKhachHang = @maKhachHang AND CAST(v.ngayDatVe AS DATE) = CAST(@ngayDatVe AS DATE)`;
+    }
+
+    const allTicketsResult = await allTicketsReq.query(allTicketsQuery);
+
+    const allTickets = allTicketsResult.recordset;
+
+    if (allTickets.length === 0) {
+      return res.status(404).json({ 
+        message: 'Không tìm thấy vé cần hủy'
+      });
+    }
+
+    // Chỉ vé đã thanh toán mới được hủy
+    if (firstVe.trangThaiVe !== 'da_thanh_toan') {
+      return res.status(400).json({ 
+        message: 'Chỉ vé đã thanh toán mới có thể yêu cầu hủy',
+        trangThaiHienTai: firstVe.trangThaiVe
+      });
+    }
+
+    // Kiểm tra thời gian
+    const now = new Date();
+    const thoiGianDi = new Date(firstVe.thoiGianDi);
+    if (thoiGianDi <= now) {
+      return res.status(400).json({ 
+        message: 'Chuyến xe đã khởi hành, không thể hủy'
+      });
+    }
+
+    // Kiểm tra xem vé đầu tiên đã có yêu cầu hủy pending chưa
+    const existingRequest = await pool.request()
+      .input('maVe', sql.Int, firstVe.maVe)
+      .query(`
+        SELECT TOP 1 maYeuCau, trangThai
+        FROM CancellationRequest
+        WHERE maVe = @maVe
+          AND trangThai IN ('pending', 'approved')
+      `);
+
+    if (existingRequest.recordset.length > 0) {
+      return res.status(400).json({ 
+        message: 'Booking này đã có yêu cầu hủy đang chờ xử lý hoặc đã được duyệt',
+        trangThaiHienTai: existingRequest.recordset[0].trangThai
+      });
+    }
+
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // Tính tổng giá cho booking (bao gồm cả hàng hóa)
+      const tongGiaVe = allTickets.reduce((sum, t) => sum + Number(t.giaThanhToan || t.giaVe), 0);
+
+      // Cập nhật TẤT CẢ vé thành "cho_xu_ly_huy"
+      if (firstVe.maQR && firstVe.maQR.trim()) {
+        const bookingId = firstVe.maQR.split('-')[0];
+        await transaction.request()
+          .input('bookingId', sql.VarChar, bookingId)
+          .query(`
+            UPDATE VeDienTu 
+            SET trangThaiVe = 'cho_xu_ly_huy'
+            WHERE maQR LIKE @bookingId + '%'
+          `);
+      } else {
+        await transaction.request()
+          .input('maChuyenXe', sql.Int, firstVe.maChuyenXe)
+          .input('maKhachHang', sql.Int, userId)
+          .input('ngayDatVe', sql.DateTime, firstVe.ngayDatVe)
+          .query(`
+            UPDATE VeDienTu 
+            SET trangThaiVe = 'cho_xu_ly_huy'
+            WHERE maChuyenXe = @maChuyenXe
+              AND maKhachHang = @maKhachHang
+              AND CAST(ngayDatVe AS DATE) = CAST(@ngayDatVe AS DATE)
+          `);
+      }
+
+      // Tạo 1 CancellationRequest duy nhất cho vé đầu tiên
+      await transaction.request()
+        .input('maVe', sql.Int, firstVe.maVe)
+        .input('maKhachHang', sql.Int, userId)
+        .input('lyDoHuy', sql.NVarChar, lyDoHuy || 'Yêu cầu hủy từ khách hàng')
+        .input('tongGiaVe', sql.Decimal(18, 2), tongGiaVe)
+        .query(`
+          INSERT INTO CancellationRequest 
+            (maVe, maKhachHang, lyDoHuy, trangThai, trangThaiHoan, giaVeGoc, soTienHoan)
+          VALUES 
+            (@maVe, @maKhachHang, @lyDoHuy, 'pending', 'pending', @tongGiaVe, 0)
+        `);
+
+      await transaction.commit();
+
+      res.status(201).json({ 
+        message: `Đã gửi yêu cầu hủy ${allTickets.length} vé thành công. Vui lòng đợi nhân viên xác nhận.`,
+        soVe: allTickets.length
+      });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (error) {
+    console.error('Lỗi requestTicketCancellation:', error);
+    res.status(500).json({ 
+      message: 'Lỗi server khi gửi yêu cầu hủy vé',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getProfile,
-  updateProfile
+  updateProfile,
+  getMyChatSession,
+  createMyChatSession,
+  getMyChatMessages,
+  sendMyChatMessage,
+  requestTicketCancellation
 };

@@ -4,6 +4,7 @@ import TripCard from '../../components/search/TripCard'
 import SearchFilters from '../../components/search/SearchFilters'
 import { searchTrips } from '../../services/tripService'
 import { FiRefreshCw, FiSearch, FiAlertTriangle, FiLoader } from 'react-icons/fi'
+import { AuthUtil } from '../../utils/helpers'
 
 export default function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -39,8 +40,9 @@ export default function SearchResultsPage() {
         const to = filters.to || ''
         const date = filters.departureDate || ''
         const category = filters.category || ''
+        const busType = filters.busType || ''
 
-        const data = await searchTrips(from, to, date, category)
+        const data = await searchTrips(from, to, date, category, busType)
         setTrips(data)
       } catch (err) {
         console.error('Error fetching trips:', err)
@@ -51,7 +53,7 @@ export default function SearchResultsPage() {
     }
 
     fetchTrips()
-  }, [filters.from, filters.to, filters.departureDate, filters.category])
+  }, [filters.from, filters.to, filters.departureDate, filters.category, filters.busType])
 
   // Dynamically adjust price limit based on category
   useEffect(() => {
@@ -177,7 +179,14 @@ export default function SearchResultsPage() {
                   <TripCard
                     key={trip.id}
                     trip={trip}
-                    onSelect={() => navigate(`/booking/${trip.id}`, { state: { trip } })}
+                    onSelect={() => {
+                      if (!AuthUtil.isAuthenticated()) {
+                        alert('Vui lòng đăng nhập để tiếp tục đặt vé!');
+                        navigate('/login');
+                        return;
+                      }
+                      navigate(`/booking/${trip.id}`, { state: { trip } });
+                    }}
                   />
                 ))}
               </div>

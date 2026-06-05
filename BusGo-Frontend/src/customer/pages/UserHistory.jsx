@@ -22,6 +22,10 @@ export default function UserHistory() {
   const [consignments, setConsignments] = useState([])
   const [selectedConsignment, setSelectedConsignment] = useState(null)
   const [showConsignmentDetailModal, setShowConsignmentDetailModal] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentConsignment, setPaymentConsignment] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [paymentLoading, setPaymentLoading] = useState(false)
   const [cargoStatusFilter, setCargoStatusFilter] = useState('all') // all, pending, confirmed, in_transit, delivered
 
   const [bookings, setBookings] = useState([])
@@ -104,7 +108,8 @@ export default function UserHistory() {
             receiverPhone: item.soDienThoaiNguoiNhan,
             cargoStatus: mappedStatus,
             date: item.ngayGui,
-            images: item.hinhAnh || []
+            images: item.hinhAnh || [],
+            rawBackendData: item
           }
         })
         setConsignments(mappedConsignments)
@@ -112,7 +117,6 @@ export default function UserHistory() {
         console.error('Lỗi khi tải lịch sử ký gửi:', err)
       }
     }
-    
     loadConsignments()
   }, [navigate])
 
@@ -369,6 +373,7 @@ export default function UserHistory() {
     }
   }
 
+  console.log('CONSIGNMENTS DATA:', consignments);
   if (loading) {
     return (
       <div className="user-history-page">
@@ -814,30 +819,52 @@ export default function UserHistory() {
                             <FiPackage size={14} className="me-1" />
                             Xem chi tiết
                           </button>
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={() => {
-                              navigate('/cargo-consignment', { 
-                                state: { 
-                                  reorderData: {
-                                    loaiDichVu: 'van_tai',
-                                    diemGui: consignment.from,
-                                    diemNhan: consignment.to,
-                                    tenNguoiGui: consignment.senderName,
-                                    soDienThoaiNguoiGui: consignment.senderPhone,
-                                    tenNguoiNhan: consignment.receiverName,
-                                    soDienThoaiNguoiNhan: consignment.receiverPhone,
-                                    loaiHangHoa: consignment.type,
-                                    trongLuong: consignment.weight,
-                                    giaTriKhaiGia: consignment.declaredValue,
+                          {(consignment.cargoStatus === 'confirmed' || consignment.cargoStatus === 'in_transit') && consignment.rawBackendData?.trangThaiThanhToan === 'paid' ? (
+                            <button
+                              className="btn btn-success btn-sm"
+                              disabled
+                              style={{ opacity: 0.7 }}
+                            >
+                              <FiCheckCircle size={14} className="me-1" />
+                              Đã thanh toán
+                            </button>
+                          ) : consignment.cargoStatus === 'confirmed' && consignment.rawBackendData?.trangThaiThanhToan !== 'paid' ? (
+                            <button
+                              className="btn btn-success btn-sm"
+                              onClick={() => {
+                                setPaymentConsignment(consignment)
+                                setShowPaymentModal(true)
+                              }}
+                            >
+                              <FiDollarSign size={14} className="me-1" />
+                              Thanh toán ngay
+                            </button>
+                          ) : (
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => {
+                                navigate('/cargo-consignment', { 
+                                  state: { 
+                                    reorderData: {
+                                      loaiDichVu: 'van_tai',
+                                      diemGui: consignment.from,
+                                      diemNhan: consignment.to,
+                                      tenNguoiGui: consignment.senderName,
+                                      soDienThoaiNguoiGui: consignment.senderPhone,
+                                      tenNguoiNhan: consignment.receiverName,
+                                      soDienThoaiNguoiNhan: consignment.receiverPhone,
+                                      loaiHangHoa: consignment.type,
+                                      trongLuong: consignment.weight,
+                                      giaTriKhaiGia: consignment.declaredValue,
+                                    } 
                                   } 
-                                } 
-                              })
-                            }}
-                          >
-                            <FiRefreshCw size={14} className="me-1" />
-                            Đặt lại
-                          </button>
+                                })
+                              }}
+                            >
+                              <FiRefreshCw size={14} className="me-1" />
+                              Đặt lại
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1237,6 +1264,74 @@ export default function UserHistory() {
                 style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '0.75rem 1.5rem' }}
               >
                 Xác nhận hủy vé
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && paymentConsignment && (
+        <div className="modal-overlay" onClick={() => setShowPaymentModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '500px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header border-bottom pb-3 mb-3">
+              <h5 className="fw-bold mb-0">Thanh Toán Ký Gửi</h5>
+              <button className="btn-close" onClick={() => setShowPaymentModal(false)}></button>
+            </div>
+            <div className="modal-body">
+              <div className="alert alert-info" style={{ borderRadius: '0.5rem', backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' }}>
+                Đơn hàng <strong>{paymentConsignment.id}</strong> đã được xác nhận. Vui lòng thanh toán để tiếp tục vận chuyển.
+              </div>
+              <div className="d-flex justify-content-between mb-3 border-bottom pb-3">
+                <span className="text-muted fw-bold">Tổng tiền thanh toán:</span>
+                <span className="text-danger fw-bold fs-5">{paymentConsignment.totalPrice?.toLocaleString('vi-VN')} đ</span>
+              </div>
+              <div className="mb-4">
+                <label className="form-label fw-bold">Phương thức thanh toán</label>
+                <div className="d-flex flex-column gap-2">
+                  <label className="d-flex align-items-center p-3 border rounded" style={{ cursor: 'pointer', backgroundColor: paymentMethod === 'cash' ? '#f8fafc' : 'white', borderColor: paymentMethod === 'cash' ? '#3b82f6' : '#e2e8f0' }}>
+                    <input type="radio" name="paymentMethod" value="cash" checked={paymentMethod === 'cash'} onChange={() => setPaymentMethod('cash')} className="me-3" />
+                    <div>
+                      <div className="fw-bold">Thanh toán tiền mặt</div>
+                      <div className="small text-muted">Thanh toán tại quầy khi gửi hoặc nhận hàng</div>
+                    </div>
+                  </label>
+                  <label className="d-flex align-items-center p-3 border rounded" style={{ cursor: 'pointer', backgroundColor: paymentMethod === 'vnpay' ? '#f8fafc' : 'white', borderColor: paymentMethod === 'vnpay' ? '#3b82f6' : '#e2e8f0' }}>
+                    <input type="radio" name="paymentMethod" value="vnpay" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} className="me-3" />
+                    <div>
+                      <div className="fw-bold">Thanh toán VNPay</div>
+                      <div className="small text-muted">Thanh toán trực tuyến an toàn</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer pt-3 border-top d-flex gap-2 justify-content-end">
+              <button className="btn btn-light" onClick={() => setShowPaymentModal(false)}>Hủy</button>
+              <button 
+                className="btn btn-primary" 
+                onClick={async () => {
+                  setPaymentLoading(true);
+                  try {
+                    const response = await fetch(`http://localhost:5000/api/cargo/consignment/${paymentConsignment.id}/pay`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ paymentMethod })
+                    });
+                    if (response.ok) {
+                      setShowPaymentModal(false);
+                      alert('Thanh toán thành công! Trạng thái đơn hàng sẽ được cập nhật.');
+                      window.location.reload();
+                    }
+                  } catch (e) {
+                    console.error(e);
+                  } finally {
+                    setPaymentLoading(false);
+                  }
+                }}
+                disabled={paymentLoading}
+              >
+                {paymentLoading ? 'Đang xử lý...' : 'Xác nhận thanh toán'}
               </button>
             </div>
           </div>

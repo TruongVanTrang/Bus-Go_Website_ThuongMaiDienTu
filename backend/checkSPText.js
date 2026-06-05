@@ -4,8 +4,8 @@ const { connectDB } = require('./config/db');
 async function checkDb() {
   try {
     let pool = await connectDB();
-    let result = await pool.request().query("SELECT consignmentId, trangThaiThanhToan FROM KyGuiHang WHERE consignmentId = 'CSM1780671061076'");
-    console.log(result.recordset);
+    let result = await pool.request().query("EXEC sp_helptext 'sp_TimKyGuiHang'");
+    console.log(result.recordset.map(r => r.Text).join(''));
     pool.close();
   } catch (err) {
     console.error(err);

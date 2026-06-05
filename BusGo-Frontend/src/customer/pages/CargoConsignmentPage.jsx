@@ -38,11 +38,17 @@ export default function CargoConsignmentPage() {
       setPersonData({
         senderName: c.tenNguoiGui || '',
         senderPhone: c.soDienThoaiNguoiGui || '',
-        senderCCCD: c.soCCCD || '',
-        senderEmail: c.emailNguoiGui || '',
+        senderCCCD: c.soCCCD || '',        senderEmail: c.emailNguoiGui || '',
         receiverName: c.tenNguoiNhan || '',
         receiverPhone: c.soDienThoaiNguoiNhan || ''
       });
+    } else if (location.state && location.state.payNowData) {
+      const c = location.state.payNowData;
+      setActiveConsignmentId(c.consignmentId);
+      setActiveConsignment(c);
+      setConsignmentStatus('da_xac_nhan');
+      setIsConfirmed(true);
+      setCurrentStep(5);
     }
   }, [location.state]);
   const [isEditingMode, setIsEditingMode] = useState(false)

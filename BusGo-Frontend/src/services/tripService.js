@@ -13,7 +13,8 @@ export const getTrips = async (filters = {}) => {
         from: filters.from || '',
         to: filters.to || '',
         date: filters.date || '',
-        category: filters.category || ''
+        category: filters.category || '',
+        busType: filters.busType || ''
       }
     })
     return response.data
@@ -35,6 +36,6 @@ export const getTripById = async (tripId) => {
 }
 
 // Search trips by route and date
-export const searchTrips = async (from, to, date, category) => {
-  return getTrips({ from, to, date, category })
+export const searchTrips = async (from, to, date, category, busType) => {
+  return getTrips({ from, to, date, category, busType })
 }

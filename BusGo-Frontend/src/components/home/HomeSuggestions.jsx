@@ -1,17 +1,40 @@
 import { useState, useEffect } from 'react'
-import { FiAlertCircle, FiClock, FiChevronRight, FiArrowRight, FiTrendingUp, FiMapPin } from 'react-icons/fi'
-import { MdSearch } from 'react-icons/md'
+import { FiAlertCircle, FiClock, FiChevronRight, FiArrowRight, FiTrendingUp } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
 import { StorageUtil } from '../../utils/helpers'
 
-// Tuyến được đặt nhiều nhất (nội thành + ngoại thành thực tế từ DB)
 const MOST_BOOKED_ROUTES = [
-  { id: 1, from: 'Cầu Rồng', to: 'Phố cổ Hội An', bookings: 1240, avgPrice: 60000, category: 'city', label: 'Nội thành' },
-  { id: 2, from: 'Đà Nẵng', to: 'Huế', bookings: 980, avgPrice: 120000, category: 'interCity', label: 'Ngoại thành' },
-  { id: 3, from: 'Đà Nẵng', to: 'Quảng Nam', bookings: 756, avgPrice: 80000, category: 'interCity', label: 'Ngoại thành' },
+  {
+    id: 1,
+    from: 'Cầu Rồng',
+    to: 'Phố cổ Hội An',
+    bookings: 1240,
+    avgPrice: 60000,
+    category: 'city',
+    label: 'Nội thành',
+    image: 'https://images.unsplash.com/photo-1568402102990-bc541580b59f?auto=format&fit=crop&w=600&q=80'
+  },
+  {
+    id: 2,
+    from: 'Đà Nẵng',
+    to: 'Huế',
+    bookings: 980,
+    avgPrice: 120000,
+    category: 'interCity',
+    label: 'Ngoại thành',
+    image: 'https://images.unsplash.com/photo-1605538032432-a9f0c8d9baac?auto=format&fit=crop&w=600&q=80'
+  },
+  {
+    id: 3,
+    from: 'Đà Nẵng',
+    to: 'Quảng Nam',
+    bookings: 756,
+    avgPrice: 80000,
+    category: 'interCity',
+    label: 'Ngoại thành',
+    image: 'https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=600&q=80'
+  },
 ]
-
-
 
 export default function HomeSuggestions() {
   const [recentActivity, setRecentActivity] = useState([])
@@ -19,7 +42,6 @@ export default function HomeSuggestions() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Load user info
     const savedUser = StorageUtil.getUser()
     if (savedUser) {
       const savedUserInfo = localStorage.getItem('userInfo')
@@ -32,7 +54,6 @@ export default function HomeSuggestions() {
       setUserInfo({ emailVerified: true, phoneVerified: true, hasName: false })
     }
 
-    // Tải lịch sử tìm kiếm gần đây
     const savedActivity = localStorage.getItem('recentSearches')
     if (savedActivity) {
       try {
@@ -41,11 +62,8 @@ export default function HomeSuggestions() {
         console.error('Error loading recent search:', e)
       }
     }
-
-    // "Khởi hành trong 24h tới" — Removed to avoid duplication with UpcomingTrips
   }, [])
 
-  // Điều hướng đến trang tìm kiếm với params
   const goSearch = (params = {}) => {
     const today = new Date().toISOString().split('T')[0]
     const urlParams = new URLSearchParams()
@@ -62,53 +80,50 @@ export default function HomeSuggestions() {
   }
 
   return (
-    <div className="w-full relative z-10 bg-blue-50 pt-4 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <div className="w-full bg-white py-12 border-b border-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         
-        {/* Information Alerts */}
+        {/* Verification Alert */}
         {!userInfo.emailVerified && (
-          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4">
-            <div className="flex items-center gap-4">
-              <div className="bg-white/50 p-2 rounded-full text-amber-500">
-                <FiAlertCircle size={24} />
+          <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="bg-white p-2 rounded-xl text-blue-600 shadow-sm shrink-0">
+                <FiAlertCircle size={20} />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-amber-900">⚠️ Email chưa được xác minh</h4>
-                <p className="text-xs text-amber-800/80 mt-0.5">Xác minh email để bảo mật tài khoản và nhận thông báo đặt vé</p>
+                <h4 className="text-sm font-bold text-slate-800">Email chưa được xác minh</h4>
+                <p className="text-xs text-slate-500 mt-0.5">Xác minh email để bảo mật tài khoản và nhận hóa đơn điện tử tự động.</p>
               </div>
             </div>
-            <button className="px-4 py-2 bg-white text-amber-600 font-semibold text-sm rounded-lg shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-              Xác minh
+            <button className="self-start sm:self-center px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 transition-colors shadow-sm">
+              Xác minh ngay
             </button>
           </div>
         )}
 
         {/* Lịch sử tìm kiếm gần đây */}
         {recentActivity.length > 0 && (
-          <section>
-            <div className="mb-6 border-b-2 border-slate-100 pb-4">
-              <div className="flex items-center gap-3 mb-1">
-                <FiClock size={24} className="text-slate-700" />
-                <h3 className="text-2xl font-bold text-slate-900">Hoạt động gần đây</h3>
-              </div>
-              <p className="text-sm font-medium text-slate-500">Những tuyến bạn vừa tìm kiếm</p>
+          <section className="animate-in fade-in duration-300">
+            <div className="mb-6 flex items-center gap-2">
+              <FiClock size={20} className="text-[#0c3d66]" />
+              <h3 className="text-lg font-black text-[#0c3d66] uppercase tracking-wide">Tìm kiếm gần đây</h3>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {recentActivity.map((activity, idx) => (
                 <div 
                   key={idx} 
                   onClick={() => handleRecentActivityClick(activity)}
-                  className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-5 rounded-2xl cursor-pointer hover:-translate-y-1.5 hover:shadow-lg transition-all duration-300 shadow-sm"
+                  className="bg-slate-50 hover:bg-blue-50/40 border border-slate-200/80 hover:border-blue-200 rounded-2xl p-5 cursor-pointer hover:-translate-y-1 transition-all duration-300 shadow-sm flex flex-col justify-between"
                 >
-                  <div className="flex items-center gap-3 font-bold text-lg mb-4">
+                  <div className="flex items-center justify-between font-bold text-slate-800 text-sm mb-3">
                     <span className="truncate">{activity.from}</span>
-                    <span>↔️</span>
+                    <span className="text-blue-500 mx-2">➔</span>
                     <span className="truncate">{activity.to}</span>
                   </div>
-                  <div className="flex justify-between items-center text-xs text-white/90 font-medium">
+                  <div className="flex justify-between items-center text-[11px] text-slate-400 font-bold">
                     <span>{new Date(activity.timestamp).toLocaleDateString('vi-VN')}</span>
-                    <span className="flex items-center gap-1 font-semibold">
-                      Xem lại <FiChevronRight size={16} />
+                    <span className="flex items-center gap-0.5 text-blue-600">
+                      Xem lại <FiChevronRight size={14} />
                     </span>
                   </div>
                 </div>
@@ -117,80 +132,95 @@ export default function HomeSuggestions() {
           </section>
         )}
 
-        {/* 🔥 Tuyến đường được đặt nhiều nhất */}
+        {/* Tuyến đường phổ biến */}
         <section>
-          <div className="mb-6 border-b border-slate-200 pb-4 flex items-center justify-between">
+          <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <div className="p-2 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg">
-                  <FiTrendingUp className="text-white" size={24} />
-                </div>
-                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Tuyến đường phổ biến</h3>
+              <div className="flex items-center gap-2 mb-2">
+                <FiTrendingUp className="text-blue-650" size={22} />
+                <h3 className="text-xl font-black text-[#0c3d66] uppercase tracking-wide">Tuyến đường phổ biến</h3>
               </div>
-              <p className="text-sm font-medium text-slate-500">Các tuyến xe được hành khách lựa chọn nhiều nhất</p>
+              <p className="text-sm font-semibold text-slate-400">Các tuyến xe được hành khách lựa chọn nhiều nhất trên hệ thống</p>
             </div>
-            <button className="hidden sm:flex items-center gap-1 text-blue-600 font-semibold hover:text-blue-700 text-sm transition-colors">
-              Xem tất cả <FiChevronRight />
+            <button 
+              onClick={() => goSearch()}
+              className="self-start md:self-end flex items-center gap-1 text-blue-600 font-extrabold text-xs uppercase tracking-wider hover:text-blue-700 transition-colors"
+            >
+              Xem tất cả tuyến đường <FiChevronRight />
             </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {MOST_BOOKED_ROUTES.map((route) => (
               <div 
                 key={route.id} 
                 onClick={() => goSearch({ from: route.from, to: route.to, category: route.category })}
-                className="group cursor-pointer bg-white border-2 border-slate-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-md transition-all duration-300"
+                className="group cursor-pointer bg-slate-900 rounded-[32px] overflow-hidden shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 flex flex-col justify-between h-[360px] relative border border-slate-100/10"
               >
-                {/* Header */}
-                <div className="flex justify-between items-start mb-4">
-                  <div className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 px-2.5 py-1 rounded-full text-xs font-bold border border-red-200">
-                    <span>🔥</span>
-                    <span>{route.bookings.toLocaleString()}</span>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-1 rounded">{route.label}</span>
+                {/* Background Image with Zoom */}
+                <div className="absolute inset-0 z-0">
+                  <img 
+                    src={route.image} 
+                    alt={`${route.from} - ${route.to}`}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-[0.8] group-hover:brightness-90"
+                  />
+                  {/* High contrast gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/50 to-black/30 z-10"></div>
                 </div>
 
-                {/* Route Info */}
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Từ</div>
-                      <div className="text-base font-black text-slate-900 truncate">{route.from}</div>
+                {/* Content Overlay */}
+                <div className="relative z-20 flex flex-col justify-between h-full p-6 text-white">
+                  {/* Card Header */}
+                  <div className="flex justify-between items-center">
+                    <div className="inline-flex items-center gap-1.5 bg-white/20 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-bold border border-white/20 shadow-sm">
+                      <span className="text-yellow-400">🔥</span>
+                      <span>{route.bookings.toLocaleString()} đặt</span>
                     </div>
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                      <FiArrowRight size={16} className="font-bold" />
-                    </div>
-                    <div className="flex-1 min-w-0 text-right">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Đến</div>
-                      <div className="text-base font-black text-slate-900 truncate">{route.to}</div>
-                    </div>
+                    <span className="text-[9px] font-extrabold uppercase tracking-wider text-blue-100 bg-blue-600/70 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-blue-400/30">{route.label}</span>
                   </div>
 
-                  {/* Progress bar */}
-                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-                    <div 
-                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(route.bookings / 15, 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
+                  {/* Route Details (Bottom Section) */}
+                  <div className="space-y-4">
+                    {/* Destination Names */}
+                    <div>
+                      <div className="flex items-center justify-between gap-2.5 mb-2.5">
+                        <div className="flex-1 min-w-0 text-left">
+                          <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block mb-0.5">Khởi hành</span>
+                          <span className="text-base font-black tracking-tight text-white drop-shadow-md truncate block">{route.from}</span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shrink-0 group-hover:bg-blue-600 group-hover:border-blue-500 transition-all duration-300 shadow-sm">
+                          <FiArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                        <div className="flex-1 min-w-0 text-right">
+                          <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block mb-0.5">Điểm đến</span>
+                          <span className="text-base font-black tracking-tight text-white drop-shadow-md truncate block">{route.to}</span>
+                        </div>
+                      </div>
 
-                {/* Footer */}
-                <div className="flex items-end justify-between pt-3 border-t border-slate-100">
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">Giá từ</div>
-                    <div className="text-lg font-black text-blue-600">{(route.avgPrice / 1000).toFixed(0)}k</div>
+                      {/* Progress Line */}
+                      <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-450 to-indigo-400 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(route.bookings / 15, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Pricing and Action Divider */}
+                    <div className="flex items-center justify-between pt-3.5 border-t border-white/10">
+                      <div>
+                        <span className="text-[9px] font-semibold text-slate-300 uppercase tracking-widest block">Giá vé từ</span>
+                        <span className="text-xl font-black text-blue-400 drop-shadow-sm">{(route.avgPrice).toLocaleString()}đ</span>
+                      </div>
+                      <span className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors shadow-lg border border-blue-500/30">
+                        <FiChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                      </span>
+                    </div>
                   </div>
-                  <button className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-all">
-                    <FiChevronRight size={16} className="font-bold" />
-                  </button>
                 </div>
               </div>
             ))}
           </div>
-          <button className="w-full sm:hidden mt-3 py-2.5 bg-slate-50 text-blue-600 font-semibold rounded-lg border border-slate-200">
-            Xem tất cả tuyến đường
-          </button>
         </section>
 
       </div>

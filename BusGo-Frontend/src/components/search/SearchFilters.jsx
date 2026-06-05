@@ -1,8 +1,30 @@
 import { useState, useEffect } from 'react'
-import { BUS_TYPES, BUS_CATEGORIES, CITY_STOPS, INTERCITY_ROUTES, DEPARTURE_TIMES } from '../../utils/constants'
-import { FiChevronDown, FiChevronRight, FiFilter, FiRefreshCw, FiMapPin, FiCalendar, FiClock, FiStar, FiInfo, FiCheck } from 'react-icons/fi'
+import { BUS_TYPES, DEPARTURE_TIMES } from '../../utils/constants'
+import { 
+  FiChevronDown, 
+  FiChevronRight, 
+  FiFilter, 
+  FiRefreshCw, 
+  FiClock, 
+  FiStar, 
+  FiInfo, 
+  FiCheck, 
+  FiX,
+  FiSun,
+  FiMoon,
+  FiSunrise,
+  FiSunset,
+  FiZap,
+  FiWifi,
+  FiWind,
+  FiGlobe,
+  FiLayers,
+  FiTag,
+  FiSliders,
+  FiGrid
+} from 'react-icons/fi'
 
-export default function SearchFilters({ filters, setFilters }) {
+export default function SearchFilters({ filters, setFilters, isOpen, onClose }) {
   const getPriceConfig = () => {
     if (filters?.category === 'city') {
       return { maxLimit: 100000, step: 5000, defaultMax: 100000 }
@@ -15,14 +37,13 @@ export default function SearchFilters({ filters, setFilters }) {
   const [priceMin, setPriceMin] = useState(filters?.priceRange?.[0] || 0)
   const [priceMax, setPriceMax] = useState(filters?.priceRange?.[1] || defaultMax)
   const [expandedSections, setExpandedSections] = useState({
-    category: true,
-    busType: true,
     price: true,
+    busType: true,
     timeSlot: true,
-    location: true,
     amenities: true
   })
 
+  // Synchronize internal slider values if the external filters state changes
   useEffect(() => {
     if (filters?.priceRange) {
       setPriceMin(filters.priceRange[0])
@@ -30,10 +51,27 @@ export default function SearchFilters({ filters, setFilters }) {
     }
   }, [filters?.priceRange])
 
+  // Adjust prices if category updates and bounds exceed
+  useEffect(() => {
+    if (filters?.category === 'city') {
+      if (priceMax > 100000) {
+        setPriceMin(0)
+        setPriceMax(100000)
+        setFilters(prev => ({ ...prev, priceRange: [0, 100000] }))
+      }
+    } else {
+      if (priceMax <= 100000 && priceMax !== defaultMax) {
+        setPriceMin(0)
+        setPriceMax(1000000)
+        setFilters(prev => ({ ...prev, priceRange: [0, 1000000] }))
+      }
+    }
+  }, [filters?.category])
+
   const amenitiesOptions = [
-    { id: 'AC', label: 'AC (Điều hòa)' },
+    { id: 'AC', label: 'Điều hòa' },
     { id: 'Wifi', label: 'WiFi miễn phí' },
-    { id: 'Phone Charger', label: 'Cổng sạc điện thoại' },
+    { id: 'Phone Charger', label: 'Cổng sạc' },
     { id: 'Blanket', label: 'Chăn, gối' },
     { id: 'Toilet', label: 'Nhà vệ sinh' }
   ]
@@ -47,11 +85,16 @@ export default function SearchFilters({ filters, setFilters }) {
     }))
   }
 
-  const handlePriceChange = () => {
-    setFilters(prev => ({
-      ...prev,
-      priceRange: [priceMin, priceMax]
-    }))
+  const handleMinChange = (e) => {
+    const val = Math.min(Number(e.target.value), priceMax - step)
+    setPriceMin(val)
+    setFilters(prev => ({ ...prev, priceRange: [val, priceMax] }))
+  }
+
+  const handleMaxChange = (e) => {
+    const val = Math.max(Number(e.target.value), priceMin + step)
+    setPriceMax(val)
+    setFilters(prev => ({ ...prev, priceRange: [priceMin, val] }))
   }
 
   const toggleSection = (section) => {
@@ -65,340 +108,446 @@ export default function SearchFilters({ filters, setFilters }) {
     ? Object.entries(BUS_TYPES).filter(([key, bus]) => bus.category === filters.category)
     : Object.entries(BUS_TYPES)
 
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col h-[calc(100vh-120px)] sticky top-24 overflow-hidden">
-      {/* Title Header */}
-      <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between z-10">
-        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <FiFilter className="text-blue-500" /> Bộ lọc tìm kiếm
-        </h2>
-      </div>
+  const quickPriceRanges = filters?.category === 'city'
+    ? [
+        { label: 'Dưới 10k', min: 0, max: 10000 },
+        { label: '10k - 50k', min: 10000, max: 50000 },
+        { label: 'Trên 50k', min: 50000, max: 100000 }
+      ]
+    : [
+        { label: 'Dưới 100k', min: 0, max: 100000 },
+        { label: '100k - 300k', min: 100000, max: 300000 },
+        { label: '300k - 600k', min: 300000, max: 600000 },
+        { label: 'Trên 600k', min: 600000, max: 1000000 }
+      ]
 
-      {/* Scrollable body content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-        
-        {/* Service Type Selection */}
-        {!filters?.category && (
-          <div className="border-b border-slate-100 pb-4">
+  const getTimeIcon = (id) => {
+    switch (id) {
+      case 'early':
+      case 'morning_early':
+        return <FiSunrise className="text-amber-500 text-sm shrink-0" />
+      case 'morning':
+      case 'late_morning':
+        return <FiSun className="text-amber-600 text-sm shrink-0" />
+      case 'early_afternoon':
+      case 'afternoon':
+      case 'late_afternoon':
+        return <FiSunset className="text-orange-500 text-sm shrink-0" />
+      case 'evening':
+      case 'late_evening':
+      case 'night':
+        return <FiMoon className="text-indigo-400 text-sm shrink-0" />
+      default:
+        return <FiClock className="text-slate-400 text-sm shrink-0" />
+    }
+  }
+
+  const getAmenityIcon = (id) => {
+    switch (id) {
+      case 'AC':
+        return <FiWind className="text-blue-500 text-sm shrink-0" />
+      case 'Wifi':
+        return <FiWifi className="text-sky-500 text-sm shrink-0" />
+      case 'Phone Charger':
+        return <FiZap className="text-amber-500 text-sm shrink-0" />
+      case 'Blanket':
+        return <span className="text-xs shrink-0">🛏️</span>
+      case 'Toilet':
+        return <span className="text-xs shrink-0">🚽</span>
+      default:
+        return <FiStar className="text-slate-400 text-sm shrink-0" />
+    }
+  }
+
+  const getVehicleIcon = (id) => {
+    switch (id) {
+      case 'city_small':
+      case 'city_medium':
+      case 'city_large':
+      case 'mini_16':
+      case 'coach_16':
+      case 'coach_29_35':
+      case 'coach_suburb':
+        return <FiSliders className="text-blue-500 text-sm shrink-0" />
+      case 'mini_4_5':
+      case 'coach_4':
+        return <FiGlobe className="text-blue-500 text-sm shrink-0" />
+      case 'mini_7':
+      case 'mini_9':
+      case 'coach_7':
+        return <FiLayers className="text-slate-450 text-sm shrink-0" />
+      case 'sleeper_36':
+        return <FiMoon className="text-indigo-400 text-sm shrink-0" />
+      default:
+        return <FiSliders className="text-slate-400 text-sm shrink-0" />
+    }
+  }
+
+  const handleResetFilters = () => {
+    const config = getPriceConfig()
+    setFilters(prev => ({
+      ...prev,
+      priceRange: [0, config.defaultMax], 
+      amenities: [], 
+      busType: '', 
+      departureTime: ''
+    }))
+    setPriceMin(0)
+    setPriceMax(config.defaultMax)
+  }
+
+  const renderFilterContent = (isMobile) => {
+    return (
+      <>
+        {/* Style block for range slider handle custom visuals */}
+        <style>{`
+          .dual-range-input::-webkit-slider-thumb {
+            pointer-events: auto;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #2563eb;
+            border: 2px solid #ffffff;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            -webkit-appearance: none;
+            transition: transform 0.15s ease, background 0.15s ease;
+          }
+          .dual-range-input::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #1d4ed8;
+          }
+          .dual-range-input::-moz-range-thumb {
+            pointer-events: auto;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #2563eb;
+            border: 2px solid #ffffff;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            transition: transform 0.15s ease, background 0.15s ease;
+          }
+          .dual-range-input::-moz-range-thumb:hover {
+            transform: scale(1.15);
+            background: #1d4ed8;
+          }
+        `}</style>
+
+        {/* Title Header */}
+        <div className="p-5 border-b border-slate-100 bg-white flex items-center justify-between shrink-0 z-10">
+          <h2 className="text-base font-black text-slate-800 flex items-center gap-2 uppercase tracking-wide">
+            <FiFilter className="text-blue-600 text-lg" /> Bộ lọc tìm kiếm
+          </h2>
+          {isMobile && (
+            <button 
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-slate-50 border border-slate-150 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors shadow-sm"
+            >
+              <FiX size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Scrollable body content */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+          
+          {/* Price Ranges with Dual Range Slider */}
+          <div className="border-b border-slate-100/70 pb-5">
             <button 
               className="w-full flex items-center justify-between text-left mb-3 group"
-              onClick={() => toggleSection('category')}
+              onClick={() => toggleSection('price')}
             >
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <span className="text-blue-500">📍</span> Loại dịch vụ
+              <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+                <FiTag className="text-blue-500" /> Khoảng giá
               </h3>
               <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
-                {expandedSections.category ? <FiChevronDown /> : <FiChevronRight />}
+                {expandedSections.price ? <FiChevronDown /> : <FiChevronRight />}
               </span>
             </button>
-            
-            {expandedSections.category && (
-              <div className="space-y-3 pl-1">
-                {Object.entries(BUS_CATEGORIES).map(([key, category]) => (
-                  <label key={key} className="flex items-start gap-3 cursor-pointer group">
-                    <div className="relative flex items-center mt-1">
-                      <input
-                        type="radio" 
-                        name="category"
-                        value={key} 
-                        checked={filters?.category === key}
-                        onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                        className="peer sr-only"
-                      />
-                      <div className="w-4 h-4 rounded-full border-2 border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 transition-colors"></div>
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors">{category.name}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">{category.description}</div>
-                    </div>
-                  </label>
-                ))}
+            {expandedSections.price && (
+              <div className="pl-1">
+                {/* Formatted values display */}
+                <div className="flex justify-between items-center mb-1 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                  <span className="text-[10px] font-black text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg">
+                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(priceMin)}
+                  </span>
+                  <span className="text-slate-400 font-extrabold text-xs">đến</span>
+                  <span className="text-[10px] font-black text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded-lg">
+                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(priceMax)}
+                  </span>
+                </div>
+
+                {/* Overlapping Range Inputs Container */}
+                <div className="relative w-full h-8 flex items-center mt-2 px-1">
+                  {/* Slider track background */}
+                  <div className="absolute h-1.5 w-full bg-slate-150 rounded-full border border-slate-200/40"></div>
+                  {/* Colored filled range track */}
+                  <div 
+                    className="absolute h-1.5 bg-blue-500 rounded-full"
+                    style={{
+                      left: `${(priceMin / maxLimit) * 100}%`,
+                      right: `${100 - (priceMax / maxLimit) * 100}%`
+                    }}
+                  ></div>
+                  
+                  {/* Minimum value slider */}
+                  <input 
+                    type="range"
+                    min="0"
+                    max={maxLimit}
+                    step={step}
+                    value={priceMin}
+                    onChange={handleMinChange}
+                    className="absolute w-full h-1.5 appearance-none bg-transparent pointer-events-none dual-range-input outline-none cursor-pointer"
+                    style={{ zIndex: priceMin > maxLimit - 100 ? 5 : 3 }}
+                  />
+                  {/* Maximum value slider */}
+                  <input 
+                    type="range"
+                    min="0"
+                    max={maxLimit}
+                    step={step}
+                    value={priceMax}
+                    onChange={handleMaxChange}
+                    className="absolute w-full h-1.5 appearance-none bg-transparent pointer-events-none dual-range-input outline-none cursor-pointer"
+                    style={{ zIndex: 4 }}
+                  />
+                </div>
+
+                {/* Quick price selection tags */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {quickPriceRanges.map((range, idx) => {
+                    const isActive = priceMin === range.min && priceMax === range.max
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setPriceMin(range.min)
+                          setPriceMax(range.max)
+                          setFilters(prev => ({ ...prev, priceRange: [range.min, range.max] }))
+                        }}
+                        className={`px-2.5 py-1.5 text-[9px] font-black rounded-lg border transition-all ${
+                          isActive
+                            ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm'
+                            : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {range.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
-        )}
 
-        {filters?.category && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r-lg mb-4">
-            <div className="text-xs font-semibold text-slate-500 mb-1">📍 Dịch vụ đã chọn:</div>
-            <div className="font-bold text-blue-700 text-sm">{BUS_CATEGORIES[filters.category]?.name}</div>
+          {/* Vehicle Types */}
+          <div className="border-b border-slate-100/70 pb-5">
             <button 
-              onClick={() => setFilters(prev => ({ ...prev, category: '', busType: '', from: '', to: '' }))}
-              className="mt-2 text-xs font-bold text-blue-500 hover:text-blue-700 flex items-center gap-1 transition-colors"
+              className="w-full flex items-center justify-between text-left mb-3 group"
+              onClick={() => toggleSection('busType')}
             >
-              <FiRefreshCw size={12} /> Thay đổi dịch vụ
+              <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+                <FiSliders className="text-blue-500" /> Loại xe
+              </h3>
+              <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
+                {expandedSections.busType ? <FiChevronDown /> : <FiChevronRight />}
+              </span>
             </button>
+            {expandedSections.busType && (
+              <div className="pl-1">
+                <div className="flex flex-wrap gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setFilters(prev => ({ ...prev, busType: '' }))}
+                    className={`px-3 py-2 rounded-xl border flex items-center gap-1.5 transition-all text-xs font-black ${
+                      !filters?.busType
+                        ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm ring-1 ring-blue-500/10'
+                        : 'bg-white border-slate-200 text-slate-650 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <FiGrid className="text-blue-550 shrink-0 text-[11px]" />
+                    <span>Tất cả</span>
+                  </button>
+
+                  {filteredBusTypes.map(([key, busType]) => {
+                    const isActive = filters?.busType === busType.id
+                    return (
+                      <button 
+                        key={key}
+                        type="button"
+                        onClick={() => setFilters(prev => ({ ...prev, busType: busType.id }))}
+                        className={`px-3 py-2 rounded-xl border flex items-center gap-1.5 transition-all text-xs font-black ${
+                          isActive
+                            ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm ring-1 ring-blue-500/10'
+                            : 'bg-white border-slate-200 text-slate-650 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {getVehicleIcon(busType.id)}
+                        <div className="text-left">
+                          <span className="block leading-none text-[11px] font-bold">{busType.name}</span>
+                          <span className="block text-[8px] text-slate-400 mt-0.5 font-semibold">
+                            {busType.seats} ghế {busType.standing ? `(+${busType.standing})` : ''}
+                          </span>
+                        </div>
+                        {isActive && <FiCheck className="text-blue-600 shrink-0 ml-0.5" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Departure Date */}
-        <div className="border-b border-slate-100 pb-4">
-          <button 
-            className="w-full flex items-center justify-between text-left mb-3 group"
-            onClick={() => toggleSection('date')}
-          >
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <FiCalendar className="text-blue-500" /> Ngày xuất phát
-            </h3>
-            <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
-              {expandedSections.date ? <FiChevronDown /> : <FiChevronRight />}
-            </span>
-          </button>
-          {expandedSections.date && (
-            <div className="pl-1">
-              <input 
-                type="date" 
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-0 text-sm font-medium text-slate-700 outline-none transition-colors" 
-                value={filters?.departureDate || ''} 
-                onChange={(e) => setFilters(prev => ({ ...prev, departureDate: e.target.value }))} 
-                min={new Date().toISOString().split('T')[0]} 
-              />
-            </div>
-          )}
-        </div>
+          {/* Departure Time Slots */}
+          <div className="border-b border-slate-100/70 pb-5">
+            <button 
+              className="w-full flex items-center justify-between text-left mb-3 group"
+              onClick={() => toggleSection('timeSlot')}
+            >
+              <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+                <FiClock className="text-blue-500" /> Giờ khởi hành
+              </h3>
+              <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
+                {expandedSections.timeSlot ? <FiChevronDown /> : <FiChevronRight />}
+              </span>
+            </button>
+            {expandedSections.timeSlot && (
+              <div className="pl-1">
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setFilters(prev => ({ ...prev, departureTime: '' }))}
+                    className={`col-span-2 py-2.5 rounded-xl border flex items-center justify-center gap-2 transition-all text-xs font-black ${
+                      !filters?.departureTime
+                        ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm'
+                        : 'bg-white border-slate-200 text-slate-650 hover:border-slate-350 hover:bg-slate-50'
+                    }`}
+                  >
+                    <FiClock className="text-blue-500" /> Tất cả các giờ
+                  </button>
 
-        {/* Departure/Arrival Stop Points */}
-        <div className="border-b border-slate-100 pb-4">
-          <button 
-            className="w-full flex items-center justify-between text-left mb-3 group"
-            onClick={() => toggleSection('location')}
-          >
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <FiMapPin className="text-blue-500" /> Điểm đi / Điểm đến
-            </h3>
-            <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
-              {expandedSections.location ? <FiChevronDown /> : <FiChevronRight />}
-            </span>
-          </button>
-          {expandedSections.location && (
-            <div className="pl-1 space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Điểm đi</label>
-                <select 
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-0 text-sm font-medium text-slate-700 outline-none transition-colors appearance-none bg-white" 
-                  value={filters?.from || ''} 
-                  onChange={(e) => setFilters(prev => ({ ...prev, from: e.target.value }))}
-                >
-                  <option value="">-- Tất cả điểm đi --</option>
-                  {filters?.category === 'city' 
-                    ? CITY_STOPS.map((stop, idx) => <option key={idx} value={stop}>{stop}</option>) 
-                    : Array.from(new Set(INTERCITY_ROUTES.map(r => r.from))).map((city, idx) => <option key={idx} value={city}>{city}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Điểm đến</label>
-                <select 
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-0 text-sm font-medium text-slate-700 outline-none transition-colors appearance-none bg-white" 
-                  value={filters?.to || ''} 
-                  onChange={(e) => setFilters(prev => ({ ...prev, to: e.target.value }))}
-                >
-                  <option value="">-- Tất cả điểm đến --</option>
-                  {filters?.category === 'city' 
-                    ? CITY_STOPS.map((stop, idx) => <option key={idx} value={stop}>{stop}</option>) 
-                    : filters?.from && Array.from(new Set(INTERCITY_ROUTES.filter(r => r.from === filters.from).map(r => r.to))).map((city, idx) => <option key={idx} value={city}>{city}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Price Ranges */}
-        <div className="border-b border-slate-100 pb-4">
-          <button 
-            className="w-full flex items-center justify-between text-left mb-3 group"
-            onClick={() => toggleSection('price')}
-          >
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <span className="text-blue-500">💰</span> Giá vé
-            </h3>
-            <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
-              {expandedSections.price ? <FiChevronDown /> : <FiChevronRight />}
-            </span>
-          </button>
-          {expandedSections.price && (
-            <div className="pl-1">
-              <div className="flex gap-2 mb-3">
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Từ (VNĐ)</label>
-                  <input 
-                    type="number" 
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 focus:border-blue-500 text-sm font-medium text-slate-700 outline-none" 
-                    value={priceMin} 
-                    onChange={(e) => setPriceMin(Number(e.target.value))} 
-                    min="0" 
-                    max={maxLimit} 
-                    step={step} 
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Đến (VNĐ)</label>
-                  <input 
-                    type="number" 
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 focus:border-blue-500 text-sm font-medium text-slate-700 outline-none" 
-                    value={priceMax} 
-                    onChange={(e) => { 
-                      const val = Number(e.target.value); 
-                      setPriceMax(val > maxLimit ? maxLimit : val); 
-                    }} 
-                    min="0" 
-                    max={maxLimit} 
-                    step={step} 
-                  />
+                  {Object.entries(DEPARTURE_TIMES).map(([key, time]) => {
+                    const isActive = filters?.departureTime === key
+                    return (
+                      <button 
+                        key={key}
+                        type="button"
+                        onClick={() => setFilters(prev => ({ ...prev, departureTime: key }))}
+                        className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-center group ${
+                          isActive
+                            ? 'bg-blue-50/80 border-blue-500 text-blue-700 shadow-sm ring-2 ring-blue-500/10'
+                            : 'bg-white border-slate-200 text-slate-650 hover:border-slate-350 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5 text-[11px] font-black group-hover:text-blue-600 transition-colors">
+                          {getTimeIcon(key)} {time.label}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400">{time.start} - {time.end}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
-              <button 
-                onClick={handlePriceChange} 
-                className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold rounded-lg text-sm transition-colors mb-2"
-              >
-                Áp dụng giá
-              </button>
-              <div className="text-center text-xs font-bold text-slate-500">
-                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(filters?.priceRange?.[0] || 0)} - {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(filters?.priceRange?.[1] || defaultMax)}
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Vehicle Types */}
-        <div className="border-b border-slate-100 pb-4">
-          <button 
-            className="w-full flex items-center justify-between text-left mb-3 group"
-            onClick={() => toggleSection('busType')}
-          >
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <span className="text-blue-500">🚌</span> Loại xe
-            </h3>
-            <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
-              {expandedSections.busType ? <FiChevronDown /> : <FiChevronRight />}
-            </span>
-          </button>
-          {expandedSections.busType && (
-            <div className="pl-1">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input
-                      type="radio" name="busType"
-                      checked={!filters?.busType} onChange={() => setFilters(prev => ({ ...prev, busType: '' }))}
-                      className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">Tất cả loại xe</span>
-                  </label>
+          {/* Amenities */}
+          <div>
+            <button 
+              className="w-full flex items-center justify-between text-left mb-3 group"
+              onClick={() => toggleSection('amenities')}
+            >
+              <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+                <FiStar className="text-blue-500" /> Tiện nghi
+              </h3>
+              <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
+                {expandedSections.amenities ? <FiChevronDown /> : <FiChevronRight />}
+              </span>
+            </button>
+            {expandedSections.amenities && (
+              <div className="pl-1">
+                <div className="flex flex-wrap gap-2">
+                  {amenitiesOptions.map(amenity => {
+                    const isActive = filters?.amenities?.includes(amenity.id) || false
+                    return (
+                      <button 
+                        key={amenity.id}
+                        type="button"
+                        onClick={() => handleAmenityChange(amenity.id)}
+                        className={`px-3.5 py-2.5 rounded-xl border flex items-center gap-1.5 transition-all text-xs font-black ${
+                          isActive
+                            ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm ring-1 ring-blue-500/10'
+                            : 'bg-white border-slate-200 text-slate-650 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {getAmenityIcon(amenity.id)}
+                        <span>{amenity.label}</span>
+                        {isActive && <FiCheck className="text-blue-600 shrink-0 ml-0.5" />}
+                      </button>
+                    )
+                  })}
                 </div>
-                {filteredBusTypes.map(([key, busType]) => (
-                  <label key={key} className="flex items-start gap-2 cursor-pointer group col-span-2 sm:col-span-1">
-                    <input
-                      type="radio" name="busType"
-                      checked={filters?.busType === busType.id} onChange={() => setFilters(prev => ({ ...prev, busType: busType.id }))}
-                      className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer mt-0.5"
-                    />
-                    <div className="flex-1">
-                      <span className="block text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors leading-tight">{busType.name}</span>
-                      <span className="block text-[10px] text-slate-400 mt-0.5">{busType.seats} ghế {busType.standing ? `(+${busType.standing})` : ''}</span>
-                    </div>
-                  </label>
-                ))}
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Departure Time Slots */}
-        <div className="border-b border-slate-100 pb-4">
-          <button 
-            className="w-full flex items-center justify-between text-left mb-3 group"
-            onClick={() => toggleSection('timeSlot')}
+          {/* Information Notes */}
+          <div className="mt-4 flex items-start gap-2 bg-gradient-to-br from-blue-50/50 to-indigo-50/20 p-4 rounded-2xl border border-blue-100 text-blue-800">
+            <FiInfo className="mt-0.5 shrink-0 text-blue-600" />
+            <p className="text-xs font-semibold leading-relaxed">
+              BusGo là nền tảng đặt vé độc lập, cung cấp lộ trình minh bạch và dịch vụ chất lượng cao.
+            </p>
+          </div>
+        </div> 
+
+        {/* Bottom Sticky Actions */}
+        <div className="p-4 border-t border-slate-100 bg-white z-10 shrink-0 flex gap-3">
+          <button
+            onClick={handleResetFilters}
+            className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-extrabold rounded-2xl text-xs transition-colors shadow-sm uppercase tracking-wider"
           >
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <FiClock className="text-blue-500" /> Giờ khởi hành
-            </h3>
-            <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
-              {expandedSections.timeSlot ? <FiChevronDown /> : <FiChevronRight />}
-            </span>
+            <FiRefreshCw />
+            Đặt lại
           </button>
-          {expandedSections.timeSlot && (
-            <div className="pl-1">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="col-span-2">
-                   <label className="flex items-center gap-2 cursor-pointer group">
-                    <input type="radio" name="timeSlot" checked={!filters?.departureTime} onChange={() => setFilters(prev => ({ ...prev, departureTime: '' }))} className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer" />
-                    <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">Tất cả các giờ</span>
-                  </label>
-                </div>
-                {Object.entries(DEPARTURE_TIMES).map(([key, time]) => (
-                  <label key={key} className="flex items-center gap-2 cursor-pointer group col-span-2 sm:col-span-1">
-                    <input type="radio" name="timeSlot" checked={filters?.departureTime === key} onChange={() => setFilters(prev => ({ ...prev, departureTime: key }))} className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer" />
-                    <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">{time.start} - {time.end}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+          
+          {isMobile && (
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl text-xs transition-all shadow-md hover:shadow-lg active:scale-95 uppercase tracking-wider text-center"
+            >
+              Áp dụng
+            </button>
           )}
         </div>
+      </>
+    )
+  }
 
-        {/* Amenities */}
-        <div>
-          <button 
-            className="w-full flex items-center justify-between text-left mb-3 group"
-            onClick={() => toggleSection('amenities')}
-          >
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <FiStar className="text-blue-500" /> Tiện nghi
-            </h3>
-            <span className="text-slate-400 group-hover:text-blue-500 transition-colors">
-              {expandedSections.amenities ? <FiChevronDown /> : <FiChevronRight />}
-            </span>
-          </button>
-          {expandedSections.amenities && (
-            <div className="pl-1 space-y-2">
-              {amenitiesOptions.map(amenity => (
-                <label key={amenity.id} className="flex items-center gap-2 cursor-pointer group">
-                  <input 
-                    type="checkbox" 
-                    checked={filters?.amenities?.includes(amenity.id) || false} 
-                    onChange={() => handleAmenityChange(amenity.id)} 
-                    className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                  />
-                  <span className="text-sm font-medium text-slate-700 group-hover:text-blue-600 transition-colors">{amenity.label}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Information Notes */}
-        <div className="mt-6 flex items-start gap-2 bg-blue-50 p-3 rounded-lg border border-blue-100 text-blue-800">
-          <FiInfo className="mt-0.5 shrink-0" />
-          <p className="text-xs font-medium leading-relaxed">
-            BusGo là nền tảng đặt vé độc lập, cung cấp lộ trình minh bạch và dịch vụ chất lượng cao.
-          </p>
-        </div>
-      </div> 
-
-      {/* Bottom Sticky Reset Button */}
-      <div className="p-4 border-t border-slate-100 bg-white z-10">
-        <button
-          onClick={() => {
-            const config = getPriceConfig()
-            setFilters({
-              priceRange: [0, config.defaultMax], 
-              amenities: [], 
-              busType: '', 
-              departureTime: '', 
-              category: '', 
-              from: '', 
-              to: '', 
-              departureDate: ''
-            })
-            setPriceMin(0)
-            setPriceMax(config.defaultMax)
-          }}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-bold rounded-xl transition-colors shadow-sm"
-        >
-          <FiRefreshCw />
-          Đặt lại bộ lọc
-        </button>
+  return (
+    <>
+      {/* Desktop Sidebar Layout */}
+      <div className="hidden lg:flex bg-white rounded-[28px] border border-slate-200/80 shadow-md flex-col h-[calc(100vh-120px)] sticky top-24 overflow-hidden">
+        {renderFilterContent(false)}
       </div>
-    </div>
+
+      {/* Mobile Drawer Layout */}
+      {isOpen && (
+        <div className="lg:hidden fixed inset-0 z-[100] flex items-end justify-center">
+          {/* Backdrop overlay */}
+          <div 
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-fade-in" 
+            onClick={onClose}
+          ></div>
+          
+          {/* Bottom Sheet */}
+          <div className="relative w-full max-h-[85vh] bg-white rounded-t-[32px] shadow-2xl z-10 flex flex-col overflow-hidden animate-slide-up">
+            {renderFilterContent(true)}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

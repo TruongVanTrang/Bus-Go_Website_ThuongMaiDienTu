@@ -146,6 +146,24 @@ const login = async (req, res) => {
       const staffCheck = await pool.request().input('ma', sql.Int, user.maNguoiDung).query('SELECT * FROM NhanVien WHERE maNhanVien = @ma');
       if (staffCheck.recordset.length > 0) {
         role = staffCheck.recordset[0].vaiTro || 'STAFF';
+        
+        // Nếu là DRIVER, kiểm tra loại xe để phân biệt tài xế xe buýt và xe tải
+        if (role === 'DRIVER') {
+          const vehicleCheck = await pool.request()
+            .input('maTaiXe', sql.Int, user.maNguoiDung)
+            .query(`
+              SELECT loaiXe FROM PhuongTien 
+              WHERE maTaiXeChinh = @maTaiXe
+            `);
+          
+          if (vehicleCheck.recordset.length > 0) {
+            const loaiXe = vehicleCheck.recordset[0].loaiXe;
+            // Nếu xe tải thì gán role TRUCK_DRIVER
+            if (loaiXe === 'xe_tai') {
+              role = 'TRUCK_DRIVER';
+            }
+          }
+        }
       }
     }
 

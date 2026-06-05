@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { FiMenu, FiX, FiClock, FiLogOut, FiUser } from 'react-icons/fi'
+import { FiMenu, FiX, FiClock, FiLogOut, FiUser, FiNavigation } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import { StorageUtil } from '../../utils/helpers'
 
@@ -57,52 +57,61 @@ export default function Header() {
 
   return (
     <header 
-      className={`w-full z-[100] transition-all duration-300 ${
-        isHomePage ? 'sticky top-0 left-0' : 'sticky top-0 left-0'
-      } bg-white shadow-sm py-3 border-b border-slate-100`}
+      className="w-full z-[100] sticky top-0 left-0 bg-white shadow-sm py-3 border-b border-slate-100"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-1 text-2xl font-black tracking-tight">
-            <span className={`transition-colors ${logoBlue}`}>Bus</span>
-            <span className={`transition-colors ${logoDark}`}>Go</span>
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="w-9 h-9 rounded-full bg-[#004e92] flex items-center justify-center text-white text-base shadow-sm transition-transform group-hover:scale-105">
+              <FiNavigation className="text-white text-sm" />
+            </div>
+            <span className="text-2xl font-extrabold tracking-tight text-[#0c3d66]">
+              Bus<span className="text-[#0066cc]">Go</span>
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className={`font-semibold text-[15px] transition-colors ${textColor} ${textHover}`}>
-              Trang Chủ
-            </Link>
-            <Link to="/search" className={`font-semibold text-[15px] transition-colors ${textColor} ${textHover}`}>
-              Tìm Vé
-            </Link>
-            <Link to="/cargo-consignment" className={`font-semibold text-[15px] transition-colors ${textColor} ${textHover}`}>
-              Gửi Hàng
-            </Link>
+            {[
+              { name: 'TRANG CHỦ', path: '/' },
+              { name: 'TÌM VÉ', path: '/search' },
+              { name: 'LỊCH SỬ', path: '/history' },
+              { name: 'GỬI HÀNG', path: '/cargo-consignment' }
+            ].map((link) => {
+              const isActive = location.pathname === link.path || (link.path === '/' && location.pathname === '/home');
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`font-extrabold text-[13px] tracking-wider transition-all duration-200 py-1.5 border-b-2 ${
+                    isActive
+                      ? 'text-[#0066cc] border-[#0066cc]'
+                      : 'text-[#0c3d66] hover:text-[#0066cc] border-transparent'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Desktop Auth/Actions */}
-          <div className="hidden md:flex items-center gap-4">
-            <Link
-              to="/history"
-              className={`flex items-center gap-2 font-medium text-[14px] px-3 py-2 rounded-full transition-colors bg-slate-100 text-slate-700 hover:bg-slate-200`}
-            >
-              <FiClock size={16} />
-              <span>Lịch sử</span>
-            </Link>
+          <div className="hidden md:flex items-center gap-6">
+            {/* Vertical Divider */}
+            <div className="h-6 w-[1px] bg-slate-200"></div>
 
             {user ? (
               <div className="relative user-profile-dropdown">
                 <button
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full border-2 transition-colors border-blue-600 text-blue-600 hover:bg-blue-50`}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full border-2 transition-colors border-[#0066cc] text-[#0066cc] hover:bg-blue-50"
                 >
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">
+                  <div className="w-6 h-6 rounded-full bg-[#0066cc] text-white flex items-center justify-center text-xs font-bold">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="font-semibold text-[14px]">{user.name.split(' ').pop()}</span>
+                  <span className="font-bold text-[14px] text-[#0c3d66]">{user.name.split(' ').pop()}</span>
                 </button>
                 
                 {/* Dropdown Menu */}
@@ -113,7 +122,7 @@ export default function Header() {
                       className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
                       onClick={() => setProfileMenuOpen(false)}
                     >
-                      <FiUser size={16} className="text-blue-500" />
+                      <FiUser size={16} className="text-[#0066cc]" />
                       Hồ sơ cá nhân
                     </Link>
                     <div className="h-px bg-slate-100"></div>
@@ -124,7 +133,7 @@ export default function Header() {
                         setProfileMenuOpen(false)
                         navigate('/')
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-650 hover:bg-red-50 transition-colors text-left"
                     >
                       <FiLogOut size={16} />
                       Đăng xuất
@@ -133,26 +142,19 @@ export default function Header() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-3">
-                <Link
-                  to="/login"
-                  className={`font-semibold text-[14px] px-4 py-2 rounded-full transition-colors text-blue-600 hover:bg-blue-50`}
-                >
-                  Đăng Nhập
-                </Link>
-                <Link
-                  to="/register"
-                  className={`font-semibold text-[14px] px-5 py-2 rounded-full transition-colors bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg`}
-                >
-                  Đăng Ký
-                </Link>
-              </div>
+              <Link
+                to="/login"
+                className="flex items-center gap-1.5 font-bold text-[12px] px-4 py-2 rounded-full transition-all bg-[#004e92] hover:bg-[#00386b] text-white shadow-sm uppercase tracking-wider"
+              >
+                <span>ĐĂNG NHẬP</span>
+                <FiLogOut size={15} className="rotate-180" />
+              </Link>
             )}
           </div>
 
           {/* Mobile Menu Toggle */}
           <button
-            className={`md:hidden p-2 rounded-lg transition-colors text-slate-700 hover:bg-slate-100`}
+            className="md:hidden p-2 rounded-lg transition-colors text-slate-700 hover:bg-slate-100"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
@@ -165,25 +167,18 @@ export default function Header() {
         <div className="md:hidden absolute top-full left-0 right-0 bg-white shadow-xl border-t border-slate-100 animate-in slide-in-from-top-2">
           <div className="px-4 py-6 space-y-4">
             <nav className="flex flex-col gap-4 border-b border-slate-100 pb-6">
-              <Link to="/" className="font-semibold text-slate-800 text-lg">Trang Chủ</Link>
-              <Link to="/search" className="font-semibold text-slate-800 text-lg">Tìm Vé</Link>
-              <Link to="/cargo-consignment" className="font-semibold text-slate-800 text-lg">Gửi Hàng</Link>
+              <Link to="/" className="font-bold text-[#0c3d66] text-lg">Trang Chủ</Link>
+              <Link to="/search" className="font-bold text-[#0c3d66] text-lg">Tìm Vé</Link>
+              <Link to="/history" className="font-bold text-[#0c3d66] text-lg">Lịch Sử</Link>
+              <Link to="/cargo-consignment" className="font-bold text-[#0c3d66] text-lg">Gửi Hàng</Link>
             </nav>
             
             <div className="flex flex-col gap-3 pt-2">
-              <Link
-                to="/history"
-                className="flex items-center justify-center gap-2 font-medium text-slate-700 bg-slate-100 py-3 rounded-xl"
-              >
-                <FiClock size={18} />
-                Lịch sử đặt vé
-              </Link>
-              
               {user ? (
                 <>
                   <Link
                     to="/profile"
-                    className="flex items-center justify-center gap-2 font-medium text-white bg-blue-600 py-3 rounded-xl shadow-md"
+                    className="flex items-center justify-center gap-2 font-semibold text-white bg-[#0066cc] py-3 rounded-xl shadow-md"
                   >
                     <FiUser size={18} />
                     Hồ sơ ({user.name})
@@ -195,23 +190,23 @@ export default function Header() {
                       setMobileMenuOpen(false)
                       navigate('/')
                     }}
-                    className="flex items-center justify-center gap-2 font-medium text-red-600 bg-red-50 py-3 rounded-xl"
+                    className="flex items-center justify-center gap-2 font-semibold text-red-650 bg-red-50 py-3 rounded-xl"
                   >
                     <FiLogOut size={18} />
                     Đăng xuất
                   </button>
                 </>
               ) : (
-                <div className="flex gap-3">
+                <div className="flex flex-col gap-2">
                   <Link
                     to="/login"
-                    className="flex-1 text-center font-semibold text-blue-600 bg-blue-50 py-3 rounded-xl"
+                    className="text-center font-bold text-white bg-[#004e92] py-3 rounded-xl shadow-md uppercase tracking-wider"
                   >
                     Đăng Nhập
                   </Link>
                   <Link
                     to="/register"
-                    className="flex-1 text-center font-semibold text-white bg-blue-600 py-3 rounded-xl shadow-md"
+                    className="text-center font-bold text-[#0066cc] bg-blue-50 py-3 rounded-xl border border-blue-200"
                   >
                     Đăng Ký
                   </Link>

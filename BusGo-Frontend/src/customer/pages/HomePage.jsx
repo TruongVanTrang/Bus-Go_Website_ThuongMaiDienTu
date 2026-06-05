@@ -15,37 +15,37 @@ export default function HomePage() {
 
   return (
     <div className="homepage min-h-screen bg-slate-50">
-      {/* Hero Section with Search Bar */}
+      {/* 1. Hero Section with Video Background and Search Bar */}
       <section className="hero bg-white">
         <SearchBar />
       </section>
 
-      {/* Home Suggestions Section - Recent Activity & Tuyến đường phổ biến */}
+      {/* 2. Recent activity & Popular Routes */}
       <section className="py-2">
         <HomeSuggestions />
       </section>
 
-      {/* Dịch vụ chất lượng cao (Was originally inside HomeSuggestions) */}
+      {/* 3. Core Features - Why Choose Us */}
       <section className="py-2">
-        <FeaturedTrips />
+        <Features />
       </section>
 
-      {/* Upcoming Trips Section */}
+      {/* 4. Connected Train Upcoming Trips */}
       <section className="py-2">
         <UpcomingTrips />
       </section>
 
-      {/* Multi-Search Methods Section */}
+      {/* 5. Featured High Quality Trips */}
+      <section className="py-2">
+        <FeaturedTrips />
+      </section>
+
+      {/* 6. Multi-Search exploration tabs */}
       <section className="py-2">
         <MultiSearchMethods />
       </section>
 
-      {/* Features Section */}
-      <section className="py-4">
-        <Features />
-      </section>
-
-      {/* Testimonials Section */}
+      {/* 7. Customer Testimonials */}
       <section className="py-4">
         <Testimonials />
       </section>

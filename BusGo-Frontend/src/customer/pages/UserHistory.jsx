@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { FiHeart, FiTrash2, FiMapPin, FiClock, FiDollarSign, FiX, FiDownload, FiBell, FiCheckCircle, FiLoader, FiStar, FiPackage, FiTruck, FiCheckSquare, FiAlertTriangle, FiRefreshCw } from 'react-icons/fi'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import QRCode from 'qrcode.react'
 import { StorageUtil } from '../../utils/helpers'
 import { getMyTicketsAPI, cancelBookingAPI, submitFeedbackAPI, getFeedbackAPI } from '../../services/bookingService'
@@ -9,7 +9,14 @@ import './UserHistory.css'
 
 export default function UserHistory() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('history')
+  const location = useLocation()
+  const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'history')
+
+  useEffect(() => {
+    if (location.state?.defaultTab) {
+      setActiveTab(location.state.defaultTab)
+    }
+  }, [location.state?.defaultTab])
   const [statusFilter, setStatusFilter] = useState('all') // all, upcoming, completed, cancelled
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -118,7 +125,7 @@ export default function UserHistory() {
       }
     }
     loadConsignments()
-  }, [navigate])
+  }, [navigate, location.key])
 
   // Helper function to parse datetime correctly (handle timezone)
   const parseDateTimeUTC = (dateStr, timeStr) => {
@@ -131,11 +138,11 @@ export default function UserHistory() {
   // Get trip status based on DB tripStatus
   const getTripStatus = (booking) => {
     if (booking.status === 'Da huy') return 'cancelled'
-    
+
     if (booking.tripStatus === 'da_len_lich') return 'upcoming'
     if (booking.tripStatus === 'dang_khoi_hanh') return 'in_transit'
     if (booking.tripStatus === 'da_hoan_thanh') return 'completed'
-    
+
     // Fallback if tripStatus is missing - use UTC parsing
     const departureDate = parseDateTimeUTC(booking.date, booking.departureTime)
     const now = new Date()
@@ -162,7 +169,7 @@ export default function UserHistory() {
     const now = new Date()
     const hoursUntilDeparture = (departureDate - now) / (1000 * 60 * 60)
     const totalPrice = booking.price + (booking.cargoInfo?.price || 0)
-    
+
     if (hoursUntilDeparture > 24) {
       return Math.floor(totalPrice * 1.0) // 100% refund
     } else if (hoursUntilDeparture > 12) {
@@ -179,7 +186,7 @@ export default function UserHistory() {
     const diff = departureDate - now
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    
+
     if (days > 0) return `${days} ngày ${hours} giờ`
     if (hours > 0) return `${hours} giờ`
     return 'Sắp khởi hành'
@@ -224,7 +231,7 @@ export default function UserHistory() {
   const removeFromWatchlist = (tripId) => {
     const updatedWatchlist = watchlist.filter(item => item.id !== tripId)
     setWatchlist(updatedWatchlist)
-    
+
     // Also remove from localStorage
     const savedFavorites = localStorage.getItem('busgo_favorites')
     if (savedFavorites) {
@@ -236,7 +243,7 @@ export default function UserHistory() {
 
   const openRatingModal = async (booking) => {
     setSelectedBooking(booking)
-    
+
     // Load existing feedback from backend
     try {
       const token = StorageUtil.getToken()
@@ -256,7 +263,7 @@ export default function UserHistory() {
       setRatingValue(0)
       setRatingComment('')
     }
-    
+
     setShowRatingModal(true)
   }
 
@@ -269,7 +276,7 @@ export default function UserHistory() {
           return
         }
         await submitFeedbackAPI(token, selectedBooking.id, ratingValue, ratingComment)
-        
+
         // Update local state
         const updatedRatings = {
           ...bookingRatings,
@@ -297,7 +304,7 @@ export default function UserHistory() {
   // Cargo Consignment functions
   const getCargoStatusBadgeInfo = (status) => {
     const baseStyle = { padding: '0.4rem 0.8rem', borderRadius: '0.5rem', color: 'white', fontSize: '0.75rem', fontWeight: 700 }
-    
+
     const statusMap = {
       'pending': { ...baseStyle, backgroundColor: '#f59e0b', text: 'Chờ xác nhận', icon: FiClock },
       'confirmed': { ...baseStyle, backgroundColor: '#3b82f6', text: 'Đã xác nhận', icon: FiCheckSquare },
@@ -305,7 +312,7 @@ export default function UserHistory() {
       'delivered': { ...baseStyle, backgroundColor: '#10b981', text: 'Đã giao', icon: FiCheckCircle },
       'cancelled': { ...baseStyle, backgroundColor: '#ef4444', text: 'Đã hủy', icon: FiX }
     }
-    
+
     return statusMap[status] || statusMap['pending']
   }
 
@@ -320,7 +327,7 @@ export default function UserHistory() {
   }
 
   const updateConsignmentStatus = (consignmentId, newStatus) => {
-    const updated = consignments.map(c => 
+    const updated = consignments.map(c =>
       c.id === consignmentId ? { ...c, cargoStatus: newStatus } : c
     )
     setConsignments(updated)
@@ -335,34 +342,34 @@ export default function UserHistory() {
   const getStatusBadgeInfo = (booking) => {
     const status = getTripStatus(booking)
     const baseStyle = { padding: '0.4rem 0.8rem', borderRadius: '0.5rem', color: 'white', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }
-    
+
     if (booking.status === 'Da huy') {
       return { ...baseStyle, backgroundColor: '#ef4444', text: 'Đã hủy', icon: <FiX size={14} /> }
     }
-    
+
     if (status === 'upcoming') {
       return { ...baseStyle, backgroundColor: '#f59e0b', text: 'Sắp khởi hành', icon: <FiClock size={14} /> }
     }
-    
+
     if (status === 'in_transit') {
       return { ...baseStyle, backgroundColor: '#3b82f6', text: 'Đang di chuyển', icon: <FiTruck size={14} /> }
     }
-    
+
     return { ...baseStyle, backgroundColor: '#10b981', text: 'Đã hoàn thành', icon: <FiCheckCircle size={14} /> }
   }
 
   const handleCancelConsignment = async (consignmentId) => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?')) return;
-    
+
     try {
       const token = StorageUtil.getToken()
       if (!token) {
         navigate('/login')
         return
       }
-      
+
       await cancelConsignmentAPI(consignmentId, token)
-      
+
       // Update local state
       updateConsignmentStatus(consignmentId, 'da_huy')
       alert('Hủy đơn hàng thành công!')
@@ -473,7 +480,7 @@ export default function UserHistory() {
                 {filteredBookings.map(booking => {
                   const statusBadge = getStatusBadgeInfo(booking)
                   const totalPrice = booking.price + (booking.cargoInfo?.price || 0)
-                  
+
                   return (
                     <div key={booking.id} className="booking-card">
                       {/* Status Badge */}
@@ -733,148 +740,148 @@ export default function UserHistory() {
                     'bulky': '📦 Hàng cồng kềnh',
                     'motorcycle': '🏍️ Xe máy'
                   }
-                  
+
                   return (
                     <div key={consignment.id} className="col-12 col-md-6 col-lg-4">
                       <div className={`consignment-card ${consignment.isEdited ? 'edited-glow' : ''}`} style={{ border: consignment.cargoStatus === 'cancelled' ? '2px solid #ef4444' : consignment.isEdited ? '2px solid #f59e0b' : '1px solid #e5e7eb', borderRadius: '0.75rem', padding: '1rem', height: '100%' }}>
-                      {/* Status Badge */}
-                      <div className="status-badge" style={statusBadge}>
-                        {statusBadge.text}
-                      </div>
-
-                      {/* Card Content */}
-                      <div className="consignment-card-content" style={{ marginTop: '1rem' }}>
-                        {/* Consignment ID */}
-                        <div className="consignment-id-section" style={{ }}>
-                          <div className="small text-muted">Mã ký gửi</div>
-                          <div className="fw-bold">{consignment.id}</div>
+                        {/* Status Badge */}
+                        <div className="status-badge" style={statusBadge}>
+                          {statusBadge.text}
                         </div>
 
-                        {/* Route Info */}
-                        <div className="route-section" style={{ }}>
-                          <div className="route-info">
-                            <div className="stop">
-                              <div className="stop-name text-muted fw-bold">{consignment.from}</div>
+                        {/* Card Content */}
+                        <div className="consignment-card-content" style={{ marginTop: '1rem' }}>
+                          {/* Consignment ID */}
+                          <div className="consignment-id-section" style={{}}>
+                            <div className="small text-muted">Mã ký gửi</div>
+                            <div className="fw-bold">{consignment.id}</div>
+                          </div>
+
+                          {/* Route Info */}
+                          <div className="route-section" style={{}}>
+                            <div className="route-info">
+                              <div className="stop">
+                                <div className="stop-name text-muted fw-bold">{consignment.from}</div>
+                              </div>
+                              <div className="route-line" style={{ textAlign: 'center', color: '#0066cc', margin: '0 1rem' }}>
+                                <FiMapPin size={16} />
+                              </div>
+                              <div className="stop">
+                                <div className="stop-name text-muted fw-bold">{consignment.to}</div>
+                              </div>
                             </div>
-                            <div className="route-line" style={{ textAlign: 'center', color: '#0066cc', margin: '0 1rem' }}>
-                              <FiMapPin size={16} />
+                          </div>
+
+                          {/* Divider */}
+                          <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '1rem 0' }}></div>
+
+                          {/* Cargo Details */}
+                          <div className="cargo-details" style={{}}>
+                            <div style={{ marginBottom: '0.5rem' }}>
+                              <span className="small text-muted">Loại hàng:</span>
+                              <span className="fw-600 ms-2">{cargoTypeMap[consignment.type] || consignment.type}</span>
                             </div>
-                            <div className="stop">
-                              <div className="stop-name text-muted fw-bold">{consignment.to}</div>
+                            <div style={{ marginBottom: '0.5rem' }}>
+                              <span className="small text-muted">Trọng lượng:</span>
+                              <span className="fw-600 ms-2">{consignment.weight ? consignment.weight + ' kg' : 'N/A'}</span>
+                            </div>
+                            <div style={{ marginBottom: '0.5rem' }}>
+                              <span className="small text-muted">Giá trị khai giá:</span>
+                              <span className="fw-600 ms-2" style={{ color: '#0066cc' }}>
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(consignment.declaredValue || 0)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="small text-muted">Giá gửi:</span>
+                              <span className="fw-bold ms-2" style={{ color: '#10b981', fontSize: '1rem' }}>
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(consignment.totalPrice || 0)}
+                              </span>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Divider */}
-                        <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '1rem 0' }}></div>
+                          {/* Divider */}
+                          <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '1rem 0' }}></div>
 
-                        {/* Cargo Details */}
-                        <div className="cargo-details" style={{ }}>
-                          <div style={{ marginBottom: '0.5rem' }}>
-                            <span className="small text-muted">Loại hàng:</span>
-                            <span className="fw-600 ms-2">{cargoTypeMap[consignment.type] || consignment.type}</span>
+                          {/* Sender/Receiver Info */}
+                          <div className="sender-receiver-info" style={{}}>
+                            <div style={{ marginBottom: '0.75rem' }}>
+                              <div className="small fw-600 text-neutral-700">Người gửi</div>
+                              <div className="small text-muted">{consignment.senderName} • {consignment.senderPhone}</div>
+                            </div>
+                            <div>
+                              <div className="small fw-600 text-neutral-700">Người nhận</div>
+                              <div className="small text-muted">{consignment.receiverName} • {consignment.receiverPhone}</div>
+                            </div>
                           </div>
-                          <div style={{ marginBottom: '0.5rem' }}>
-                            <span className="small text-muted">Trọng lượng:</span>
-                            <span className="fw-600 ms-2">{consignment.weight ? consignment.weight + ' kg' : 'N/A'}</span>
-                          </div>
-                          <div style={{ marginBottom: '0.5rem' }}>
-                            <span className="small text-muted">Giá trị khai giá:</span>
-                            <span className="fw-600 ms-2" style={{ color: '#0066cc' }}>
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(consignment.declaredValue || 0)}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="small text-muted">Giá gửi:</span>
-                            <span className="fw-bold ms-2" style={{ color: '#10b981', fontSize: '1rem' }}>
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(consignment.totalPrice || 0)}
-                            </span>
-                          </div>
-                        </div>
 
-                        {/* Divider */}
-                        <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '1rem 0' }}></div>
+                          {/* Divider */}
+                          <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '1rem 0' }}></div>
 
-                        {/* Sender/Receiver Info */}
-                        <div className="sender-receiver-info" style={{ }}>
-                          <div style={{ marginBottom: '0.75rem' }}>
-                            <div className="small fw-600 text-neutral-700">Người gửi</div>
-                            <div className="small text-muted">{consignment.senderName} • {consignment.senderPhone}</div>
-                          </div>
-                          <div>
-                            <div className="small fw-600 text-neutral-700">Người nhận</div>
-                            <div className="small text-muted">{consignment.receiverName} • {consignment.receiverPhone}</div>
-                          </div>
-                        </div>
-
-                        {/* Divider */}
-                        <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '1rem 0' }}></div>
-
-                        {/* Actions */}
-                        <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button
-                            className="btn btn-outline-primary btn-sm"
-                            onClick={() => openConsignmentDetailModal(consignment)}
-                          >
-                            <FiPackage size={14} className="me-1" />
-                            Xem chi tiết
-                          </button>
-                          {(consignment.cargoStatus === 'confirmed' || consignment.cargoStatus === 'in_transit') && consignment.rawBackendData?.trangThaiThanhToan === 'paid' ? (
+                          {/* Actions */}
+                          <div className="action-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
                             <button
-                              className="btn btn-success btn-sm"
-                              disabled
-                              style={{ opacity: 0.7 }}
+                              className="btn btn-outline-primary btn-sm"
+                              onClick={() => openConsignmentDetailModal(consignment)}
                             >
-                              <FiCheckCircle size={14} className="me-1" />
-                              Đã thanh toán
+                              <FiPackage size={14} className="me-1" />
+                              Xem chi tiết
                             </button>
-                          ) : consignment.cargoStatus === 'confirmed' && consignment.rawBackendData?.trangThaiThanhToan !== 'paid' ? (
-                            <button
-                              className="btn btn-success btn-sm"
-                              onClick={() => {
-                                navigate('/cargo-payment', { 
-                                  state: { 
-                                    activeConsignment: {
-                                      id: consignment.rawBackendData?.maKyGui || consignment.id,
-                                      ...consignment.rawBackendData
+                            {(consignment.cargoStatus === 'confirmed' || consignment.cargoStatus === 'in_transit') && consignment.rawBackendData?.trangThaiThanhToan === 'paid' ? (
+                              <button
+                                className="btn btn-success btn-sm"
+                                disabled
+                                style={{ opacity: 0.7 }}
+                              >
+                                <FiCheckCircle size={14} className="me-1" />
+                                Đã thanh toán
+                              </button>
+                            ) : consignment.cargoStatus === 'confirmed' && consignment.rawBackendData?.trangThaiThanhToan !== 'paid' ? (
+                              <button
+                                className="btn btn-success btn-sm"
+                                onClick={() => {
+                                  navigate('/cargo-payment', {
+                                    state: {
+                                      activeConsignment: {
+                                        id: consignment.rawBackendData?.maKyGui || consignment.id,
+                                        ...consignment.rawBackendData
+                                      }
                                     }
-                                  } 
-                                })
-                              }}
-                            >
-                              <FiDollarSign size={14} className="me-1" />
-                              Thanh toán ngay
-                            </button>
-                          ) : (
-                            <button
-                              className="btn btn-primary btn-sm"
-                              onClick={() => {
-                                navigate('/cargo-consignment', { 
-                                  state: { 
-                                    reorderData: {
-                                      loaiDichVu: 'van_tai',
-                                      diemGui: consignment.from,
-                                      diemNhan: consignment.to,
-                                      tenNguoiGui: consignment.senderName,
-                                      soDienThoaiNguoiGui: consignment.senderPhone,
-                                      tenNguoiNhan: consignment.receiverName,
-                                      soDienThoaiNguoiNhan: consignment.receiverPhone,
-                                      loaiHangHoa: consignment.type,
-                                      trongLuong: consignment.weight,
-                                      giaTriKhaiGia: consignment.declaredValue,
-                                    } 
-                                  } 
-                                })
-                              }}
-                            >
-                              <FiRefreshCw size={14} className="me-1" />
-                              Đặt lại
-                            </button>
-                          )}
+                                  })
+                                }}
+                              >
+                                <FiDollarSign size={14} className="me-1" />
+                                Thanh toán ngay
+                              </button>
+                            ) : (
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => {
+                                  navigate('/cargo-consignment', {
+                                    state: {
+                                      reorderData: {
+                                        loaiDichVu: 'van_tai',
+                                        diemGui: consignment.from,
+                                        diemNhan: consignment.to,
+                                        tenNguoiGui: consignment.senderName,
+                                        soDienThoaiNguoiGui: consignment.senderPhone,
+                                        tenNguoiNhan: consignment.receiverName,
+                                        soDienThoaiNguoiNhan: consignment.receiverPhone,
+                                        loaiHangHoa: consignment.type,
+                                        trongLuong: consignment.weight,
+                                        giaTriKhaiGia: consignment.declaredValue,
+                                      }
+                                    }
+                                  })
+                                }}
+                              >
+                                <FiRefreshCw size={14} className="me-1" />
+                                Đặt lại
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
                   )
                 })}
               </div>
@@ -1314,8 +1321,8 @@ export default function UserHistory() {
             </div>
             <div className="modal-footer pt-3 border-top d-flex gap-2 justify-content-end">
               <button className="btn btn-light" onClick={() => setShowPaymentModal(false)}>Hủy</button>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={async () => {
                   setPaymentLoading(true);
                   try {
@@ -1516,7 +1523,7 @@ export default function UserHistory() {
                         {customerImages.length > 0 ? (
                           <div className="d-flex flex-wrap gap-2">
                             {customerImages.map((img, i) => (
-                              <img key={i} src={img} alt={"Hình ảnh khách gửi " + (i+1)} style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', objectFit: 'cover' }} />
+                              <img key={i} src={img} alt={"Hình ảnh khách gửi " + (i + 1)} style={{ maxWidth: '100px', maxHeight: '100px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', objectFit: 'cover' }} />
                             ))}
                           </div>
                         ) : (
@@ -1526,7 +1533,7 @@ export default function UserHistory() {
 
                       <h6 className="fw-bold mb-3">🕒 Lịch Trình & Hình Ảnh (Tài xế)</h6>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.5rem', borderLeft: '2px solid #e5e7eb', marginLeft: '0.5rem' }}>
-                        
+
                         <div style={{ display: 'flex', gap: '1rem', opacity: ['pending', 'confirmed', 'received_at_station', 'in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
                           <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>⏳</div>
                           <div>
@@ -1534,7 +1541,7 @@ export default function UserHistory() {
                             <div className="small text-muted">Đang chờ tài xế duyệt</div>
                           </div>
                         </div>
-                        
+
                         <div style={{ display: 'flex', gap: '1rem', opacity: ['confirmed', 'received_at_station', 'in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
                           <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>✅</div>
                           <div>
@@ -1542,7 +1549,7 @@ export default function UserHistory() {
                             <div className="small text-muted">Tài xế đã đồng ý và đang chờ lấy hàng</div>
                           </div>
                         </div>
-                        
+
                         <div style={{ display: 'flex', gap: '1rem', opacity: ['in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
                           <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>🚚</div>
                           <div>

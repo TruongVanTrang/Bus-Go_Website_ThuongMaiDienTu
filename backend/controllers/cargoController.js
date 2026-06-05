@@ -147,6 +147,140 @@ const createConsignment = async (req, res) => {
 // @desc    Lấy danh sách vận đơn ký gửi của người dùng đang đăng nhập
 // @route   GET /api/cargo/my-consignments
 // @access  Private
+// Cập nhật đơn ký gửi
+const updateConsignment = async (req, res) => {
+  const { id } = req.params;
+  const {
+    loaiDichVu, diemGui, diemNhan,
+    diaChiGuiChiTiet, diaChiNhanChiTiet, tenNguoiGui, soDienThoaiNguoiGui, soCCCD, emailNguoiGui,
+    tenNguoiNhan, soDienThoaiNguoiNhan, soLuong, trongLuong, loaiHangHoa, hinhAnh
+  } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const pool = await sql.connect();
+    const check = await pool.request()
+      .input('consignmentId', sql.VarChar, id)
+      .input('maKhachHang', sql.Int, userId)
+      .query('SELECT * FROM KyGuiHang WHERE consignmentId = @consignmentId AND maKhachHang = @maKhachHang');
+
+    if (check.recordset.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy đơn ký gửi' });
+    }
+
+    if (check.recordset[0].trangThaiKyGui !== 'pending') {
+      return res.status(400).json({ message: 'Chỉ có thể chỉnh sửa đơn khi ở trạng thái chờ xác nhận' });
+    }
+
+    // Recalculate prices
+    let basePrice = 0;
+    const PROVINCE_KM = {
+      'Thanh Hóa': 0, 'Nghệ An': 140, 'Hà Tĩnh': 190, 'Quảng Bình': 340,
+      'Quảng Trị': 440, 'Huế': 510, 'Đà Nẵng': 610, 'Quảng Nam': 680, 'Quảng Ngãi': 780
+    };
+    let distance = 50;
+    if (diemGui && diemNhan) {
+      const kmFrom = PROVINCE_KM[diemGui] ?? 0;
+      const kmTo = PROVINCE_KM[diemNhan] ?? 0;
+      if ((kmFrom !== 0 || diemGui === 'Thanh Hóa') && (kmTo !== 0 || diemNhan === 'Thanh Hóa')) {
+         let d = Math.abs(kmTo - kmFrom);
+         if (d > 0) distance = d;
+      }
+    }
+    const weight = Number(trongLuong) || 0;
+    if (weight <= 5) basePrice = 30000;
+    else if (weight <= 20) basePrice = 50000;
+    else basePrice = 50000 + (weight - 20) * 2000;
+
+    let declaredVal = 0;
+    let insurancePrice = 0;
+    if (loaiHangHoa === 'Giá trị cao') {
+      declaredVal = weight * 500000;
+      insurancePrice = declaredVal * 0.02;
+    }
+    const totalPrice = basePrice + insurancePrice;
+
+    await pool.request()
+      .input('consignmentId', sql.VarChar, id)
+      .input('loaiDichVu', sql.NVarChar, loaiDichVu)
+      .input('diemGui', sql.NVarChar, diemGui)
+      .input('diemNhan', sql.NVarChar, diemNhan)
+      .input('diaChiGuiChiTiet', sql.NVarChar, diaChiGuiChiTiet)
+      .input('diaChiNhanChiTiet', sql.NVarChar, diaChiNhanChiTiet)
+      .input('tenNguoiGui', sql.NVarChar, tenNguoiGui)
+      .input('soDienThoaiNguoiGui', sql.NVarChar, soDienThoaiNguoiGui)
+      .input('soCCCD', sql.NVarChar, soCCCD)
+      .input('emailNguoiGui', sql.NVarChar, emailNguoiGui || '')
+      .input('tenNguoiNhan', sql.NVarChar, tenNguoiNhan)
+      .input('soDienThoaiNguoiNhan', sql.NVarChar, soDienThoaiNguoiNhan)
+      .input('soLuong', sql.Int, soLuong)
+      .input('trongLuong', sql.Decimal(18, 2), trongLuong)
+      .input('loaiHangHoa', sql.NVarChar, loaiHangHoa)
+      .input('giaCuoc', sql.Decimal(18, 2), basePrice)
+      .input('giaTrucDeclare', sql.Decimal(18, 2), declaredVal)
+      .input('giaBAO_HIEM', sql.Decimal(18, 2), insurancePrice)
+      .input('tongTien', sql.Decimal(18, 2), totalPrice)
+      .input('hinhAnh', sql.NVarChar, hinhAnh ? JSON.stringify(hinhAnh) : '[]')
+      .query(`
+        UPDATE KyGuiHang
+        SET loaiDichVu = @loaiDichVu, diemGui = @diemGui, diemNhan = @diemNhan,
+            diaChiGuiChiTiet = @diaChiGuiChiTiet, diaChiNhanChiTiet = @diaChiNhanChiTiet,
+            tenNguoiGui = @tenNguoiGui, soDienThoaiNguoiGui = @soDienThoaiNguoiGui, soCCCD = @soCCCD, emailNguoiGui = @emailNguoiGui,
+            tenNguoiNhan = @tenNguoiNhan, soDienThoaiNguoiNhan = @soDienThoaiNguoiNhan, soLuong = @soLuong,
+            trongLuong = @trongLuong, loaiHangHoa = @loaiHangHoa, giaCuoc = @giaCuoc, giaTrucDeclare = @giaTrucDeclare,
+            giaBAO_HIEM = @giaBAO_HIEM, tongTien = @tongTien, hinhAnh = @hinhAnh, isEdited = 1, ngayCapNhat = GETDATE()
+        WHERE consignmentId = @consignmentId
+      `);
+
+    res.json({ message: 'Cập nhật đơn hàng thành công!', totalPrice });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật ký gửi:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// Staff: Duyệt/Từ chối chỉnh sửa (Giữ tài xế hoặc chọn lại)
+const approveEditConsignment = async (req, res) => {
+  const { id } = req.params;
+  const { keepDriver } = req.body; // true = giữ, false = chọn lại
+
+  try {
+    const pool = await sql.connect();
+    const check = await pool.request()
+      .input('consignmentId', sql.VarChar, id)
+      .query('SELECT * FROM KyGuiHang WHERE consignmentId = @consignmentId');
+
+    if (check.recordset.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy đơn hàng' });
+    }
+
+    if (keepDriver) {
+      // Giữ tài xế -> Chỉ bỏ cờ isEdited
+      await pool.request()
+        .input('consignmentId', sql.VarChar, id)
+        .query(`
+          UPDATE KyGuiHang
+          SET isEdited = 0, ngayCapNhat = GETDATE()
+          WHERE consignmentId = @consignmentId
+        `);
+    } else {
+      // Chọn lại tài xế -> Xóa thông tin tài xế, set trạng thái về chờ chọn xe
+      await pool.request()
+        .input('consignmentId', sql.VarChar, id)
+        .query(`
+          UPDATE KyGuiHang
+          SET isEdited = 0, maTaiXe = NULL, driverInfo = NULL, trangThaiKyGui = 'dang_tim_xe_trong', ngayCapNhat = GETDATE()
+          WHERE consignmentId = @consignmentId
+        `);
+    }
+
+    res.json({ message: 'Đã xử lý thông tin chỉnh sửa' });
+  } catch (error) {
+    console.error('Lỗi khi duyệt chỉnh sửa:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
 const getCustomerConsignments = async (req, res) => {
   const userId = req.user.id;
   try {
@@ -155,12 +289,23 @@ const getCustomerConsignments = async (req, res) => {
       .input('maKhachHang', sql.Int, userId)
       .execute('sp_TimKyGuiHang');
 
+    const baseUrl = req.protocol + '://' + req.get('host');
+    const fixUrl = (url) => url && url.startsWith('/') ? baseUrl + url : url;
+
     // Parse image JSON strings
     const records = result.recordset.map(r => {
       try {
-        r.hinhAnh = JSON.parse(r.hinhAnh || '[]');
+        const parsed = JSON.parse(r.hinhAnh || '[]');
+        if (Array.isArray(parsed)) {
+          r.hinhAnh = parsed.map(fixUrl);
+        } else if (typeof parsed === 'string') {
+          r.hinhAnh = [fixUrl(parsed)];
+        } else {
+          r.hinhAnh = [];
+        }
       } catch (e) {
-        r.hinhAnh = [];
+        const str = r.hinhAnh || '';
+        r.hinhAnh = str ? str.split(',').map(s => s.trim()).filter(Boolean).map(fixUrl) : [];
       }
       return r;
     });
@@ -317,11 +462,22 @@ const getDriverConsignments = async (req, res) => {
         ORDER BY kg.ngayCapNhat DESC
       `);
     
+    const baseUrl = req.protocol + '://' + req.get('host');
+    const fixUrl = (url) => url && url.startsWith('/') ? baseUrl + url : url;
+
     const records = result.recordset.map(r => {
       try {
-        r.hinhAnh = JSON.parse(r.hinhAnh || '[]');
+        const parsed = JSON.parse(r.hinhAnh || '[]');
+        if (Array.isArray(parsed)) {
+          r.hinhAnh = parsed.map(fixUrl);
+        } else if (typeof parsed === 'string') {
+          r.hinhAnh = [fixUrl(parsed)];
+        } else {
+          r.hinhAnh = [];
+        }
       } catch (e) {
-        r.hinhAnh = [];
+        const str = r.hinhAnh || '';
+        r.hinhAnh = str ? str.split(',').map(s => s.trim()).filter(Boolean).map(fixUrl) : [];
       }
       return r;
     });
@@ -349,11 +505,22 @@ const getStaffConsignments = async (req, res) => {
         ORDER BY kg.ngayCapNhat DESC
       `);
 
+    const baseUrl = req.protocol + '://' + req.get('host');
+    const fixUrl = (url) => url && url.startsWith('/') ? baseUrl + url : url;
+
     const records = result.recordset.map(r => {
       try {
-        r.hinhAnh = JSON.parse(r.hinhAnh || '[]');
+        const parsed = JSON.parse(r.hinhAnh || '[]');
+        if (Array.isArray(parsed)) {
+          r.hinhAnh = parsed.map(fixUrl);
+        } else if (typeof parsed === 'string') {
+          r.hinhAnh = [fixUrl(parsed)];
+        } else {
+          r.hinhAnh = [];
+        }
       } catch (e) {
-        r.hinhAnh = [];
+        const str = r.hinhAnh || '';
+        r.hinhAnh = str ? str.split(',').map(s => s.trim()).filter(Boolean).map(fixUrl) : [];
       }
       return r;
     });
@@ -476,7 +643,7 @@ const cancelConsignment = async (req, res) => {
         .input('lyDoHuy', sql.NVarChar, lyDoHuy || 'Khách hàng hủy')
         .query(`
           UPDATE KyGuiHang
-          SET trangThaiKyGui = 'failed',
+          SET trangThaiKyGui = 'da_huy',
               lyDoHuy = @lyDoHuy,
               ngayCapNhat = GETDATE()
           WHERE consignmentId = @consignmentId
@@ -516,7 +683,7 @@ const approveCancel = async (req, res) => {
         .input('consignmentId', sql.VarChar, id)
         .query(`
           UPDATE KyGuiHang
-          SET trangThaiKyGui = 'failed',
+          SET trangThaiKyGui = 'da_huy',
               yeuCauHuy = 'approved',
               ngayCapNhat = GETDATE()
           WHERE consignmentId = @consignmentId
@@ -542,6 +709,8 @@ const approveCancel = async (req, res) => {
 
 module.exports = {
   createConsignment,
+  updateConsignment,
+  approveEditConsignment,
   getCustomerConsignments,
   getConsignmentById,
   updateConsignmentStatus,

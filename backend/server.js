@@ -13,12 +13,15 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const driverRoutes = require('./routes/driverRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '50mb' })); // Parse JSON body with increased limit for images
+app.use(express.json({ limit: '50mb' }));
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads'))); // Parse JSON body with increased limit for images
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Initialize server
@@ -40,6 +43,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Root route
 app.get('/', (req, res) => {

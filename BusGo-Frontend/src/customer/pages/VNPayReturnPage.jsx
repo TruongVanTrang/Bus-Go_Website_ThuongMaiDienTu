@@ -39,7 +39,11 @@ export default function VNPayReturnPage() {
               console.error(e)
             }
           }
-          navigate(`/ticket/${params.vnp_TxnRef}`, { state: stateData })
+          if (params.vnp_TxnRef.startsWith('CSM')) {
+            navigate('/history', { state: { defaultTab: 'cargo' } })
+          } else {
+            navigate(`/ticket/${params.vnp_TxnRef}`, { state: stateData })
+          }
         }, 3000)
       } else {
         setStatus('error')
@@ -67,7 +71,11 @@ export default function VNPayReturnPage() {
         stateData = { ...pendingBooking, paymentStatus: 'Da thanh toan' }
       } catch (e) {}
     }
-    navigate(`/ticket/${bookingId}`, { state: stateData })
+    if (bookingId.startsWith('CSM')) {
+      navigate('/history', { state: { defaultTab: 'cargo' } })
+    } else {
+      navigate(`/ticket/${bookingId}`, { state: stateData })
+    }
   }
 
   return (
@@ -98,7 +106,7 @@ export default function VNPayReturnPage() {
               onClick={handleViewTicket}
               className="w-full bg-slate-900 hover:bg-blue-600 text-white font-black py-4 rounded-xl transition-colors shadow-md hover:shadow-lg"
             >
-              Xem vé ngay
+              {bookingId.startsWith('CSM') ? 'Xem đơn ký gửi ngay' : 'Xem vé ngay'}
             </button>
           </div>
         )}

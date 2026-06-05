@@ -2,7 +2,7 @@ const crypto = require("crypto");
 const qs = require("qs");
 const moment = require("moment");
 const { sql } = require("../config/db");
-const { sendTicketEmail } = require('../utils/emailService');
+const { sendTicketEmail, sendCargoContractEmail } = require('../utils/emailService');
 
 // Helper function to format Time to HH:mm
 const formatTime = (dateObj) => {
@@ -102,6 +102,26 @@ exports.vnpayIpn = async (req, res) => {
             if (rspCode === '00') {
                 const pool = await sql.connect();
                 
+                // --- Xử lý thanh toán cho Hàng Hóa (Cargo) ---
+                if (orderId.startsWith('CSM')) {
+                    await pool.request()
+                        .input('consignmentId', sql.VarChar, orderId)
+                        .query("UPDATE KyGuiHang SET trangThaiThanhToan = 'paid', ngayCapNhat = GETDATE() WHERE consignmentId = @consignmentId");
+                    
+                    try {
+                        const cRes = await pool.request()
+                            .input('consignmentId', sql.VarChar, orderId)
+                            .query("SELECT * FROM KyGuiHang WHERE consignmentId = @consignmentId");
+                        if (cRes.recordset.length > 0) {
+                            await sendCargoContractEmail(cRes.recordset[0]);
+                        }
+                    } catch (emailErr) {
+                        console.error('Error sending VNPay cargo email:', emailErr);
+                    }
+                    return res.status(200).json({ RspCode: '00', Message: 'Success' });
+                }
+
+                // --- Xử lý thanh toán cho Vé Xe (Tickets) ---
                 // 1. Update the booking status
                 await pool.request()
                     .input('bookingId', sql.VarChar, orderId + '%')

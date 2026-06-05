@@ -13,7 +13,6 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const staffRoutes = require('./routes/staffRoutes');
 const driverRoutes = require('./routes/driverRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const staffRoutes = require('./routes/staffRoutes');
 
 const app = express();
 
@@ -41,7 +40,6 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/staff', staffRoutes);
 
 // Root route
 app.get('/', (req, res) => {

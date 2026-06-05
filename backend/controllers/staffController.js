@@ -969,12 +969,14 @@ const getCancellationRequests = async (req, res) => {
         vdt.soDienThoaiHanhKhach,
         vdt.trangThaiVe,
         vdt.maKhachHang,
+        vdt.maChuyenXe,
+        vdt.ngayDatVe,
         td.diemDi,
         td.diemDen,
         cx.thoiGianDi,
         cx.thoiGianDen,
         nd.tenNguoiDung AS tenNhanVienXuLy,
-        (SELECT COUNT(*) FROM VeDienTu WHERE maQR = vdt.maQR) AS soVeInBooking
+        (SELECT COUNT(*) FROM VeDienTu WHERE maQR LIKE (CASE WHEN CHARINDEX('-', vdt.maQR) > 0 THEN LEFT(vdt.maQR, CHARINDEX('-', vdt.maQR) - 1) ELSE vdt.maQR END) + '%') AS soVeInBooking
       FROM CancellationRequest cr
       INNER JOIN VeDienTu vdt ON cr.maVe = vdt.maVe
       INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
@@ -1016,8 +1018,34 @@ const getCancellationRequests = async (req, res) => {
     const countResult = await countRequest.query(countQuery);
     const total = countResult.recordset[0].total;
 
+    const requests = result.recordset;
+
+    // Lấy chi tiết từng vé trong booking
+    for (const req of requests) {
+      const detailReq = pool.request();
+      let detailQuery = `
+        SELECT vdt.maVe, vdt.giaThanhToan, vdt.trangThaiVe, gh.soGhe
+        FROM VeDienTu vdt
+        LEFT JOIN GheNgoi gh ON vdt.maGhe = gh.maGhe
+        WHERE 1=1
+      `;
+      if (req.maQR) {
+        const bookingId = req.maQR.split('-')[0];
+        detailQuery += ` AND vdt.maQR LIKE @bookingId + '%'`;
+        detailReq.input('bookingId', sql.VarChar, bookingId);
+      } else {
+        detailQuery += ` AND vdt.maChuyenXe = @maChuyenXe AND vdt.maKhachHang = @maKhachHang AND CAST(vdt.ngayDatVe AS DATE) = CAST(@ngayDatVe AS DATE)`;
+        detailReq.input('maChuyenXe', sql.Int, req.maChuyenXe);
+        detailReq.input('maKhachHang', sql.Int, req.maKhachHang);
+        detailReq.input('ngayDatVe', sql.DateTime, req.ngayDatVe);
+      }
+      const detailResult = await detailReq.query(detailQuery);
+      req.danhSachVe = detailResult.recordset;
+      req.soVeInBooking = req.danhSachVe.length;
+    }
+
     res.json({ 
-      requests: result.recordset, 
+      requests: requests, 
       total: total,
       page: parseInt(page),
       limit: parseInt(limit),
@@ -1043,7 +1071,7 @@ const checkCancellationEligibility = async (req, res) => {
         SELECT
           vdt.maVe, vdt.hoTenHanhKhach, vdt.emailHanhKhach, vdt.soDienThoaiHanhKhach,
           vdt.trangThaiVe, vdt.giaVe, vdt.giaHangHoa, vdt.giaThanhToan,
-          vdt.ngayDatVe, vdt.maChuyenXe,
+          vdt.ngayDatVe, vdt.maChuyenXe, vdt.maQR,
           cx.thoiGianDi, cx.trangThaiChuyen,
           td.diemDi, td.diemDen,
           gh.soGhe,
@@ -1084,10 +1112,19 @@ const checkCancellationEligibility = async (req, res) => {
       lyDoKhongHuy = 'Chuyến xe đã khởi hành';
     }
 
+    // Lấy tất cả vé trong booking để tính tổng
+    let totalGiaVeGoc = Number(ticket.giaThanhToan || ticket.giaVe);
+    if (ticket.maQR && ticket.maQR.trim()) {
+      const bookingId = ticket.maQR.split('-')[0];
+      const allTicketsRes = await pool.request()
+        .input('bookingId', sql.VarChar, bookingId)
+        .query(`SELECT giaThanhToan, giaVe FROM VeDienTu WHERE maQR LIKE @bookingId + '%'`);
+      totalGiaVeGoc = allTicketsRes.recordset.reduce((sum, t) => sum + Number(t.giaThanhToan || t.giaVe), 0);
+    }
+
     // Tính toán hoàn tiền nếu đủ điều kiện
     const refundPolicy = calculateRefundPolicy(hoursUntilDeparture);
-    const giaVeGoc = Number(ticket.giaVe);
-    const soTienHoan = coTheHuy ? Math.floor(giaVeGoc * refundPolicy.phanTramHoan / 100) : 0;
+    const soTienHoan = coTheHuy ? Math.floor(totalGiaVeGoc * refundPolicy.phanTramHoan / 100) : 0;
 
     // Kiểm tra trạng thái thanh toán để xác định hoàn tiền
     coTheHoan = coTheHuy && ticket.trangThaiVe === 'da_thanh_toan' && refundPolicy.phanTramHoan > 0;
@@ -1099,7 +1136,7 @@ const checkCancellationEligibility = async (req, res) => {
         email: ticket.emailHanhKhach,
         phone: ticket.soDienThoaiHanhKhach,
         soGhe: ticket.soGhe,
-        giaVe: giaVeGoc,
+        giaVe: totalGiaVeGoc,
         giaThanhToan: Number(ticket.giaThanhToan),
         trangThaiVe: ticket.trangThaiVe,
         phuongThucThanhToan: ticket.tenPhuongThuc,
@@ -1117,7 +1154,7 @@ const checkCancellationEligibility = async (req, res) => {
         hoursUntilDeparture: parseFloat(hoursUntilDeparture.toFixed(2))
       },
       refundCalculation: {
-        giaVeGoc,
+        giaVeGoc: totalGiaVeGoc,
         phanTramHoan: refundPolicy.phanTramHoan,
         soTienHoan,
         moTa: refundPolicy.moTa,
@@ -1197,19 +1234,20 @@ const processCancellationRequest = async (req, res) => {
       .input('ngayDatVe', sql.DateTime, ticket.ngayDatVe);
 
     if (ticket.maQR && ticket.maQR.trim()) {
-      // Ưu tiên maQR vì nó là booking identifier
-      allTicketsRequest = allTicketsRequest.input('maQR', sql.VarChar, ticket.maQR);
+      // Tách bookingId từ maQR (vd: BK123456-12 -> BK123456)
+      const bookingId = ticket.maQR.split('-')[0];
+      allTicketsRequest = allTicketsRequest.input('bookingId', sql.VarChar, bookingId);
       allTicketsQuery = `
-        SELECT vdt.maVe, vdt.trangThaiVe, vdt.giaVe, vdt.maGhe, vdt.maKhachHang, vdt.maQR,
+        SELECT vdt.maVe, vdt.trangThaiVe, vdt.giaVe, vdt.giaThanhToan, vdt.maGhe, vdt.maKhachHang, vdt.maQR,
                cx.thoiGianDi, cx.trangThaiChuyen
         FROM VeDienTu vdt
         INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
-        WHERE vdt.maQR = @maQR
+        WHERE vdt.maQR LIKE @bookingId + '%'
       `;
     } else {
       // Fallback: dùng composite key nếu maQR không có
       allTicketsQuery = `
-        SELECT vdt.maVe, vdt.trangThaiVe, vdt.giaVe, vdt.maGhe, vdt.maKhachHang, vdt.maQR,
+        SELECT vdt.maVe, vdt.trangThaiVe, vdt.giaVe, vdt.giaThanhToan, vdt.maGhe, vdt.maKhachHang, vdt.maQR,
                cx.thoiGianDi, cx.trangThaiChuyen
         FROM VeDienTu vdt
         INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
@@ -1231,7 +1269,7 @@ const processCancellationRequest = async (req, res) => {
       maKhachHang: ticket.maKhachHang,
       ngayDatVe: ticket.ngayDatVe,
       ticketsFound: allTickets.length,
-      ticketDetails: allTickets.map(t => ({ maVe: t.maVe, giaVe: t.giaVe, maQR: t.maQR }))
+      ticketDetails: allTickets.map(t => ({ maVe: t.maVe, giaThanhToan: t.giaThanhToan, maQR: t.maQR }))
     });
 
     // Kiểm tra lại điều kiện
@@ -1244,9 +1282,8 @@ const processCancellationRequest = async (req, res) => {
 
     const refundPolicy = calculateRefundPolicy(hoursUntilDeparture);
     
-    // Use the stored giaVeGoc (which is the total of all tickets), not recalculated
-    // This ensures we honor the original booking total even if we can't find all tickets
-    const tongGiaVeGoc = storedGiaVeGoc > 0 ? storedGiaVeGoc : allTickets.reduce((sum, t) => sum + Number(t.giaVe), 0);
+    // Luôn tính lại tổng giá vé gốc từ allTickets để sửa lỗi dữ liệu bị lưu sai trước đó
+    const tongGiaVeGoc = allTickets.reduce((sum, t) => sum + Number(t.giaThanhToan || t.giaVe), 0);
     // Tính hoàn tiền dựa trên tổng giá
     const tongSoTienHoan = Math.floor(tongGiaVeGoc * refundPolicy.phanTramHoan / 100);
 
@@ -1318,6 +1355,13 @@ const processCancellationRequest = async (req, res) => {
 
       } else {
         // Từ chối - chỉ cập nhật 1 CancellationRequest (cho vé đầu tiên)
+        // Restore vé về trạng thái "da_thanh_toan"
+        for (const tkt of allTickets) {
+          await transaction.request()
+            .input('maVe', sql.Int, tkt.maVe)
+            .query(`UPDATE VeDienTu SET trangThaiVe = 'da_thanh_toan', ngayCapNhat = GETDATE() WHERE maVe = @maVe`);
+        }
+
         await transaction.request()
           .input('maVe', sql.Int, ticketId)
           .input('agentId', sql.Int, agentId)

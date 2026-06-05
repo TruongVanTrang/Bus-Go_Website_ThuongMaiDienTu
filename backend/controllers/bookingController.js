@@ -1,4 +1,4 @@
-const { sql } = require('../config/db');
+const { sql, getPool } = require('../config/db');
 const { sendTicketEmail } = require('../utils/emailService');
 
 // Helper function to format duration
@@ -75,7 +75,7 @@ const createBooking = async (req, res) => {
   }
 
   try {
-    const pool = await sql.connect();
+    const pool = getPool();
 
     // 1. Lấy phương thức thanh toán
     const paymentName = mapMethodName(paymentMethod);
@@ -275,9 +275,12 @@ const createBooking = async (req, res) => {
 // @desc    Lấy lịch sử đặt vé của khách hàng hiện tại
 // @route   GET /api/bookings/my-tickets
 // @access  Private
+// @access  Private
 const getMyTickets = async (req, res) => {
   try {
-    const pool = await sql.connect();
+    console.log('--- Bắt đầu getMyTickets cho user:', req.user.id);
+    const pool = getPool();
+    console.log('--- Bắt đầu query VeDienTu...');
     const result = await pool.request()
       .input('maKhachHang', sql.Int, req.user.id)
       .query(`
@@ -312,13 +315,13 @@ const getMyTickets = async (req, res) => {
           hh.moTa AS cargoDesc,
           hh.trongLuong,
           hh.giaHangHoa
-        FROM VeDienTu vdt
-        INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
-        INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-        LEFT JOIN GheNgoi gh ON vdt.maGhe = gh.maGhe
-        LEFT JOIN PhuongThucThanhToan ptt ON vdt.maPhuongThuc = ptt.maPhuongThuc
-        LEFT JOIN CancellationRequest cr ON vdt.maVe = cr.maVe
-        LEFT JOIN HangHoa hh ON vdt.maVe = hh.maVe
+        FROM VeDienTu vdt WITH (NOLOCK)
+        INNER JOIN ChuyenXe cx WITH (NOLOCK) ON vdt.maChuyenXe = cx.maChuyenXe
+        INNER JOIN TuyenDuong td WITH (NOLOCK) ON cx.maTuyenDuong = td.maTuyenDuong
+        LEFT JOIN GheNgoi gh WITH (NOLOCK) ON vdt.maGhe = gh.maGhe
+        LEFT JOIN PhuongThucThanhToan ptt WITH (NOLOCK) ON vdt.maPhuongThuc = ptt.maPhuongThuc
+        LEFT JOIN CancellationRequest cr WITH (NOLOCK) ON vdt.maVe = cr.maVe
+        LEFT JOIN HangHoa hh WITH (NOLOCK) ON vdt.maVe = hh.maVe
         WHERE vdt.maKhachHang = @maKhachHang
         ORDER BY vdt.ngayDatVe DESC
       `);
@@ -326,69 +329,71 @@ const getMyTickets = async (req, res) => {
     const tickets = result.recordset;
     const bookingsMap = {};
 
-    for (const t of tickets) {
-      // Skip if essential data is missing
-      if (!t.thoiGianDi || !t.diemDi || !t.diemDen) {
-        console.warn('Skipping ticket with missing data:', t.maVe);
-        continue;
-      }
-
-      let bId = t.maQR ? t.maQR.split('-')[0] : `BK${t.maVe}`;
-      if (!bId.startsWith('BK')) {
-        bId = `BK${t.maVe}`;
-      }
-
-      if (!bookingsMap[bId]) {
-        bookingsMap[bId] = {
-          id: bId,
-          from: t.diemDi || '',
-          to: t.diemDen || '',
-          date: t.thoiGianDi ? formatDate(t.thoiGianDi) : '',
-          departureTime: t.thoiGianDi ? formatTime(t.thoiGianDi) : '--:--',
-          arrivalTime: t.thoiGianDen ? formatTime(t.thoiGianDen) : '--:--',
-          seats: t.soGhe ? [t.soGhe] : [],
-          price: Number(t.giaVe || 0),
-          status: t.trangThaiVe === 'da_thanh_toan' ? 'Da thanh toan' : (t.trangThaiVe === 'da_huy' ? 'Da huy' : 'Cho thanh toan'),
-          tripStatus: t.trangThaiChuyen,
-          operator: 'BusGo',
-          bookingDate: t.ngayDatVe ? formatDate(t.ngayDatVe) : '',
-          passengerName: t.hoTenHanhKhach || '',
-          email: t.emailHanhKhach || '',
-          phone: t.soDienThoaiHanhKhach || '',
-          cargoInfo: {
-            type: t.loaiHangHoa || 'none',
-            description: t.cargoDesc || 'Không có',
-            weight: t.trongLuong || null,
-            price: t.giaHangHoa ? Number(t.giaHangHoa) : 0
-          },
-          cancellationRequest: t.maYeuCau ? {
-            maYeuCau: t.maYeuCau,
-            trangThai: t.cancellationStatus,
-            trangThaiHoan: t.trangThaiHoan,
-            lyDoHuy: t.lyDoHuy,
-            soTienHoan: t.soTienHoan ? Number(t.soTienHoan) : 0
-          } : null
-        };
-      } else {
-        // Thêm ghế vào danh sách (chỉ nếu không NULL)
-        if (t.soGhe && !bookingsMap[bId].seats.includes(t.soGhe)) {
-          bookingsMap[bId].seats.push(t.soGhe);
+    if (tickets.length > 0) {
+      for (const t of tickets) {
+        // Skip if essential data is missing
+        if (!t.thoiGianDi || !t.diemDi || !t.diemDen) {
+          console.warn('Skipping ticket with missing data:', t.maVe);
+          continue;
         }
-        // Cộng giá vé
-        bookingsMap[bId].price += Number(t.giaVe || 0);
-        // Cộng giá hàng hóa (chỉ lần đầu)
-        if (t.giaHangHoa && !bookingsMap[bId].cargoInfo.price) {
-          bookingsMap[bId].cargoInfo.price = Number(t.giaHangHoa);
+
+        let bId = t.maQR ? t.maQR.split('-')[0] : `BK${t.maVe}`;
+        if (!bId.startsWith('BK')) {
+          bId = `BK${t.maVe}`;
         }
-        // Cập nhật thông tin hủy nếu vé này có
-        if (t.maYeuCau && !bookingsMap[bId].cancellationRequest) {
-          bookingsMap[bId].cancellationRequest = {
-            maYeuCau: t.maYeuCau,
-            trangThai: t.cancellationStatus,
-            trangThaiHoan: t.trangThaiHoan,
-            lyDoHuy: t.lyDoHuy,
-            soTienHoan: t.soTienHoan ? Number(t.soTienHoan) : 0
+
+        if (!bookingsMap[bId]) {
+          bookingsMap[bId] = {
+            id: bId,
+            from: t.diemDi || '',
+            to: t.diemDen || '',
+            date: t.thoiGianDi ? formatDate(t.thoiGianDi) : '',
+            departureTime: t.thoiGianDi ? formatTime(t.thoiGianDi) : '--:--',
+            arrivalTime: t.thoiGianDen ? formatTime(t.thoiGianDen) : '--:--',
+            seats: t.soGhe ? [t.soGhe] : [],
+            price: Number(t.giaVe || 0),
+            status: t.trangThaiVe === 'da_thanh_toan' ? 'Da thanh toan' : (t.trangThaiVe === 'da_huy' ? 'Da huy' : (t.trangThaiVe === 'cho_xu_ly_huy' ? 'Cho xu ly huy' : 'Cho thanh toan')),
+            tripStatus: t.trangThaiChuyen,
+            operator: 'BusGo',
+            bookingDate: t.ngayDatVe ? formatDate(t.ngayDatVe) : '',
+            passengerName: t.hoTenHanhKhach || '',
+            email: t.emailHanhKhach || '',
+            phone: t.soDienThoaiHanhKhach || '',
+            cargoInfo: {
+              type: t.loaiHangHoa || 'none',
+              description: t.cargoDesc || 'Không có',
+              weight: t.trongLuong || null,
+              price: t.giaHangHoa ? Number(t.giaHangHoa) : 0
+            },
+            cancellationRequest: t.maYeuCau ? {
+              maYeuCau: t.maYeuCau,
+              trangThai: t.cancellationStatus,
+              trangThaiHoan: t.trangThaiHoan,
+              lyDoHuy: t.lyDoHuy,
+              soTienHoan: t.soTienHoan ? Number(t.soTienHoan) : 0
+            } : null
           };
+        } else {
+          // Thêm ghế vào danh sách (chỉ nếu không NULL)
+          if (t.soGhe && !bookingsMap[bId].seats.includes(t.soGhe)) {
+            bookingsMap[bId].seats.push(t.soGhe);
+          }
+          // Cộng giá vé
+          bookingsMap[bId].price += Number(t.giaVe || 0);
+          // Cộng giá hàng hóa (chỉ lần đầu)
+          if (t.loaiHangHoa && !bookingsMap[bId].cargoInfo.price) {
+            bookingsMap[bId].cargoInfo.price = t.giaHangHoa ? Number(t.giaHangHoa) : 0;
+          }
+          // Cập nhật thông tin hủy nếu vé này có
+          if (t.maYeuCau && !bookingsMap[bId].cancellationRequest) {
+            bookingsMap[bId].cancellationRequest = {
+              maYeuCau: t.maYeuCau,
+              trangThai: t.cancellationStatus,
+              trangThaiHoan: t.trangThaiHoan,
+              lyDoHuy: t.lyDoHuy,
+              soTienHoan: t.soTienHoan ? Number(t.soTienHoan) : 0
+            };
+          }
         }
       }
     }
@@ -396,7 +401,8 @@ const getMyTickets = async (req, res) => {
     res.json(Object.values(bookingsMap));
   } catch (error) {
     console.error('Lỗi khi lấy lịch sử vé:', error);
-    res.status(500).json({ message: 'Lỗi server khi lấy lịch sử vé' });
+    require('fs').appendFileSync('error_log.txt', new Date().toISOString() + ' - ' + error.stack + '\n');
+    res.status(500).json({ message: 'Lỗi server khi lấy lịch sử vé', details: error.message });
   }
 };
 
@@ -406,7 +412,7 @@ const getMyTickets = async (req, res) => {
 const getTicketDetail = async (req, res) => {
   const { id } = req.params;
   try {
-    const pool = await sql.connect();
+    const pool = getPool();
     const result = await pool.request()
       .input('bookingId', sql.VarChar, id)
       .query(`
@@ -431,11 +437,11 @@ const getTicketDetail = async (req, res) => {
           cx.thoiGianDen,
           gh.soGhe,
           ptt.tenPhuongThuc
-        FROM VeDienTu vdt
-        INNER JOIN ChuyenXe cx ON vdt.maChuyenXe = cx.maChuyenXe
-        INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
-        LEFT JOIN GheNgoi gh ON vdt.maGhe = gh.maGhe
-        LEFT JOIN PhuongThucThanhToan ptt ON vdt.maPhuongThuc = ptt.maPhuongThuc
+        FROM VeDienTu vdt WITH (NOLOCK)
+        INNER JOIN ChuyenXe cx WITH (NOLOCK) ON vdt.maChuyenXe = cx.maChuyenXe
+        INNER JOIN TuyenDuong td WITH (NOLOCK) ON cx.maTuyenDuong = td.maTuyenDuong
+        LEFT JOIN GheNgoi gh WITH (NOLOCK) ON vdt.maGhe = gh.maGhe
+        LEFT JOIN PhuongThucThanhToan ptt WITH (NOLOCK) ON vdt.maPhuongThuc = ptt.maPhuongThuc
         WHERE vdt.maQR LIKE @bookingId + '%' OR CAST(vdt.maVe AS VARCHAR) = @bookingId
       `);
 
@@ -498,7 +504,7 @@ const getTicketDetail = async (req, res) => {
 const cancelBooking = async (req, res) => {
   const { id } = req.params;
   try {
-    const pool = await sql.connect();
+    const pool = getPool();
     
     const ticketsResult = await pool.request()
       .input('bookingId', sql.VarChar, id)

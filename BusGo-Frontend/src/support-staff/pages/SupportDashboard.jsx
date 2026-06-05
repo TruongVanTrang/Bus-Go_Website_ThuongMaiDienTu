@@ -405,14 +405,43 @@ function SupportDashboard() {
                       className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
                         activeSession?.maChatSession === session.maChatSession
                           ? 'bg-[#004b87] text-white'
+                          : session.trangThai === 'closed'
+                          ? 'bg-slate-50 hover:bg-slate-100 text-slate-400'
                           : 'hover:bg-slate-50 text-slate-700'
                       }`}
                     >
                       <div className="flex justify-between items-center mb-1">
-                        <h4 className="font-bold text-sm truncate">{session.tenKhachHang}</h4>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-black">🟢</span>
+                        <h4 className={`font-bold text-sm truncate ${session.trangThai === 'closed' && activeSession?.maChatSession !== session.maChatSession ? 'text-slate-400' : ''}`}>
+                          {session.tenKhachHang}
+                        </h4>
+                        {session.trangThai === 'closed' ? (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                            activeSession?.maChatSession === session.maChatSession 
+                              ? 'bg-blue-800 text-blue-200' 
+                              : 'bg-slate-200 text-slate-500'
+                          }`}>
+                            Đã đóng
+                          </span>
+                        ) : (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-black flex items-center gap-1 ${
+                            activeSession?.maChatSession === session.maChatSession 
+                              ? 'bg-blue-800 text-green-400' 
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              activeSession?.maChatSession === session.maChatSession ? 'bg-green-400' : 'bg-green-500'
+                            }`}></span>
+                            Active
+                          </span>
+                        )}
                       </div>
-                      <p className={`text-xs truncate ${activeSession?.maChatSession === session.maChatSession ? 'text-blue-100' : 'text-slate-500'}`}>
+                      <p className={`text-xs truncate ${
+                        activeSession?.maChatSession === session.maChatSession 
+                          ? 'text-blue-100' 
+                          : session.trangThai === 'closed'
+                          ? 'text-slate-400'
+                          : 'text-slate-500'
+                      }`}>
                         {session.tinNhanCuoi || 'Chưa có tin...'}
                       </p>
                     </button>
@@ -465,6 +494,28 @@ function SupportDashboard() {
                       ))}
                       <div ref={messagesEndRef} />
                     </div>
+
+                    {/* Quick Replies */}
+                    {activeSession.trangThai !== 'closed' && (
+                      <div className="px-6 py-2 bg-slate-50 border-t border-slate-200 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                        {[
+                          "Chào bạn, chúng tôi rất hân hạnh được phục vụ!",
+                          "Bạn cần hỗ trợ vấn đề gì ạ?",
+                          "Quy trình Đặt vé: Bạn chọn chuyến, vị trí ghế và thanh toán trên hệ thống nhé.",
+                          "Hủy vé/Hoàn tiền: Bạn vào Lịch sử vé, gửi Yêu cầu hủy trước giờ khởi hành.",
+                          "Gửi hàng: Bạn chọn chuyến/xe, thông tin gửi hàng, xác nhận và thanh toán trên hệ thống nhé.",
+                          "Vui lòng cung cấp Mã vé hoặc SĐT để chúng tôi kiểm tra chi tiết."
+                        ].map((text, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setNewMessage(text)}
+                            className="whitespace-nowrap px-3 py-1.5 bg-white border border-blue-200 hover:border-blue-500 text-blue-700 hover:bg-blue-50 text-xs font-bold rounded-full transition-all flex-shrink-0 shadow-sm cursor-pointer"
+                          >
+                            {text}
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Input */}
                     {activeSession.trangThai !== 'closed' ? (
@@ -643,7 +694,16 @@ function SupportDashboard() {
                           </span>
                         </div>
                         <p className="text-xs text-slate-600 mb-1">{req.hoTenHanhKhach}</p>
-                        <p className="text-xs text-slate-500">{req.diemDi} - {req.diemDen}</p>
+                        <p className="text-xs text-slate-500 mb-1">{req.diemDi} - {req.diemDen}</p>
+                        {req.danhSachVe && req.danhSachVe.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {req.danhSachVe.map(ve => (
+                              <span key={ve.maVe} className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold">
+                                Ghế {ve.soGhe || 'N/A'}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -655,7 +715,9 @@ function SupportDashboard() {
 
             {/* Details Panel */}
             <div className="w-full md:w-1/2 bg-white rounded-xl border border-slate-200 overflow-hidden shadow-lg flex flex-col">
-              {selectedTicketId && eligibilityData ? (
+              {(() => {
+                const selectedReq = cancellations.find(c => c.maVe === selectedTicketId);
+                return selectedTicketId && eligibilityData ? (
                 <>
                   <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-transparent">
                     <h3 className="font-black text-slate-800 mb-4">Kết quả Kiểm tra Vé #{selectedTicketId}</h3>
@@ -680,6 +742,43 @@ function SupportDashboard() {
 
                   {/* Refund Calculator */}
                   <div className="p-6 flex-1 overflow-y-auto">
+                    {/* Danh sách vé chi tiết */}
+                    {selectedReq && selectedReq.danhSachVe && selectedReq.danhSachVe.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="font-bold text-slate-800 mb-3">Chi tiết Vé trong Booking</h4>
+                        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                          <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-xs uppercase">
+                              <tr>
+                                <th className="px-4 py-2">Mã Vé</th>
+                                <th className="px-4 py-2">Số Ghế</th>
+                                <th className="px-4 py-2">Trạng Thái</th>
+                                <th className="px-4 py-2 text-right">Giá</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {selectedReq.danhSachVe.map(ve => (
+                                <tr key={ve.maVe}>
+                                  <td className="px-4 py-2 font-semibold">#{ve.maVe}</td>
+                                  <td className="px-4 py-2">{ve.soGhe || 'N/A'}</td>
+                                  <td className="px-4 py-2">
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      ve.trangThaiVe === 'da_huy' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                                    }`}>
+                                      {ve.trangThaiVe === 'da_huy' ? 'Đã hủy' : 'Đang xử lý'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2 text-right font-bold text-green-600">
+                                    {(ve.giaThanhToan || 0).toLocaleString()} đ
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
                     <h4 className="font-bold text-slate-800 mb-4">Tính toán Hoàn tiền</h4>
                     <div className="space-y-3 mb-6 bg-slate-50 p-4 rounded-lg">
                       <div className="flex justify-between">
@@ -755,7 +854,8 @@ function SupportDashboard() {
                     <p className="font-semibold">Chọn một yêu cầu để xem chi tiết</p>
                   </div>
                 </div>
-              )}
+              );
+              })()}
             </div>
           </div>
         )}

@@ -297,7 +297,7 @@ const requestTicketCancellation = async (req, res) => {
       .input('ticketIdInt', sql.Int, parseInt(ticketId) || 0)
       .input('maKhachHang', sql.Int, userId)
       .query(`
-        SELECT TOP 1 v.maVe, v.maQR, v.maChuyenXe, v.trangThaiVe, v.giaVe, c.thoiGianDi 
+        SELECT TOP 1 v.maVe, v.maQR, v.maChuyenXe, v.ngayDatVe, v.trangThaiVe, v.giaVe, c.thoiGianDi 
         FROM VeDienTu v
         INNER JOIN ChuyenXe c ON v.maChuyenXe = c.maChuyenXe
         WHERE (
@@ -317,19 +317,26 @@ const requestTicketCancellation = async (req, res) => {
 
     const firstVe = firstVeResult.recordset[0];
     
-    // Tìm tất cả các vé trong cùng chuyến (cùng maChuyenXe) với cùng khách hàng và cùng ngày đặt
-    const allTicketsResult = await pool.request()
+    let allTicketsQuery = `
+      SELECT v.maVe, v.trangThaiVe, v.giaVe, v.giaThanhToan, c.thoiGianDi 
+      FROM VeDienTu v
+      INNER JOIN ChuyenXe c ON v.maChuyenXe = c.maChuyenXe
+      WHERE 1=1
+    `;
+    let allTicketsReq = pool.request()
       .input('maChuyenXe', sql.Int, firstVe.maChuyenXe)
       .input('maKhachHang', sql.Int, userId)
-      .input('ngayDatVe', sql.DateTime, firstVe.ngayDatVe || new Date())
-      .query(`
-        SELECT v.maVe, v.trangThaiVe, v.giaVe, c.thoiGianDi 
-        FROM VeDienTu v
-        INNER JOIN ChuyenXe c ON v.maChuyenXe = c.maChuyenXe
-        WHERE v.maChuyenXe = @maChuyenXe
-          AND v.maKhachHang = @maKhachHang
-          AND CAST(v.ngayDatVe AS DATE) = CAST(@ngayDatVe AS DATE)
-      `);
+      .input('ngayDatVe', sql.DateTime, firstVe.ngayDatVe || new Date());
+
+    if (firstVe.maQR && firstVe.maQR.trim()) {
+      const bookingId = firstVe.maQR.split('-')[0];
+      allTicketsQuery += ` AND v.maQR LIKE @bookingId + '%'`;
+      allTicketsReq.input('bookingId', sql.VarChar, bookingId);
+    } else {
+      allTicketsQuery += ` AND v.maChuyenXe = @maChuyenXe AND v.maKhachHang = @maKhachHang AND CAST(v.ngayDatVe AS DATE) = CAST(@ngayDatVe AS DATE)`;
+    }
+
+    const allTicketsResult = await allTicketsReq.query(allTicketsQuery);
 
     const allTickets = allTicketsResult.recordset;
 
@@ -377,8 +384,32 @@ const requestTicketCancellation = async (req, res) => {
     await transaction.begin();
 
     try {
-      // Tính tổng giá cho booking
-      const tongGiaVe = allTickets.reduce((sum, t) => sum + Number(t.giaVe), 0);
+      // Tính tổng giá cho booking (bao gồm cả hàng hóa)
+      const tongGiaVe = allTickets.reduce((sum, t) => sum + Number(t.giaThanhToan || t.giaVe), 0);
+
+      // Cập nhật TẤT CẢ vé thành "cho_xu_ly_huy"
+      if (firstVe.maQR && firstVe.maQR.trim()) {
+        const bookingId = firstVe.maQR.split('-')[0];
+        await transaction.request()
+          .input('bookingId', sql.VarChar, bookingId)
+          .query(`
+            UPDATE VeDienTu 
+            SET trangThaiVe = 'cho_xu_ly_huy'
+            WHERE maQR LIKE @bookingId + '%'
+          `);
+      } else {
+        await transaction.request()
+          .input('maChuyenXe', sql.Int, firstVe.maChuyenXe)
+          .input('maKhachHang', sql.Int, userId)
+          .input('ngayDatVe', sql.DateTime, firstVe.ngayDatVe)
+          .query(`
+            UPDATE VeDienTu 
+            SET trangThaiVe = 'cho_xu_ly_huy'
+            WHERE maChuyenXe = @maChuyenXe
+              AND maKhachHang = @maKhachHang
+              AND CAST(ngayDatVe AS DATE) = CAST(@ngayDatVe AS DATE)
+          `);
+      }
 
       // Tạo 1 CancellationRequest duy nhất cho vé đầu tiên
       await transaction.request()

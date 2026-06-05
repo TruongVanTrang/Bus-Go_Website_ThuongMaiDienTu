@@ -9,6 +9,7 @@ import BookingPage from './customer/pages/BookingPage'
 import PaymentPage from './customer/pages/PaymentPage'
 import VNPayReturnPage from './customer/pages/VNPayReturnPage'
 import CargoConsignmentPage from './customer/pages/CargoConsignmentPage'
+import CargoPaymentPage from './customer/pages/CargoPaymentPage'
 import ETicketPage from './customer/pages/ETicketPage'
 import UserHistory from './customer/pages/UserHistory'
 import WatchlistPage from './customer/pages/WatchlistPage'
@@ -118,6 +119,7 @@ function App() {
         <Route path="/payment" element={<PageLayout><PaymentPage /></PageLayout>} />
         <Route path="/vnpay-return" element={<PageLayout><VNPayReturnPage /></PageLayout>} />
         <Route path="/cargo-consignment" element={<PageLayout><CargoConsignmentPage /></PageLayout>} />
+        <Route path="/cargo-payment" element={<PageLayout><CargoPaymentPage /></PageLayout>} />
         <Route path="/ticket/:bookingId" element={<PageLayout><ETicketPage /></PageLayout>} />
         <Route path="/history" element={<PageLayout><UserHistory /></PageLayout>} />
         <Route path="/watchlist" element={<PageLayout><WatchlistPage /></PageLayout>} />

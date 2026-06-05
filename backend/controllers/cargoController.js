@@ -112,10 +112,10 @@ const createConsignment = async (req, res) => {
       .input('giaTrucDeclare', sql.Decimal(18, 2), declaredVal)
       .input('giaBAO_HIEM', sql.Decimal(18, 2), insurancePrice)
       .input('tongTien', sql.Decimal(18, 2), totalPrice)
-      .input('chieKySo', sql.NVarChar, chieKySo)
+      .input('chieKySo', sql.NVarChar(sql.MAX), chieKySo)
       .input('trangThaiKySo', sql.Bit, 1)
       .input('viTriHienTai', sql.NVarChar, initialLocation)
-      .input('hinhAnh', sql.NVarChar, hinhAnh ? JSON.stringify(hinhAnh) : '[]')
+      .input('hinhAnh', sql.NVarChar(sql.MAX), hinhAnh ? JSON.stringify(hinhAnh) : '[]')
       .query(`
         INSERT INTO KyGuiHang (
           maKhachHang, consignmentId, loaiDichVu, diemGui, diemNhan, ngayGui,
@@ -313,7 +313,7 @@ const getCustomerConsignments = async (req, res) => {
     res.json(records);
   } catch (error) {
     console.error('Lỗi lấy danh sách ký gửi:', error);
-    res.status(500).json({ message: 'Lỗi server' });
+    res.status(500).json({ message: 'Lỗi server: ' + error.message });
   }
 };
 

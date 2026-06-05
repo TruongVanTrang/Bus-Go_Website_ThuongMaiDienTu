@@ -1,24 +1,21 @@
 import { useState, useRef, useEffect } from 'react'
-import { FiX, FiSend } from 'react-icons/fi'
+import { FiX, FiSend, FiMessageSquare } from 'react-icons/fi'
+import { getMyChatSessionAPI, createMyChatSessionAPI, getMyChatMessagesAPI, sendMyChatMessageAPI } from '../../services/customerService'
+import { AuthUtil } from '../../utils/helpers'
+import { toast } from '../../utils/toastService'
 import './ChatBot.css'
 
 export default function ChatBot() {
   const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: 'Xin chào! 👋 Tôi là trợ lý AI của BusGo. Tôi có thể giúp bạn về:',
-      sender: 'bot',
-      suggestions: [
-        'Cách đặt vé',
-        'Thanh toán',
-        'Hủy vé & Hoàn phí',
-        'Hỗ trợ khác'
-      ]
-    }
-  ])
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  
+  const [session, setSession] = useState(null)
+  const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
+  const [loading, setLoading] = useState(false)
+  
   const messagesEndRef = useRef(null)
+  const pollIntervalRef = useRef(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -26,141 +23,100 @@ export default function ChatBot() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, isOpen])
 
-  // Knowledge base for AI responses
-  const knowledgeBase = {
-    'cách đặt vé': {
-      text: `📝 **Hướng dẫn đặt vé BusGo:**
+  // Check login status
+  useEffect(() => {
+    const user = AuthUtil.getCurrentUser()
+    setIsLoggedIn(!!user)
+  }, [])
 
-1. **Tìm kiếm chuyến xe**
-   - Nhập điểm đi, điểm đến
-   - Chọn ngày khởi hành
-   - Nhấn "Tìm kiếm"
+  // Poll for messages when chat is open and session exists
+  useEffect(() => {
+    if (isOpen && isLoggedIn) {
+      checkExistingSession()
+      
+      pollIntervalRef.current = setInterval(() => {
+        if (session && session.trangThai !== 'closed') {
+          fetchMessages(session.maChatSession, false)
+        } else if (!session) {
+          checkExistingSession(false)
+        }
+      }, 3000)
+    } else {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+    }
 
-2. **Chọn chuyến xe**
-   - Xem chi tiết giá, thời gian, tiện nghi
-   - Nhấn nút "Chọn"
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+    }
+  }, [isOpen, isLoggedIn, session?.maChatSession]) // Add dependency on session ID
 
-3. **Đặt vé & Thanh toán**
-   - Nhập thông tin hành khách
-   - Chọn ghế ngồi
-   - Xác nhận thanh toán
-
-4. **Nhận vé**
-   - Vé sẽ được gửi qua email
-   - Xem QR code ở "Lịch sử đặt vé"`,
-      suggestions: ['Thanh toán', 'Hủy vé & Hoàn phí', 'Hỏi khác']
-    },
-    'thanh toán': {
-      text: `💳 **Phương thức thanh toán:**
-
-**BusGo hỗ trợ:**
-- 💰 Thẻ tín dụng/Ghi nợ (Visa, Mastercard)
-- 🏦 Chuyển khoản ngân hàng
-- 📱 Ví điện tử (Momo, ZaloPay)
-- 💵 Thanh toán tại quầy
-
-**Lưu ý:**
-- Thanh toán an toàn 100% (SSL certificate)
-- Tiền được nhà xe xác nhận trong 24h
-- Nếu lỗi thanh toán, vui lòng thử lại hoặc liên hệ hotline`,
-      suggestions: ['Cách đặt vé', 'Hủy vé & Hoàn phí', 'Hỏi khác']
-    },
-    'hủy vé & hoàn phí': {
-      text: `❌ **Chính sách hủy vé & hoàn phí:**
-
-**Thời gian hủy vé:**
-
-| Thời gian | Hoàn phí |
-|-----------|----------|
-| Trước **24h** khởi hành | ✅ Hoàn 100% |
-| **6-24h** trước khởi hành | ✅ Hoàn 80% |
-| **Dưới 6h** trước khởi hành | ✅ Hoàn 50% |
-| **Sau** khởi hành | ❌ Không hoàn |
-
-**Cách hủy vé:**
-1. Vào "Lịch sử đặt vé"
-2. Chọn chuyến xe muốn hủy
-3. Nhấn "Hủy vé"
-4. Xác nhận hủy
-5. Tiền hoàn lại trong 2-3 ngày làm việc
-
-**Lưu ý:** Tiền hoàn lại sẽ được chuyển về tài khoản ngân hàng đăng ký`,
-      suggestions: ['Cách đặt vé', 'Thanh toán', 'Hỏi khác']
-    },
-    'hỗ trợ khác': {
-      text: `☎️ **Liên hệ hỗ trợ khác:**
-
-**Hotline:** 1900 123 456
-**Email:** support@busgo.vn
-**Chat:** Mở 24/7 (Giờ làm việc: 7h - 22h)
-
-**Thời gian phản hồi:**
-- Chat: < 5 phút
-- Email: < 2 giờ
-- Hotline: Kết nối tức thì
-
-**Các vấn đề thường gặp:**
-- Không nhận được vé
-- Lỗi thanh toán
-- Hành lý & hàng hóa
-- Khiếu nại dịch vụ
-
-Chúng tôi sẵn sàng hỗ trợ bạn! 😊`,
-      suggestions: ['Cách đặt vé', 'Thanh toán', 'Hủy vé & Hoàn phí']
+  const checkExistingSession = async (showError = true) => {
+    try {
+      const data = await getMyChatSessionAPI()
+      if (data.session) {
+        setSession(data.session)
+        fetchMessages(data.session.maChatSession, false)
+      } else {
+        setSession(null)
+      }
+    } catch (error) {
+      if (showError) console.error("Không thể lấy phiên chat", error)
     }
   }
 
-  const handleSendMessage = (messageText) => {
-    if (!messageText.trim()) return
-
-    // Add user message
-    const userMessage = {
-      id: messages.length + 1,
-      text: messageText,
-      sender: 'user'
+  const fetchMessages = async (sessionId, showLoading = true) => {
+    if (showLoading) setLoading(true)
+    try {
+      const data = await getMyChatMessagesAPI(sessionId)
+      setMessages(data.messages || [])
+    } catch (error) {
+      if (showLoading) console.error("Lỗi lấy tin nhắn:", error)
+    } finally {
+      if (showLoading) setLoading(false)
     }
+  }
 
-    setMessages(prev => [...prev, userMessage])
-    setInputValue('')
+  const handleStartChat = async () => {
+    if (!isLoggedIn) {
+      toast.error('Vui lòng đăng nhập để sử dụng tính năng Chat')
+      return
+    }
+    setLoading(true)
+    try {
+      const data = await createMyChatSessionAPI('Cần hỗ trợ từ hệ thống')
+      await checkExistingSession() // Lấy lại thông tin session
+    } catch (error) {
+      toast.error('Không thể bắt đầu chat. ' + (error.response?.data?.message || ''))
+    } finally {
+      setLoading(false)
+    }
+  }
 
-    // Simulate AI response delay
-    setTimeout(() => {
-      const lowerCaseInput = messageText.toLowerCase()
-      
-      // Try to find matching response
-      let botResponse = null
-      for (const [key, value] of Object.entries(knowledgeBase)) {
-        if (lowerCaseInput.includes(key.split('&')[0].trim()) || 
-            key.split('&').some(k => lowerCaseInput.includes(k.trim()))) {
-          botResponse = value
-          break
-        }
-      }
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || !session) return
 
-      // If no match, try keyword matching
-      if (!botResponse) {
-        if (lowerCaseInput.includes('đặt') || lowerCaseInput.includes('vé')) {
-          botResponse = knowledgeBase['cách đặt vé']
-        } else if (lowerCaseInput.includes('thanh') && lowerCaseInput.includes('toán')) {
-          botResponse = knowledgeBase['thanh toán']
-        } else if (lowerCaseInput.includes('hủy') || lowerCaseInput.includes('hoàn')) {
-          botResponse = knowledgeBase['hủy vé & hoàn phí']
-        } else {
-          botResponse = knowledgeBase['hỗ trợ khác']
-        }
-      }
+    const messageText = inputValue.trim()
+    setInputValue('') // Clear input fast for UX
+    
+    // Optimistic UI update
+    const optimisticMsg = {
+      maTinNhan: Date.now(),
+      nguoiGui: 'customer',
+      noiDung: messageText,
+      thoiGianGui: new Date().toISOString()
+    }
+    setMessages(prev => [...prev, optimisticMsg])
 
-      const aiMessage = {
-        id: messages.length + 2,
-        text: botResponse.text,
-        sender: 'bot',
-        suggestions: botResponse.suggestions
-      }
-
-      setMessages(prev => [...prev, aiMessage])
-    }, 500)
+    try {
+      await sendMyChatMessageAPI(session.maChatSession, messageText)
+      fetchMessages(session.maChatSession, false)
+    } catch (error) {
+      toast.error('Gửi tin nhắn thất bại')
+      // Remove optimistic message if failed
+      setMessages(prev => prev.filter(m => m.maTinNhan !== optimisticMsg.maTinNhan))
+    }
   }
 
   return (
@@ -168,81 +124,102 @@ Chúng tôi sẵn sàng hỗ trợ bạn! 😊`,
       {/* Chat Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="chat-button"
-        title={isOpen ? 'Đóng chat' : 'Mở chat hỗ trợ'}
+        className="chat-button shadow-lg"
+        title={isOpen ? 'Đóng' : 'Chat với chúng tôi'}
       >
         {isOpen ? (
           <FiX size={24} />
         ) : (
-          <span className="chat-icon">💬</span>
+          <FiMessageSquare size={24} />
         )}
       </button>
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="chat-window">
-          <div className="chat-header">
-            <h6 className="mb-0 fw-bold">BusGo AI Assistant</h6>
+        <div className="chat-window shadow-lg border-0 rounded-4 overflow-hidden" style={{ bottom: '90px', right: '30px', zIndex: 1050 }}>
+          <div className="chat-header bg-primary text-white p-3 d-flex justify-content-between align-items-center">
+            <h6 className="mb-0 fw-bold">Trợ lý Hỗ trợ BusGo</h6>
             <button
               onClick={() => setIsOpen(false)}
-              className="btn-close"
-              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+              className="btn text-white p-0 border-0"
+              style={{ background: 'none' }}
             >
-              <FiX size={20} />
+              <FiX size={22} />
             </button>
           </div>
 
-          <div className="chat-messages">
-            {messages.map(message => (
-              <div key={message.id} className={`message message-${message.sender}`}>
-                <div className="message-content">
-                  {message.text.split('\n').map((line, idx) => (
-                    <div key={idx}>{line}</div>
-                  ))}
+          <div className="chat-messages p-3" style={{ height: '350px', overflowY: 'auto', backgroundColor: '#f8f9fa' }}>
+            {!isLoggedIn ? (
+              <div className="text-center mt-5 text-muted">
+                <div className="mb-3">👤</div>
+                <p>Vui lòng đăng nhập để bắt đầu trò chuyện với nhân viên hỗ trợ.</p>
+              </div>
+            ) : !session ? (
+              <div className="text-center mt-5">
+                <p className="text-muted mb-4">Chào bạn! Nhấn nút bên dưới để kết nối với Nhân viên Hỗ trợ của BusGo.</p>
+                <button 
+                  className="btn btn-primary rounded-pill px-4" 
+                  onClick={handleStartChat}
+                  disabled={loading}
+                >
+                  {loading ? 'Đang kết nối...' : 'Bắt đầu trò chuyện'}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="text-center mb-3">
+                  <small className="bg-light text-muted rounded px-2 py-1">Cuộc trò chuyện đã bắt đầu</small>
                 </div>
                 
-                {message.suggestions && (
-                  <div className="message-suggestions">
-                    {message.suggestions.map((suggestion, idx) => (
-                      <button
-                        key={idx}
-                        className="suggestion-btn"
-                        onClick={() => handleSendMessage(suggestion)}
-                      >
-                        {suggestion}
-                      </button>
-                    ))}
+                {messages.length === 0 && (
+                  <div className="text-center text-muted my-4">
+                    <small>Gửi tin nhắn đầu tiên của bạn để nhân viên hỗ trợ nhận được thông báo.</small>
                   </div>
                 )}
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
+                
+                {messages.map(message => (
+                  <div key={message.maTinNhan} className={`message ${message.nguoiGui === 'customer' ? 'message-user' : 'message-bot'}`}>
+                    <div className="message-content">
+                      {message.noiDung}
+                    </div>
+                  </div>
+                ))}
+                
+                {session.trangThai === 'closed' && (
+                  <div className="text-center mt-3 mb-2">
+                    <small className="bg-secondary text-white rounded px-2 py-1">Phiên chat đã kết thúc</small>
+                    <div className="mt-2">
+                      <button className="btn btn-sm btn-outline-primary" onClick={handleStartChat}>Bắt đầu phiên mới</button>
+                    </div>
+                  </div>
+                )}
+                
+                <div ref={messagesEndRef} />
+              </>
+            )}
           </div>
 
-          <div className="chat-input-area">
+          <div className="chat-input-area border-top bg-white p-3">
             <input
               type="text"
-              className="chat-input"
-              placeholder="Nhập câu hỏi của bạn..."
+              className="form-control border-0 bg-light rounded-pill px-3 flex-grow-1"
+              placeholder={session?.trangThai === 'closed' ? "Chat đã kết thúc" : "Nhập tin nhắn..."}
               value={inputValue}
+              disabled={!session || session.trangThai === 'closed'}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleSendMessage(inputValue)
-                }
+                if (e.key === 'Enter') handleSendMessage()
               }}
+              style={{ minHeight: '40px' }}
             />
             <button
-              className="send-btn"
-              onClick={() => handleSendMessage(inputValue)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '0.5rem'
-              }}
+              className="btn btn-primary rounded-circle ms-2"
+              disabled={!session || session.trangThai === 'closed' || !inputValue.trim()}
+              onClick={handleSendMessage}
+              title="Gửi tin nhắn"
+              type="button"
             >
-              <FiSend size={20} style={{ color: 'var(--color-primary-600)' }} />
+              <FiSend size={18} />
             </button>
           </div>
         </div>

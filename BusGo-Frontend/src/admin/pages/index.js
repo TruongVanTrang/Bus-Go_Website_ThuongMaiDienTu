@@ -19,7 +19,7 @@ export { default as SupportCargoPage } from './SupportCargoPage'
 // export { default as DriverSchedule } from './driver/DriverSchedule'
 
 // Staff Pages
-// export { default as TicketScan } from './staff/TicketScan'
+export { default as TicketStaffPage } from './TicketStaffPage'
 
 // Support Pages
 // export { default as TicketLookup } from './support/TicketLookup'

@@ -10,6 +10,7 @@ import PaymentPage from './customer/pages/PaymentPage'
 import VNPayReturnPage from './customer/pages/VNPayReturnPage'
 import CargoConsignmentPage from './customer/pages/CargoConsignmentPage'
 import EditConsignmentPage from './customer/pages/EditConsignmentPage'
+import CargoPaymentPage from './customer/pages/CargoPaymentPage'
 import ETicketPage from './customer/pages/ETicketPage'
 import UserHistory from './customer/pages/UserHistory'
 import WatchlistPage from './customer/pages/WatchlistPage'
@@ -30,10 +31,14 @@ import SchedulesPage from './admin/pages/SchedulesPage'
 import ReportsPage from './admin/pages/ReportsPage'
 import DriverCargoPage from './admin/pages/DriverCargoPage'
 import SupportCargoPage from './admin/pages/SupportCargoPage'
+import TicketStaffPage from './admin/pages/TicketStaffPage'
 
 // Driver Components
 import DriverDashboard from './driver/pages/DriverDashboard'
 import { USER_ROLES } from './utils/constants'
+
+// Support Staff Components
+import SupportDashboard from './support-staff/pages/SupportDashboard'
 
 // Reset scroll lên đầu trang mỗi khi navigate sang route mới
 function ScrollToTop() {
@@ -88,6 +93,10 @@ function App() {
         <Route path="/admin/driver/schedule" element={<StaffProtectedRoute><DriverCargoPage defaultTab="schedule" /></StaffProtectedRoute>} />
         <Route path="/admin/driver/trip-status" element={<StaffProtectedRoute><DriverCargoPage defaultTab="trip-status" /></StaffProtectedRoute>} />
 
+        {/* TICKET STAFF ROUTES */}
+        <Route path="/admin/staff/scan" element={<StaffProtectedRoute><TicketStaffPage /></StaffProtectedRoute>} />
+        <Route path="/admin/staff/passengers" element={<StaffProtectedRoute><TicketStaffPage /></StaffProtectedRoute>} />
+
         {/* SUPPORT STAFF ROUTES */}
         <Route path="/admin/support/cargo-assign" element={<StaffProtectedRoute><SupportCargoPage defaultTab="cargo-assign" /></StaffProtectedRoute>} />
         <Route path="/admin/support/lookup" element={<StaffProtectedRoute><SupportCargoPage defaultTab="lookup" /></StaffProtectedRoute>} />
@@ -112,10 +121,29 @@ function App() {
         <Route path="/vnpay-return" element={<PageLayout><VNPayReturnPage /></PageLayout>} />
         <Route path="/cargo-consignment" element={<PageLayout><CargoConsignmentPage /></PageLayout>} />
         <Route path="/edit-consignment" element={<PageLayout><EditConsignmentPage /></PageLayout>} />
+        <Route path="/cargo-payment" element={<PageLayout><CargoPaymentPage /></PageLayout>} />
         <Route path="/ticket/:bookingId" element={<PageLayout><ETicketPage /></PageLayout>} />
         <Route path="/history" element={<PageLayout><UserHistory /></PageLayout>} />
         <Route path="/watchlist" element={<PageLayout><WatchlistPage /></PageLayout>} />
         <Route path="/profile" element={<PageLayout><UserProfile /></PageLayout>} />
+
+        {/* ==================== SUPPORT STAFF ROUTES ==================== */}
+        <Route
+          path="/admin/support/chat"
+          element={
+            <RoleProtectedRoute allowedRoles={[USER_ROLES.SUPPORT_STAFF]}>
+              <SupportDashboard />
+            </RoleProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/support/cancellations"
+          element={
+            <RoleProtectedRoute allowedRoles={[USER_ROLES.SUPPORT_STAFF]}>
+              <SupportDashboard />
+            </RoleProtectedRoute>
+          }
+        />
 
         {/* ==================== CATCH ALL ==================== */}
         <Route path="*" element={<Navigate to="/" replace />} />

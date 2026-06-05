@@ -215,18 +215,22 @@ export default function CargoConsignmentPage() {
 
   const getCargoPrice = () => {
     if (serviceType === 'gui_kem') {
+      const selectedTrip = dbTrips.find(t => t.id === selectedTripId)
+      const tripPrice = selectedTrip ? selectedTrip.price : 0
+      
       const base = CARGO_TYPES[cargoData.type]?.basePrice || 0
-      if (base === 0) return 0 // Trả về 0 nếu chưa chọn loại hàng
+      if (!cargoData.type) return tripPrice // Return base trip price if cargo type not selected yet
+      
       const w = parseFloat(cargoData.weight) || 0
       const qty = parseInt(cargoData.qty) || 1
       if (cargoData.type === 'motorcycle') {
-        return base * qty
+        return tripPrice + (base * qty)
       }
       // Tính cước siêu rẻ theo yêu cầu: 5,000đ/kg. Tối thiểu 20,000đ/kiện.
-      if (w === 0) return 0
+      if (w === 0) return tripPrice + (base * qty) // Return base trip price + cargo base if no weight
       const calculatedPrice = w * 5000
       const pricePerItem = Math.max(20000, calculatedPrice)
-      return pricePerItem * qty
+      return tripPrice + (pricePerItem * qty)
     } else {
       if (!routeData.from || !routeData.to) return 0 // Trả về 0 nếu chưa chọn điểm gửi/nhận
       const pricePerKm = TRUCK_TYPES[selectedTruckType]?.pricePerKm || 0
@@ -254,6 +258,15 @@ export default function CargoConsignmentPage() {
   useEffect(() => {
     if (currentStep === 4 && canvasRef.current && !signatureImage) {
       const canvas = canvasRef.current
+      // Set actual size in memory to match display size
+      if (canvas.offsetWidth > 0 && canvas.offsetHeight > 0) {
+        canvas.width = canvas.offsetWidth
+        canvas.height = canvas.offsetHeight
+      } else {
+        canvas.width = 600
+        canvas.height = 200
+      }
+      
       const ctx = canvas.getContext('2d')
       ctx.strokeStyle = '#0f172a'
       ctx.lineWidth = 3
@@ -261,22 +274,32 @@ export default function CargoConsignmentPage() {
     }
   }, [currentStep, signatureImage])
 
+  const getCoordinates = (canvas, clientX, clientY) => {
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    }
+  }
+
   // Mouse canvas drawings
   const startDrawingMouse = (e) => {
     setIsDrawing(true)
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
-    const rect = canvas.getBoundingClientRect()
+    const { x, y } = getCoordinates(canvas, e.clientX, e.clientY)
     ctx.beginPath()
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top)
+    ctx.moveTo(x, y)
   }
 
   const drawMouse = (e) => {
     if (!isDrawing) return
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
-    const rect = canvas.getBoundingClientRect()
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top)
+    const { x, y } = getCoordinates(canvas, e.clientX, e.clientY)
+    ctx.lineTo(x, y)
     ctx.stroke()
   }
 
@@ -285,10 +308,10 @@ export default function CargoConsignmentPage() {
     setIsDrawing(true)
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
-    const rect = canvas.getBoundingClientRect()
     const touch = e.touches[0]
+    const { x, y } = getCoordinates(canvas, touch.clientX, touch.clientY)
     ctx.beginPath()
-    ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top)
+    ctx.moveTo(x, y)
     e.preventDefault()
   }
 
@@ -296,9 +319,9 @@ export default function CargoConsignmentPage() {
     if (!isDrawing) return
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
-    const rect = canvas.getBoundingClientRect()
     const touch = e.touches[0]
-    ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top)
+    const { x, y } = getCoordinates(canvas, touch.clientX, touch.clientY)
+    ctx.lineTo(x, y)
     ctx.stroke()
     e.preventDefault()
   }
@@ -472,11 +495,12 @@ export default function CargoConsignmentPage() {
         }
 
         setTimeout(() => {
-          setActiveConsignmentId(savedId)
-          setActiveConsignment(fullConsignment)
-          setConsignmentStatus(fullConsignment.trangThaiKyGui)
-          setConfirmLoading(false)
-          setCurrentStep(5) // Navigate to waiting screen
+          navigate('/cargo-payment', {
+            state: {
+              activeConsignmentId: savedId,
+              activeConsignment: fullConsignment
+            }
+          })
         }, 800)
       } else {
         const errData = await response.json()
@@ -555,45 +579,15 @@ export default function CargoConsignmentPage() {
   }, [currentStep, activeConsignmentId, isConfirmed])
 
   // Payment confirmation click
-  const handlePaymentConfirm = async () => {
-    setPaymentLoading(true)
-
-    // 1. Call Backend Payment API
-    let success = false
-    try {
-      const response = await fetch(`http://localhost:5000/api/cargo/consignment/${activeConsignmentId}/pay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentMethod: selectedPaymentMethod })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setActiveConsignment(data.consignment)
-        success = true
-      }
-    } catch (err) {
-      console.warn('Backend payment endpoint offline. Processing local mock payment.')
-    }
-
-    // 2. Update local storage to synchronize offline prototypes
-    const list = JSON.parse(localStorage.getItem('busgo_consignments') || '[]')
-    const idx = list.findIndex(item => item.id === activeConsignmentId)
-    if (idx !== -1) {
-      list[idx].trangThaiThanhToan = 'paid'
-      list[idx].ngayCapNhat = new Date().toISOString()
-      localStorage.setItem('busgo_consignments', JSON.stringify(list))
-      window.dispatchEvent(new Event('storage'))
-
-      if (!success) {
-        setActiveConsignment(list[idx])
-      }
-    }
-
-    setTimeout(() => {
-      setPaymentLoading(false)
-      setIsConfirmed(true) // Display the final printable E-Receipt
-    }, 1500)
+  const handlePaymentConfirm = () => {
+    navigate('/cargo-payment', { 
+      state: { 
+        activeConsignment: {
+          id: activeConsignmentId,
+          ...activeConsignment
+        }
+      } 
+    })
   }
 
   // Parse receipt statuses
@@ -919,81 +913,81 @@ export default function CargoConsignmentPage() {
         ]}
       />
 
-      <div className="container-fluid px-md-5 px-3 py-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Button */}
-        <div className="mb-4">
+        <div className="mb-6">
           <BackButton label="Quay lại" />
         </div>
 
         {/* Header Title with quick mock fill */}
         {currentStep <= 4 && (
-          <div className="row mb-5 align-items-center">
-            <div className="col-md-7">
-              <h1 className="fw-black text-neutral-900 mb-1 fs-3">Ký Gửi Hàng Hóa Điện Tử</h1>
-              <p className="text-muted mb-0">Mã ký gửi dự kiến: <strong>CSM-PRO</strong></p>
-            </div>
-            <div className="col-md-5 text-md-end mt-3 mt-md-0">
-              {/* Nút nhập dữ liệu mẫu đã bị xóa theo yêu cầu */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent mb-2">
+                Ký Gửi Hàng Hóa Điện Tử
+              </h1>
+              <p className="text-slate-500 font-medium">Mã ký gửi dự kiến: <strong className="text-slate-800">CSM-PRO</strong></p>
             </div>
           </div>
         )}
 
         {/* Main Grid Content */}
-        <div className="row g-4">
+        <div className="flex flex-col lg:flex-row gap-8">
           
           {/* Left panel: Form elements */}
-          <div className="col-lg-8">
+          <div className="w-full lg:w-2/3">
             
             {/* STEP 1-4 */}
             {currentStep <= 4 && (
-              <div className="card shadow-sm border-0">
-                <div className="card-body p-4 md:p-5">
+              <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                <div className="p-6 md:p-10">
                   
                   {/* STEP 1: ROUTE & SERVICE SELECTION */}
                   {currentStep === 1 && (
-                    <div>
-                      <h3 className="fw-bold mb-4 flex items-center gap-2">
-                        <span className="text-primary">📍</span> Chọn Dịch Vụ & Tuyến Đường
+                    <div className="animate-fade-in">
+                      <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">
+                        <span className="flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 text-xl shadow-inner">📍</span>
+                        Chọn Dịch Vụ & Tuyến Đường
                       </h3>
 
                       {/* Service Type Buttons */}
-                      <div className="mb-4">
-                        <label className="form-label fw-bold text-slate-700">Hình Thức Gửi Hàng</label>
-                        <div className="row g-3">
-                          <div className="col-md-6">
-                            <button
-                              type="button"
-                              className={`service-btn p-4 rounded-3 w-100 ${serviceType === 'gui_kem' ? 'active' : ''}`}
-                              onClick={() => {
-                                setServiceType('gui_kem')
-                                setSelectedTripId(null)
-                              }}
-                            >
-                              <span className="fs-2 block mb-2">🚌</span>
-                              <span className="d-block fw-bold text-slate-800 text-sm">Gửi Kèm Xe Khách</span>
-                              <span className="text-[11px] text-slate-500 d-block mt-1">Gửi hàng theo các chuyến xe khách chạy hàng ngày, giá rẻ tối ưu.</span>
-                            </button>
-                          </div>
-                          <div className="col-md-6">
-                            <button
-                              type="button"
-                              className={`service-btn p-4 rounded-3 w-100 ${serviceType === 'van_tai' ? 'active' : ''}`}
-                              onClick={() => setServiceType('van_tai')}
-                            >
-                              <span className="fs-2 block mb-2">🚚</span>
-                              <span className="d-block fw-bold text-slate-800 text-sm">Thuê Xe Vận Tải Riêng</span>
-                              <span className="text-[11px] text-slate-500 d-block mt-1">Bao trọn xe tải nhỏ/lớn để chuyển hàng cồng kềnh, nhận tận nơi.</span>
-                            </button>
-                          </div>
+                      <div className="mb-10">
+                        <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Hình Thức Gửi Hàng</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <button
+                            type="button"
+                            className={`group relative overflow-hidden text-left p-6 rounded-2xl border-2 transition-all duration-300 ${serviceType === 'gui_kem' ? 'border-blue-500 bg-blue-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}
+                            onClick={() => {
+                              setServiceType('gui_kem')
+                              setSelectedTripId(null)
+                            }}
+                          >
+                            {serviceType === 'gui_kem' && <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500 opacity-10 rounded-bl-full rounded-tr-xl"></div>}
+                            <span className="text-4xl block mb-4 group-hover:scale-110 transition-transform origin-left">🚌</span>
+                            <span className={`block font-black text-lg mb-2 ${serviceType === 'gui_kem' ? 'text-blue-700' : 'text-slate-800'}`}>Gửi Kèm Xe Khách</span>
+                            <span className="text-sm text-slate-500 leading-relaxed">Gửi hàng theo các chuyến xe khách chạy hàng ngày, giá rẻ tối ưu.</span>
+                          </button>
+                          
+                          <button
+                            type="button"
+                            className={`group relative overflow-hidden text-left p-6 rounded-2xl border-2 transition-all duration-300 ${serviceType === 'van_tai' ? 'border-indigo-500 bg-indigo-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'}`}
+                            onClick={() => setServiceType('van_tai')}
+                          >
+                            {serviceType === 'van_tai' && <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500 opacity-10 rounded-bl-full rounded-tr-xl"></div>}
+                            <span className="text-4xl block mb-4 group-hover:scale-110 transition-transform origin-left">🚚</span>
+                            <span className={`block font-black text-lg mb-2 ${serviceType === 'van_tai' ? 'text-indigo-700' : 'text-slate-800'}`}>Thuê Xe Vận Tải Riêng</span>
+                            <span className="text-sm text-slate-500 leading-relaxed">Bao trọn xe tải nhỏ/lớn để chuyển hàng cồng kềnh, nhận tận nơi.</span>
+                          </button>
                         </div>
                       </div>
 
                       {/* Route selector dropdowns */}
-                      <div className="row g-3 mb-3">
-                        <div className="col-md-6">
-                          <label className="form-label fw-bold">Điểm Gửi</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Điểm Gửi</label>
                           <select
-                            className="form-select"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                             value={routeData.from}
                             onChange={(e) => {
                               setRouteData(prev => ({ ...prev, from: e.target.value, to: '' }))
@@ -1008,10 +1002,10 @@ export default function CargoConsignmentPage() {
                           </select>
                         </div>
 
-                        <div className="col-md-6">
-                          <label className="form-label fw-bold">Điểm Nhận</label>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Điểm Nhận</label>
                           <select
-                            className="form-select"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             value={routeData.to}
                             onChange={(e) => {
                               setRouteData(prev => ({ ...prev, to: e.target.value }))
@@ -1034,11 +1028,11 @@ export default function CargoConsignmentPage() {
                       </div>
 
                       {/* Date Picker */}
-                      <div className="mb-4">
-                        <label className="form-label fw-bold">Ngày Gửi Hàng</label>
+                      <div className="mb-6">
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Ngày Gửi Hàng</label>
                         <input
                           type="date"
-                          className="form-control"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                           value={routeData.date}
                           onChange={(e) => setRouteData(prev => ({ ...prev, date: e.target.value }))}
                           min={new Date().toISOString().split('T')[0]}
@@ -1046,11 +1040,11 @@ export default function CargoConsignmentPage() {
                       </div>
 
                       {/* Location detail textareas */}
-                      <div className="row g-3 mb-4">
-                        <div className="col-md-6">
-                          <label className="form-label fw-bold">Vị Trí Gửi Hàng Chi Tiết <span className="text-danger">*</span></label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Vị Trí Gửi Hàng Chi Tiết <span className="text-red-500">*</span></label>
                           <textarea
-                            className="form-control"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                             rows="2"
                             maxLength="200"
                             placeholder="VD: 104 Nguyễn Văn Linh, P. Nam Dương, Q. Hải Châu"
@@ -1058,10 +1052,10 @@ export default function CargoConsignmentPage() {
                             onChange={(e) => setRouteData(prev => ({ ...prev, pickupLocationDetail: e.target.value }))}
                           />
                         </div>
-                        <div className="col-md-6">
-                          <label className="form-label fw-bold">Vị Trí Nhận Hàng Chi Tiết <span className="text-danger">*</span></label>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Vị Trí Nhận Hàng Chi Tiết <span className="text-red-500">*</span></label>
                           <textarea
-                            className="form-control"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                             rows="2"
                             maxLength="200"
                             placeholder="VD: Số 5 Lê Lợi, P. Vĩnh Ninh, TP. Huế"
@@ -1073,43 +1067,43 @@ export default function CargoConsignmentPage() {
 
                       {/* DYNAMIC LISTS */}
                       {routeData.from && routeData.to && routeData.date && (
-                        <div className="pt-3 border-top">
+                        <div className="pt-8 border-t border-slate-100 mt-8">
                           {serviceType === 'gui_kem' ? (
-                            <>
-                              <h5 className="fw-bold text-slate-500 text-xs uppercase mb-3">Danh sách chuyến xe khách phù hợp</h5>
+                            <div className="animate-fade-in-up">
+                              <h5 className="font-bold text-slate-500 text-xs tracking-wider uppercase mb-4">Danh sách chuyến xe khách phù hợp</h5>
                               {matchedTrips.length === 0 ? (
-                                <div className="p-3 border rounded-3 bg-light text-center text-muted text-xs italic">
+                                <div className="p-8 border border-dashed border-slate-300 rounded-2xl bg-slate-50 text-center text-slate-500 text-sm">
                                   Không tìm thấy chuyến xe khách nào chạy tuyến này vào ngày đã chọn.
                                 </div>
                               ) : (
-                                <div className="grid gap-2">
+                                <div className="grid gap-3">
                                   {matchedTrips.map(trip => (
                                     <div
                                       key={trip.id}
-                                      className={`p-3 rounded-3 border d-flex justify-content-between align-items-center cursor-pointer transition-all ${selectedTripId === trip.id ? 'border-primary bg-primary bg-opacity-5' : 'bg-white'}`}
+                                      className={`p-4 rounded-2xl border-2 flex justify-between items-center cursor-pointer transition-all duration-200 ${selectedTripId === trip.id ? 'border-blue-500 bg-blue-50 shadow-md transform -translate-y-0.5' : 'border-slate-100 bg-white hover:border-blue-200 hover:shadow-sm'}`}
                                       onClick={() => setSelectedTripId(trip.id)}
                                     >
                                       <div>
-                                        <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-bold block mb-1" style={{ width: 'fit-content' }}>Mã CX{trip.id}</span>
-                                        <div className="d-flex align-items-center gap-2">
-                                          <strong className="text-slate-800 fs-5">{trip.departureTime || trip.time}</strong>
-                                          <span className="text-xs text-slate-550">({trip.busType})</span>
+                                        <span className="text-[10px] px-2.5 py-1 rounded-md bg-slate-200 text-slate-600 font-bold block mb-2 w-fit">Mã CX{trip.id}</span>
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <strong className="text-slate-800 text-xl font-black">{trip.departureTime || trip.time}</strong>
+                                          <span className="text-xs text-slate-500 font-medium px-2 py-0.5 bg-slate-100 rounded-full">{trip.busType}</span>
                                         </div>
-                                        <span className="text-slate-500 text-xs block mt-1">Tài xế chạy tuyến: {trip.driver || 'Đang phân bổ'}</span>
+                                        <span className="text-slate-500 text-xs block">Tài xế chạy tuyến: <span className="font-medium">{trip.driver || 'Đang phân bổ'}</span></span>
                                       </div>
-                                      <div className="text-end">
-                                        <span className="text-slate-400 text-[10px] font-bold block">CƯỚC CƠ BẢN</span>
-                                        <strong className="text-primary fs-5">{formatVND(trip.price)}</strong>
+                                      <div className="text-right">
+                                        <span className="text-slate-400 text-[10px] font-bold block mb-1">CƯỚC CƠ BẢN</span>
+                                        <strong className="text-blue-600 text-xl font-black">{formatVND(trip.price)}</strong>
                                       </div>
                                     </div>
                                   ))}
                                 </div>
                               )}
-                            </>
+                            </div>
                           ) : (
-                            <>
-                              <h5 className="fw-bold text-slate-500 text-xs uppercase mb-3">Chọn loại xe tải chuyên chở</h5>
-                              <div className="grid gap-2">
+                            <div className="animate-fade-in-up">
+                              <h5 className="font-bold text-slate-500 text-xs tracking-wider uppercase mb-4">Chọn loại xe tải chuyên chở</h5>
+                              <div className="grid gap-3">
                                 {Object.keys(TRUCK_TYPES).map(key => {
                                   const truck = TRUCK_TYPES[key]
                                   const hasRoute = routeData.from && routeData.to
@@ -1118,25 +1112,27 @@ export default function CargoConsignmentPage() {
                                   return (
                                     <div
                                       key={key}
-                                      className={`p-3 rounded-3 border d-flex justify-content-between align-items-center cursor-pointer transition-all ${selectedTruckType === key ? 'border-primary bg-primary bg-opacity-5' : 'bg-white'}`}
+                                      className={`p-4 rounded-2xl border-2 flex justify-between items-center cursor-pointer transition-all duration-200 ${selectedTruckType === key ? 'border-indigo-500 bg-indigo-50 shadow-md transform -translate-y-0.5' : 'border-slate-100 bg-white hover:border-indigo-200 hover:shadow-sm'}`}
                                       onClick={() => setSelectedTruckType(key)}
                                     >
-                                      <div className="d-flex align-items-center gap-3">
-                                        <span className="fs-2">{truck.icon}</span>
+                                      <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${selectedTruckType === key ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-600'}`}>
+                                          {truck.icon}
+                                        </div>
                                         <div>
-                                          <strong className="text-slate-800 text-sm block">{truck.label}</strong>
-                                          <span className="text-[10px] text-slate-500">Khoảng cách dự kiến: {hasRoute ? `~${distance}km` : 'Chưa chọn'}</span>
+                                          <strong className="text-slate-800 text-base font-bold block mb-1">{truck.label}</strong>
+                                          <span className="text-xs text-slate-500">Khoảng cách dự kiến: {hasRoute ? `~${distance}km` : 'Chưa chọn'}</span>
                                         </div>
                                       </div>
-                                      <div className="text-end">
-                                        <span className="text-slate-400 text-[10px] font-bold block">CƯỚC BAO XE ({formatVND(truck.pricePerKm)}/km)</span>
-                                        <strong className="text-primary fs-5">{hasRoute ? formatVND(calculatedPrice) : '0 đ'}</strong>
+                                      <div className="text-right">
+                                        <span className="text-slate-400 text-[10px] font-bold block mb-1">CƯỚC BAO XE ({formatVND(truck.pricePerKm)}/km)</span>
+                                        <strong className="text-indigo-600 text-xl font-black">{hasRoute ? formatVND(calculatedPrice) : '0 đ'}</strong>
                                       </div>
                                     </div>
                                   )
                                 })}
                               </div>
-                            </>
+                            </div>
                           )}
                         </div>
                       )}
@@ -1146,16 +1142,17 @@ export default function CargoConsignmentPage() {
 
                   {/* STEP 2: CARGO DECLARATION */}
                   {currentStep === 2 && (
-                    <div>
-                      <h3 className="fw-bold mb-4 flex items-center gap-2">
-                        <span className="text-primary">📦</span> Khai Báo Thông Tin Hàng Hóa
+                    <div className="animate-fade-in">
+                      <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">
+                        <span className="flex items-center justify-center w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 text-xl shadow-inner">📦</span>
+                        Khai Báo Thông Tin Hàng Hóa
                       </h3>
 
-                      <div className="row g-3 mb-3">
-                        <div className="col-md-6">
-                          <label className="form-label fw-bold">Loại Hàng Hóa</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Loại Hàng Hóa</label>
                           <select
-                            className="form-select"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                             value={cargoData.type}
                             onChange={(e) => setCargoData(prev => ({ ...prev, type: e.target.value }))}
                           >
@@ -1166,11 +1163,11 @@ export default function CargoConsignmentPage() {
                             <option value="motorcycle">🏍️ Xe máy (Giá cước cố định)</option>
                           </select>
                         </div>
-                        <div className="col-md-6">
-                          <label className="form-label fw-bold">Trọng Lượng (KG)</label>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Trọng Lượng (KG)</label>
                           <input
                             type="number"
-                            className="form-control"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                             value={cargoData.weight}
                             min="0.5"
                             step="0.5"
@@ -1179,24 +1176,24 @@ export default function CargoConsignmentPage() {
                         </div>
                       </div>
 
-                      <div className="row g-3 mb-4">
-                        <div className="col-md-6">
-                          <label className="form-label fw-bold">Giá Trị Khai Giá (VND) - Để Mua Bảo Hiểm</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Giá Trị Khai Giá (VND) - Để Mua Bảo Hiểm</label>
                           <input
                             type="number"
-                            className="form-control"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                             value={cargoData.declaredValue}
                             min="0"
                             step="100000"
                             onChange={(e) => setCargoData(prev => ({ ...prev, declaredValue: e.target.value }))}
                           />
-                          <span className="text-[10px] text-slate-500 mt-1 d-block">💡 Phí bảo hiểm hàng hóa bằng 2% giá trị khai giá.</span>
+                          <span className="text-[10px] text-slate-500 mt-1.5 block">💡 Phí bảo hiểm hàng hóa bằng 2% giá trị khai giá.</span>
                         </div>
-                        <div className="col-md-6">
-                          <label className="form-label fw-bold">Số Lượng Kiện Hàng <span className="text-danger">*</span></label>
+                        <div>
+                          <label className="block text-sm font-bold text-slate-700 mb-2">Số Lượng Kiện Hàng <span className="text-red-500">*</span></label>
                           <input
                             type="number"
-                            className="form-control"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                             value={cargoData.qty}
                             min="1"
                             onChange={(e) => setCargoData(prev => ({ ...prev, qty: parseInt(e.target.value) || 1 }))}
@@ -1205,65 +1202,70 @@ export default function CargoConsignmentPage() {
                       </div>
 
                       {/* Camera Photo Component */}
-                      <div className="border bg-light rounded-3 p-4 mb-4">
-                        <div className="d-flex justify-content-between align-items-center mb-3">
+                      <div className="border border-slate-200 bg-slate-50/50 rounded-2xl p-6 mb-8 shadow-sm">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                           <div>
-                            <strong className="text-sm text-slate-800 d-block">Hình ảnh kiện hàng thực tế</strong>
-                            <span className="text-xs text-slate-550">
+                            <strong className="text-sm font-bold text-slate-800 block mb-1">Hình ảnh kiện hàng thực tế</strong>
+                            <span className="text-xs text-slate-500">
                               {parseInt(cargoData.qty) >= 3 ? (
-                                <strong className="text-danger">Bắt buộc tải ảnh lên vì số lượng kiện hàng &ge; 3.</strong>
+                                <strong className="text-orange-600">Bắt buộc tải ảnh lên vì số lượng kiện hàng &ge; 3.</strong>
                               ) : (
                                 'Khuyến khích đính kèm tối thiểu 1 hình ảnh.'
                               )}
                             </span>
                           </div>
-                          <div className="d-flex gap-2">
+                          <div className="flex gap-3">
                             <input
                               type="file"
                               ref={fileInputRef}
-                              className="d-none"
+                              className="hidden"
                               accept="image/*"
                               multiple
                               onChange={handleFileChange}
                             />
                             <button
                               type="button"
-                              className="btn btn-white border text-xs fw-bold px-3 py-2 d-flex align-items-center gap-1.5"
+                              className="bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors shadow-sm"
                               onClick={handleUploadClick}
                             >
-                              <FiUpload /> Album ảnh
+                              <FiUpload size={16} /> Album ảnh
                             </button>
                             <button
                               type="button"
-                              className="btn btn-primary text-xs fw-bold px-3 py-2 d-flex align-items-center gap-1.5"
+                              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                               onClick={openCamera}
                             >
-                              <FiCamera /> Chụp ảnh
+                              <FiCamera size={16} /> Chụp ảnh
                             </button>
                           </div>
                         </div>
 
                         {/* Warning warning banner */}
                         {parseInt(cargoData.qty) >= 3 && cargoImages.length === 0 && (
-                          <div className="alert alert-danger p-2 text-xs mb-3">
-                            ⚠️ Đơn hàng có từ 3 kiện trở lên bắt buộc phải đính kèm ảnh kiện hàng thực tế.
+                          <div className="bg-red-50 text-red-600 border border-red-200 rounded-xl p-3 text-xs mb-4 flex items-center gap-2">
+                            <FiAlertCircle size={16} className="flex-shrink-0" />
+                            Đơn hàng có từ 3 kiện trở lên bắt buộc phải đính kèm ảnh kiện hàng thực tế.
                           </div>
                         )}
 
                         {/* Thumbnails grid */}
-                        <div className="d-flex flex-wrap mt-2">
+                        <div className="flex flex-wrap gap-4 mt-4">
                           {cargoImages.length === 0 ? (
-                            <span className="text-slate-400 italic text-xs">Chưa có hình ảnh nào được tải lên</span>
+                            <div className="w-full py-8 text-center border-2 border-dashed border-slate-200 rounded-xl bg-white/50">
+                              <FiCamera size={24} className="mx-auto text-slate-300 mb-2" />
+                              <span className="text-slate-400 font-medium text-xs">Chưa có hình ảnh nào được tải lên</span>
+                            </div>
                           ) : (
                             cargoImages.map((src, idx) => (
-                              <div key={idx} className="cargo-img-container">
-                                <img className="cargo-img-thumbnail" src={src} alt="cargo" />
+                              <div key={idx} className="relative group w-24 h-24 rounded-xl overflow-hidden shadow-sm border border-slate-200">
+                                <img className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" src={src} alt="cargo" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                 <button
                                   type="button"
-                                  className="cargo-img-remove-btn"
+                                  className="absolute top-2 right-2 bg-white text-red-500 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-red-50 hover:scale-110 transform"
                                   onClick={() => removeCargoImage(idx)}
                                 >
-                                  <FiX />
+                                  <FiX size={14} />
                                 </button>
                               </div>
                             ))
@@ -1272,10 +1274,10 @@ export default function CargoConsignmentPage() {
                       </div>
 
                       <div>
-                        <label className="form-label fw-bold">Ghi Chú Vận Chuyển</label>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Ghi Chú Vận Chuyển</label>
                         <textarea
-                          className="form-control"
-                          rows="2"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none"
+                          rows="3"
                           placeholder="Ghi chú thêm về kích thước hoặc yêu cầu đặc biệt khi vận chuyển..."
                           value={cargoData.note}
                           onChange={(e) => setCargoData(prev => ({ ...prev, note: e.target.value }))}
@@ -1287,49 +1289,50 @@ export default function CargoConsignmentPage() {
 
                   {/* STEP 3: CONTACT & CCCD */}
                   {currentStep === 3 && (
-                    <div>
-                      <h3 className="fw-bold mb-4 flex items-center gap-2">
-                        <span className="text-primary">👤</span> Xác Minh Danh Tính & Liên Hệ
+                    <div className="animate-fade-in">
+                      <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">
+                        <span className="flex items-center justify-center w-12 h-12 rounded-2xl bg-teal-100 text-teal-600 text-xl shadow-inner">👤</span>
+                        Xác Minh Danh Tính & Liên Hệ
                       </h3>
 
-                      <div className="mb-4">
-                        <h5 className="fw-bold text-primary text-xs uppercase mb-3 border-bottom pb-1">Người gửi</h5>
-                        <div className="row g-3">
-                          <div className="col-md-6">
-                            <label className="form-label fw-bold">Họ và Tên</label>
+                      <div className="mb-8">
+                        <h5 className="font-black text-teal-600 text-sm tracking-wider uppercase mb-4 border-b border-teal-100 pb-2">Người gửi</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Họ và Tên</label>
                             <input
                               type="text"
-                              className="form-control"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
                               value={personData.senderName}
                               onChange={(e) => setPersonData(prev => ({ ...prev, senderName: e.target.value }))}
                             />
                           </div>
-                          <div className="col-md-6">
-                            <label className="form-label fw-bold">Số Điện Thoại</label>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Số Điện Thoại</label>
                             <input
                               type="tel"
-                              className="form-control"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
                               value={personData.senderPhone}
                               onChange={(e) => setPersonData(prev => ({ ...prev, senderPhone: e.target.value }))}
                             />
                           </div>
-                          <div className="col-md-6 mt-3">
-                            <label className="form-label fw-bold">Số CCCD Xác Minh <span className="text-danger">*</span></label>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Số CCCD Xác Minh <span className="text-red-500">*</span></label>
                             <input
                               type="text"
-                              className="form-control"
-                              placeholder="Nhập 12 số căn cước công dân"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all font-mono"
+                              placeholder="Nhập 12 số CCCD"
                               maxLength="12"
                               value={personData.senderCCCD}
                               onChange={(e) => setPersonData(prev => ({ ...prev, senderCCCD: e.target.value.replace(/[^0-9]/g, '') }))}
                             />
-                            <span className="text-[10px] text-slate-500 mt-1 d-block">💡 Dùng để ghi nhận pháp lý vào biên bản cam kết hàng hóa.</span>
+                            <span className="text-[10px] text-slate-500 mt-1.5 block">💡 Dùng để ghi nhận pháp lý vào biên bản cam kết hàng hóa.</span>
                           </div>
-                          <div className="col-md-6 mt-3">
-                            <label className="form-label fw-bold">Email Người Gửi <span className="text-danger">*</span></label>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Email Người Gửi <span className="text-red-500">*</span></label>
                             <input
                               type="email"
-                              className="form-control"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
                               placeholder="VD: customer@busgo.vn"
                               value={personData.senderEmail}
                               onChange={(e) => setPersonData(prev => ({ ...prev, senderEmail: e.target.value }))}
@@ -1339,23 +1342,23 @@ export default function CargoConsignmentPage() {
                       </div>
 
                       <div>
-                        <h5 className="fw-bold text-primary text-xs uppercase mb-3 border-bottom pb-1">Người nhận</h5>
-                        <div className="row g-3">
-                          <div className="col-md-6">
-                            <label className="form-label fw-bold">Họ và Tên <span className="text-danger">*</span></label>
+                        <h5 className="font-black text-teal-600 text-sm tracking-wider uppercase mb-4 border-b border-teal-100 pb-2">Người nhận</h5>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Họ và Tên <span className="text-red-500">*</span></label>
                             <input
                               type="text"
-                              className="form-control"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
                               placeholder="Họ tên người nhận"
                               value={personData.receiverName}
                               onChange={(e) => setPersonData(prev => ({ ...prev, receiverName: e.target.value }))}
                             />
                           </div>
-                          <div className="col-md-6">
-                            <label className="form-label fw-bold">Số Điện Thoại Nhận <span className="text-danger">*</span></label>
+                          <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Số Điện Thoại Nhận <span className="text-red-500">*</span></label>
                             <input
                               type="tel"
-                              className="form-control"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
                               placeholder="Số điện thoại nhận"
                               value={personData.receiverPhone}
                               onChange={(e) => setPersonData(prev => ({ ...prev, receiverPhone: e.target.value }))}
@@ -1369,25 +1372,26 @@ export default function CargoConsignmentPage() {
 
                   {/* STEP 4: SIGNATURE & SUBMIT APPROVAL */}
                   {currentStep === 4 && (
-                    <div>
-                      <h3 className="fw-bold mb-4 flex items-center gap-2">
-                        <span className="text-primary">✍️</span> Ký Xác Nhận Hợp Đồng Vận Chuyển
+                    <div className="animate-fade-in">
+                      <h3 className="text-2xl font-black text-slate-800 mb-8 flex items-center gap-3">
+                        <span className="flex items-center justify-center w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 text-xl shadow-inner">✍️</span>
+                        Ký Xác Nhận Hợp Đồng Vận Chuyển
                       </h3>
 
-                      <div className="alert alert-info d-flex gap-2.5 align-items-start mb-4">
-                        <FiInfo size={20} className="mt-0.5 text-primary flex-shrink-0" />
-                        <div className="text-xs">
-                          <strong>Quy trình gửi hàng an toàn:</strong> Sau khi ký xác nhận và gửi yêu cầu, vui lòng chờ <strong>Tài xế</strong> (xe khách) hoặc <strong>Điều hành</strong> (xe tải) duyệt nhận kiện hàng trước. Sau khi được phê duyệt, bạn mới tiến hành thanh toán tiền cước để nhận biên nhận & gửi hợp đồng về Email.
+                      <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-xl p-4 flex gap-4 items-start mb-8 shadow-sm">
+                        <FiInfo size={24} className="mt-0.5 flex-shrink-0 text-blue-600" />
+                        <div className="text-sm leading-relaxed">
+                          <strong>Quy trình gửi hàng an toàn:</strong> Sau khi ký xác nhận và gửi yêu cầu, vui lòng chờ <strong className="text-blue-900">Tài xế</strong> (xe khách) hoặc <strong className="text-blue-900">Điều hành</strong> (xe tải) duyệt nhận kiện hàng trước. Sau khi được phê duyệt, bạn mới tiến hành thanh toán tiền cước để nhận biên nhận & gửi hợp đồng về Email.
                         </div>
                       </div>
 
                       {/* Digital signature canvas box */}
-                      <div className="mb-4">
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <label className="form-label fw-bold m-0">Ký Xác Nhận Điện Tử <span className="text-danger">*</span></label>
+                      <div className="mb-8">
+                        <div className="flex justify-between items-end mb-3">
+                          <label className="block text-sm font-bold text-slate-700 m-0">Ký Xác Nhận Điện Tử <span className="text-red-500">*</span></label>
                           <button
                             type="button"
-                            className="btn btn-link text-danger text-xs fw-bold p-0 text-decoration-none"
+                            className="text-red-500 text-xs font-bold hover:text-red-700 transition-colors bg-red-50 px-3 py-1 rounded-full"
                             onClick={clearSignature}
                           >
                             Xóa nét vẽ
@@ -1395,11 +1399,10 @@ export default function CargoConsignmentPage() {
                         </div>
 
                         {!signatureImage ? (
-                          <div className="border border-slate-200 bg-white rounded-3 overflow-hidden shadow-inner relative" style={{ height: '160px' }}>
+                          <div className="border-2 border-dashed border-purple-300 bg-purple-50/30 rounded-2xl overflow-hidden relative shadow-inner group" style={{ height: '200px' }}>
                             <canvas
                               ref={canvasRef}
-                              className="w-100 h-100"
-                              style={{ cursor: 'crosshair' }}
+                              className="w-full h-full cursor-crosshair"
                               onMouseDown={startDrawingMouse}
                               onMouseMove={drawMouse}
                               onMouseUp={stopDrawing}
@@ -1408,43 +1411,50 @@ export default function CargoConsignmentPage() {
                               onTouchMove={drawTouch}
                               onTouchEnd={stopDrawing}
                             />
-                            <div className="position-absolute bottom-2 start-2 pointer-events-none text-[10px] text-slate-400 bg-slate-900 bg-opacity-60 px-2 py-0.5 rounded text-white">Vẽ chữ ký của bạn tại đây</div>
+                            <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-30 group-hover:opacity-10 transition-opacity">
+                              <span className="text-4xl">✍️</span>
+                            </div>
+                            <div className="absolute top-4 left-4 pointer-events-none text-xs font-medium text-purple-600 bg-purple-100 px-3 py-1 rounded-full">
+                              Vẽ chữ ký của bạn tại đây
+                            </div>
                             <button
                               type="button"
-                              className="btn btn-primary btn-sm position-absolute bottom-2 end-2 text-[10px] fw-bold"
+                              className="absolute bottom-4 right-4 bg-purple-600 hover:bg-purple-700 text-white shadow-lg text-xs font-bold px-4 py-2.5 rounded-xl transition-all transform hover:scale-105"
                               onClick={saveSignature}
                             >
                               Lưu nét ký
                             </button>
                           </div>
                         ) : (
-                          <div className="border bg-white rounded-3 p-3 text-center shadow-inner relative" style={{ height: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                            <img className="img-fluid object-fit-contain" style={{ maxHeight: '110px' }} src={signatureImage} alt="saved sig" />
-                            <span className="text-success fw-bold text-[10px] block mt-2">✓ Chữ ký điện tử đã được ghi nhận thành công</span>
+                          <div className="border-2 border-emerald-200 bg-emerald-50 rounded-2xl p-6 text-center shadow-inner relative flex flex-col items-center justify-center h-[200px]">
+                            <img className="max-h-[120px] object-contain drop-shadow-md mix-blend-multiply" src={signatureImage} alt="saved sig" />
+                            <div className="absolute bottom-4 flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-1.5 rounded-full text-xs font-bold">
+                              <FiCheckCircle /> Chữ ký điện tử đã được ghi nhận thành công
+                            </div>
                           </div>
                         )}
                       </div>
 
                       {/* Checkboxes terms */}
-                      <div className="d-flex flex-column gap-2 mb-2 text-xs">
-                        <label className="d-flex items-start gap-2 cursor-pointer text-slate-600">
+                      <div className="flex flex-col gap-4 text-sm bg-slate-50 border border-slate-200 p-5 rounded-2xl">
+                        <label className="flex items-start gap-3 cursor-pointer text-slate-700 group">
                           <input
                             type="checkbox"
-                            className="form-check-input mt-0.5"
+                            className="mt-1 w-5 h-5 rounded border-slate-300 text-purple-600 focus:ring-purple-500 transition-all cursor-pointer"
                             checked={eSignatureAccepted}
                             onChange={(e) => setESignatureAccepted(e.target.checked)}
                             disabled={!signatureImage}
                           />
-                          <span>Tôi cam đoan thông tin khai báo về hàng hóa là đúng sự thật và tuân thủ các quy định về hàng cấm gửi của BusGo.</span>
+                          <span className={`leading-relaxed ${!signatureImage ? 'opacity-50' : 'group-hover:text-slate-900'}`}>Tôi cam đoan thông tin khai báo về hàng hóa là đúng sự thật và tuân thủ các quy định về hàng cấm gửi của BusGo.</span>
                         </label>
-                        <label className="d-flex items-start gap-2 cursor-pointer text-slate-600">
+                        <label className="flex items-start gap-3 cursor-pointer text-slate-700 group">
                           <input
                             type="checkbox"
-                            className="form-check-input mt-0.5"
+                            className="mt-1 w-5 h-5 rounded border-slate-300 text-purple-600 focus:ring-purple-500 transition-all cursor-pointer"
                             checked={eConsignmentAccepted}
                             onChange={(e) => setEConsignmentAccepted(e.target.checked)}
                           />
-                          <span>Tôi đồng ý sử dụng chữ ký điện tử trên làm căn cứ pháp lý để lập vận đơn gửi hàng này.</span>
+                          <span className="leading-relaxed group-hover:text-slate-900">Tôi đồng ý sử dụng chữ ký điện tử trên làm căn cứ pháp lý để lập vận đơn gửi hàng này.</span>
                         </label>
                       </div>
 
@@ -1452,10 +1462,10 @@ export default function CargoConsignmentPage() {
                   )}
 
                   {/* Bottom Step Buttons */}
-                  <div className="d-flex justify-content-between align-items-center pt-4 border-top mt-4">
+                  <div className="flex justify-between items-center pt-8 border-t border-slate-100 mt-8">
                     <button
                       type="button"
-                      className="btn btn-outline-secondary px-4 py-2 text-sm"
+                      className="bg-white border-2 border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 font-bold px-6 py-3 rounded-xl transition-all"
                       onClick={() => {
                         if (currentStep > 1) {
                           setCurrentStep(currentStep - 1)
@@ -1470,7 +1480,7 @@ export default function CargoConsignmentPage() {
                     {currentStep < 4 ? (
                       <button
                         type="button"
-                        className="btn btn-primary px-4 py-2 text-sm d-flex align-items-center gap-1.5"
+                        className="bg-slate-900 hover:bg-blue-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         onClick={() => {
                           if (currentStep === 1 && isStep1Complete) setCurrentStep(2)
                           else if (currentStep === 2 && isStep2Complete) setCurrentStep(3)
@@ -1482,17 +1492,21 @@ export default function CargoConsignmentPage() {
                           (currentStep === 3 && !isStep3Complete)
                         }
                       >
-                        Tiếp tục <FiArrowRight />
+                        Tiếp tục <FiArrowRight size={18} />
                       </button>
                     ) : (
                       <button
                         type="button"
-                        className="btn btn-orange text-white px-4 py-2 text-sm d-flex align-items-center gap-1.5 border-0"
-                        style={{ backgroundColor: '#f97316' }}
+                        className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-black px-8 py-3 rounded-xl shadow-lg hover:shadow-orange-500/30 transition-all flex items-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         disabled={confirmLoading || !isStep4Complete}
                         onClick={handleRequestSubmit}
                       >
-                        {confirmLoading ? '⏳ Đang lưu...' : 'Gửi yêu cầu vận chuyển'}
+                        {confirmLoading ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Đang xử lý...
+                          </>
+                        ) : 'Gửi yêu cầu vận chuyển'}
                       </button>
                     )}
                   </div>
@@ -1503,25 +1517,27 @@ export default function CargoConsignmentPage() {
 
             {/* STEP 5: WAITING FOR APPROVAL & PAYMENT */}
             {currentStep === 5 && (
-              <div className="card shadow-sm border-0">
-                <div className="card-body p-4 md:p-5 text-center">
+              <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                <div className="p-8 md:p-12 text-center">
                   
                   {/* Status 1: Waiting */}
                   {(consignmentStatus === 'dang_cho_xac_nhan' || consignmentStatus === 'dang_tim_xe_trong') && (
-                    <div className="py-5">
-                      <div className="spinner-border text-primary mb-4" role="status" style={{ width: '3.5rem', height: '3.5rem' }}>
-                        <span className="visually-hidden">Loading...</span>
-                      </div>
-                      <h3 className="fw-black text-slate-800 fs-4 mb-2">Đang Chờ Phê Duyệt Nhận Hàng</h3>
-                      <p className="text-slate-500 text-sm max-w-md mx-auto mb-4 leading-relaxed">
-                        Yêu cầu gửi hàng của bạn đã gửi đi thành công với mã <strong>{activeConsignmentId}</strong>. 
+                    <div className="py-8 animate-fade-in">
+                      <div className="w-20 h-20 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-8 shadow-sm"></div>
+                      <h3 className="text-3xl font-black text-slate-800 mb-4 tracking-tight">Đang Chờ Phê Duyệt Nhận Hàng</h3>
+                      <p className="text-slate-500 text-base max-w-md mx-auto mb-8 leading-relaxed">
+                        Yêu cầu gửi hàng của bạn đã gửi đi thành công với mã <strong className="text-slate-800 bg-slate-100 px-2 py-1 rounded">{activeConsignmentId}</strong>. 
                         Vui lòng chờ tài xế xác nhận nhận hàng trực tuyến trước khi thanh toán.
                       </p>
-                      <div className="alert alert-warning text-xs max-w-sm mx-auto mb-3">
-                        💡 **Để thử nghiệm nhanh**: Hãy mở file <strong>driver.html</strong> (nếu gửi xe khách) hoặc <strong>support.html</strong> (nếu thuê xe tải) ở tab khác và bấm **Duyệt nhận** đơn hàng này.
+                      <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm max-w-md mx-auto mb-8 flex items-start gap-3 text-left">
+                        <span className="text-xl">💡</span>
+                        <div className="leading-relaxed">
+                          <strong>Để thử nghiệm nhanh:</strong> Hãy mở file <strong>driver.html</strong> (nếu gửi xe khách) hoặc <strong>support.html</strong> (nếu thuê xe tải) ở tab khác và bấm <strong>Duyệt nhận</strong> đơn hàng này.
+                        </div>
                       </div>
                       <button 
-                        className="btn btn-outline-danger btn-sm text-xs font-bold px-4 mt-2"
+                        className="bg-white border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-bold px-6 py-2.5 rounded-xl transition-all"
                         onClick={handleCancelConsignment}
                       >
                         Hủy yêu cầu
@@ -1531,15 +1547,15 @@ export default function CargoConsignmentPage() {
 
                   {/* Status 2: Rejected or Cancelled */}
                   {(consignmentStatus === 'failed' || consignmentStatus === 'da_huy') && (
-                    <div className="py-5">
-                      <span className="fs-1 text-danger block mb-3">❌</span>
-                      <h3 className="fw-black text-slate-800 fs-4 mb-2">{consignmentStatus === 'da_huy' ? 'Đơn Đã Hủy' : 'Đơn Hàng Bị Từ Chối'}</h3>
-                      <p className="text-slate-500 text-sm max-w-md mx-auto mb-4">
+                    <div className="py-8 animate-fade-in">
+                      <span className="text-7xl block mb-6 animate-bounce">❌</span>
+                      <h3 className="text-3xl font-black text-slate-800 mb-4 tracking-tight">{consignmentStatus === 'da_huy' ? 'Đơn Đã Hủy' : 'Đơn Hàng Bị Từ Chối'}</h3>
+                      <p className="text-slate-500 text-base max-w-md mx-auto mb-8 leading-relaxed">
                         {consignmentStatus === 'da_huy' 
                           ? 'Bạn đã hủy yêu cầu vận chuyển đơn hàng này.' 
                           : 'Rất tiếc, tài xế hoặc trạm điều hành đã từ chối nhận vận chuyển đơn hàng này.'}
                       </p>
-                      <button onClick={resetForm} className="btn btn-primary px-4 py-2 text-xs">
+                      <button onClick={resetForm} className="bg-slate-900 hover:bg-blue-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5">
                         Tạo yêu cầu mới
                       </button>
                     </div>
@@ -1547,66 +1563,71 @@ export default function CargoConsignmentPage() {
 
                   {/* Status 3: Approved -> NEEDS PAYMENT */}
                   {consignmentStatus === 'da_xac_nhan' && (
-                    <div className="py-4 text-start">
-                      <div className="alert alert-success d-flex gap-3 align-items-center mb-4">
-                        <FiCheckCircle size={32} className="text-success flex-shrink-0" />
+                    <div className="py-4 text-left animate-fade-in">
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex gap-4 items-center mb-8 shadow-sm">
+                        <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <FiCheckCircle size={32} />
+                        </div>
                         <div>
-                          <strong className="text-success d-block text-sm">Yêu cầu của bạn đã được chấp nhận!</strong>
-                          <span className="text-xs text-slate-650 mt-0.5 block">
-                            Tài xế/Xe tải: <strong>{assignedDriverInfo || 'Đã phân bổ'}</strong>
+                          <strong className="text-emerald-700 block text-lg mb-1">Yêu cầu của bạn đã được chấp nhận!</strong>
+                          <span className="text-sm text-slate-600 block">
+                            Tài xế/Xe tải: <strong className="text-slate-800">{assignedDriverInfo || 'Đã phân bổ'}</strong>
                           </span>
                         </div>
                       </div>
 
-                      <h4 className="fw-bold text-slate-800 mb-3 fs-5">💳 Thanh Toán Cước Vận Chuyển</h4>
+                      <h4 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3">
+                        <span className="text-3xl">💳</span> Thanh Toán Cước Vận Chuyển
+                      </h4>
                       
                       {/* Payment Choice */}
-                      <div className="mb-4">
-                        <label className="form-label text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phương thức thanh toán</label>
-                        <div className="row g-3">
-                          <div className="col-md-6">
-                            <label className={`p-3 rounded-3 border w-100 d-flex align-items-center gap-2.5 cursor-pointer ${selectedPaymentMethod === 'momo' ? 'border-primary bg-primary bg-opacity-5' : 'bg-white'}`}>
-                              <input
-                                type="radio"
-                                name="pay-waiting"
-                                value="momo"
-                                checked={selectedPaymentMethod === 'momo'}
-                                onChange={() => setSelectedPaymentMethod('momo')}
-                              />
-                              <div>
-                                <strong className="text-slate-800 text-xs block">📱 Ví Điện Tử MoMo</strong>
-                                <span className="text-[10px] text-slate-500">Trả qua app MoMo</span>
-                              </div>
-                            </label>
-                          </div>
-                          <div className="col-md-6">
-                            <label className={`p-3 rounded-3 border w-100 d-flex align-items-center gap-2.5 cursor-pointer ${selectedPaymentMethod === 'visa' ? 'border-primary bg-primary bg-opacity-5' : 'bg-white'}`}>
-                              <input
-                                type="radio"
-                                name="pay-waiting"
-                                value="visa"
-                                checked={selectedPaymentMethod === 'visa'}
-                                onChange={() => setSelectedPaymentMethod('visa')}
-                              />
-                              <div>
-                                <strong className="text-slate-800 text-xs block">💳 Thẻ Visa/Mastercard</strong>
-                                <span className="text-[10px] text-slate-500">Cổng thanh toán thẻ quốc tế</span>
-                              </div>
-                            </label>
-                          </div>
+                      <div className="mb-8">
+                        <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Phương thức thanh toán</label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'momo' ? 'border-pink-500 bg-pink-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-pink-300 hover:shadow-sm'}`}>
+                            <input
+                              type="radio"
+                              name="pay-waiting"
+                              value="momo"
+                              className="w-5 h-5 text-pink-600 focus:ring-pink-500 border-slate-300"
+                              checked={selectedPaymentMethod === 'momo'}
+                              onChange={() => setSelectedPaymentMethod('momo')}
+                            />
+                            <div>
+                              <strong className="text-slate-800 text-base block mb-0.5">📱 Ví Điện Tử MoMo</strong>
+                              <span className="text-xs text-slate-500">Trả qua app MoMo</span>
+                            </div>
+                            {selectedPaymentMethod === 'momo' && <div className="absolute top-4 right-4 text-pink-500"><FiCheckCircle size={20} /></div>}
+                          </label>
+
+                          <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'visa' ? 'border-blue-500 bg-blue-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}>
+                            <input
+                              type="radio"
+                              name="pay-waiting"
+                              value="visa"
+                              className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-slate-300"
+                              checked={selectedPaymentMethod === 'visa'}
+                              onChange={() => setSelectedPaymentMethod('visa')}
+                            />
+                            <div>
+                              <strong className="text-slate-800 text-base block mb-0.5">💳 Thẻ Visa/Mastercard</strong>
+                              <span className="text-xs text-slate-500">Cổng thanh toán thẻ quốc tế</span>
+                            </div>
+                            {selectedPaymentMethod === 'visa' && <div className="absolute top-4 right-4 text-blue-500"><FiCheckCircle size={20} /></div>}
+                          </label>
                         </div>
                       </div>
 
                       {/* Pay button */}
-                      <div className="pt-3 border-top d-flex justify-content-between align-items-center flex-wrap gap-3">
-                        <div>
-                          <span className="text-slate-400 text-[10px] font-bold block uppercase tracking-wider">Tổng số tiền cần thanh toán</span>
-                          <strong className="text-success fs-4 fw-black">{formatVND(getTotalPrice())}</strong>
+                      <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <div className="text-center md:text-left">
+                          <span className="text-slate-400 text-[10px] font-bold block uppercase tracking-wider mb-1">Tổng số tiền cần thanh toán</span>
+                          <strong className="text-emerald-600 text-4xl font-black tracking-tight">{formatVND(getTotalPrice())}</strong>
                         </div>
-                        <div className="d-flex gap-2">
+                        <div className="flex gap-4 w-full md:w-auto">
                           <button
                             type="button"
-                            className="btn btn-outline-danger px-3 py-2.5 font-bold text-xs"
+                            className="w-full md:w-auto bg-white border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-bold px-6 py-4 rounded-xl transition-all"
                             onClick={handleCancelConsignment}
                             disabled={paymentLoading}
                           >
@@ -1614,13 +1635,13 @@ export default function CargoConsignmentPage() {
                           </button>
                           <button
                             type="button"
-                            className="btn btn-success px-5 py-2.5 font-bold text-xs d-flex align-items-center gap-2"
+                            className="w-full md:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black px-8 py-4 rounded-xl shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5"
                             disabled={paymentLoading}
                             onClick={handlePaymentConfirm}
                           >
                             {paymentLoading ? (
                               <>
-                                <span className="spinner-border spinner-border-sm" role="status"></span>
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                 Đang giao dịch...
                               </>
                             ) : (
@@ -1632,7 +1653,6 @@ export default function CargoConsignmentPage() {
                         </div>
                       </div>
 
-
                     </div>
                   )}
 
@@ -1643,31 +1663,32 @@ export default function CargoConsignmentPage() {
           </div>
 
           {/* Right panel: Summary sidebar */}
-          <div className="col-lg-4">
-            <div className="card shadow-sm border-0 bg-light sticky-top" style={{ top: '80px', zIndex: '10' }}>
-              <div className="card-body p-4">
-                <h5 className="fw-bold mb-3 border-bottom pb-2">TÓM TẮT ĐƠN GỬI</h5>
+          <div className="w-full lg:w-1/3">
+            <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 sticky top-24 overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-slate-900"></div>
+              <div className="p-6 md:p-8">
+                <h5 className="font-black text-slate-800 text-lg mb-6 border-b border-slate-100 pb-4">TÓM TẮT ĐƠN GỬI</h5>
 
-                <div className="d-flex flex-column gap-3 text-xs text-slate-650">
+                <div className="flex flex-col gap-5 text-sm text-slate-600">
                   <div>
-                    <span className="text-muted block">Dịch vụ chọn</span>
-                    <strong className="text-slate-800">
-                      {serviceType === 'gui_kem' ? 'Gửi kèm xe khách (Type 1)' : 'Thuê xe vận tải riêng (Type 2)'}
+                    <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-1">Dịch vụ chọn</span>
+                    <strong className="text-slate-800 text-base">
+                      {serviceType === 'gui_kem' ? 'Gửi kèm xe khách (Tiết kiệm)' : 'Thuê xe vận tải riêng (Chuyên dụng)'}
                     </strong>
                   </div>
 
                   {routeData.from && routeData.to && routeData.date && (
-                    <div>
-                      <span className="text-muted block">Tuyến hành trình</span>
-                      <strong className="text-slate-800 fs-6 block mt-0.5">{routeData.from} ➔ {routeData.to}</strong>
-                      <span className="text-slate-500 d-block mt-0.5">Ngày gửi: {new Date(routeData.date).toLocaleDateString('vi-VN')}</span>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-2">Tuyến hành trình</span>
+                      <strong className="text-slate-800 text-lg font-black block mb-1">{routeData.from} ➔ {routeData.to}</strong>
+                      <span className="text-slate-500 block">Ngày gửi: <strong className="text-slate-700">{new Date(routeData.date).toLocaleDateString('vi-VN')}</strong></span>
                       
                       {serviceType === 'gui_kem' ? (
-                        <span className="text-primary fw-bold block mt-1">
+                        <span className="text-blue-600 font-bold block mt-2 pt-2 border-t border-slate-200">
                           Chuyến: {selectedTripId ? (matchedTrips.find(t => t.id === selectedTripId)?.departureTime || matchedTrips.find(t => t.id === selectedTripId)?.time || 'Chưa chọn') : 'Chưa chọn chuyến'}
                         </span>
                       ) : (
-                        <span className="text-primary fw-bold block mt-1">
+                        <span className="text-indigo-600 font-bold block mt-2 pt-2 border-t border-slate-200">
                           Xe thuê: {TRUCK_TYPES[selectedTruckType]?.label}
                         </span>
                       )}
@@ -1675,70 +1696,70 @@ export default function CargoConsignmentPage() {
                   )}
 
                   <div>
-                    <span className="text-muted block">Thông tin hàng hóa</span>
-                    <strong className="text-slate-850">
-                      {cargoData.type ? CARGO_TYPES[cargoData.type]?.label : 'Chưa khai báo'} ({cargoData.weight}kg)
+                    <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-1">Thông tin hàng hóa</span>
+                    <strong className="text-slate-800 block text-base">
+                      {cargoData.type ? CARGO_TYPES[cargoData.type]?.label : 'Chưa khai báo'} <span className="text-slate-500">({cargoData.weight}kg)</span>
                     </strong>
-                    <span className="text-slate-500 block mt-0.5">Số lượng: {cargoData.qty} kiện • {cargoImages.length} ảnh đính kèm</span>
+                    <span className="text-slate-500 block mt-1">Số lượng: <strong className="text-slate-700">{cargoData.qty} kiện</strong> • <strong className="text-slate-700">{cargoImages.length}</strong> ảnh đính kèm</span>
                   </div>
 
                   {personData.senderCCCD && (
                     <div>
-                      <span className="text-muted block">Người gửi (Danh tính)</span>
-                      <strong className="text-slate-800">{personData.senderName}</strong>
-                      <span className="text-slate-500 d-block">CCCD: {personData.senderCCCD}</span>
+                      <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-1">Người gửi (Danh tính)</span>
+                      <strong className="text-slate-800 block">{personData.senderName}</strong>
+                      <span className="text-slate-500 block">CCCD: {personData.senderCCCD}</span>
                     </div>
                   )}
 
                   {currentStep === 5 && (
                     <>
-                      <hr className="my-1 border-slate-200" />
+                      <hr className="my-2 border-slate-100" />
                       <div>
-                        <span className="text-muted block">Thông tin vận chuyển</span>
+                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block mb-2">Thông tin vận chuyển</span>
                         {assignedDriverInfo ? (
-                          <div className="mt-1 bg-green-50 p-2 rounded border border-green-100">
-                            <strong className="text-success d-block text-[11px]">✓ Đã gán tài xế</strong>
-                            <span className="text-slate-700 font-semibold">{assignedDriverInfo}</span>
+                          <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+                            <strong className="text-emerald-600 block text-xs mb-1">✓ Đã gán tài xế</strong>
+                            <span className="text-slate-800 font-bold">{assignedDriverInfo}</span>
                           </div>
                         ) : serviceType === 'gui_kem' ? (
-                          <div className="mt-1 bg-slate-100 p-2 rounded border border-slate-200">
-                            <strong className="text-slate-700 d-block text-[11px]">Chuyến xe: {selectedTripId ? (matchedTrips.find(t => t.id === selectedTripId)?.departureTime || matchedTrips.find(t => t.id === selectedTripId)?.time) : ''}</strong>
-                            <span className="text-slate-650">Tài xế dự kiến: {matchedTrips.find(t => t.id === selectedTripId)?.driver || 'Đang phân bổ'} (Chờ xác nhận)</span>
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <strong className="text-slate-700 block text-xs mb-1">Chuyến xe: {selectedTripId ? (matchedTrips.find(t => t.id === selectedTripId)?.departureTime || matchedTrips.find(t => t.id === selectedTripId)?.time) : ''}</strong>
+                            <span className="text-slate-500 text-xs">Tài xế dự kiến: {matchedTrips.find(t => t.id === selectedTripId)?.driver || 'Đang phân bổ'} (Chờ xác nhận)</span>
                           </div>
                         ) : (
-                          <div className="mt-1 bg-blue-50 p-2 rounded border border-blue-100 animate-pulse">
-                            <strong className="text-blue-700 d-block text-[11px]">⏳ Đang tìm xe tải</strong>
-                            <span className="text-slate-500">Chờ điều phối trạm điều hành</span>
+                          <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 animate-pulse">
+                            <strong className="text-indigo-600 block text-xs mb-1">⏳ Đang tìm xe tải</strong>
+                            <span className="text-indigo-500 text-xs">Chờ điều phối trạm điều hành</span>
                           </div>
                         )}
                       </div>
                     </>
                   )}
 
-                  <hr className="my-1 border-slate-200" />
+                  <hr className="my-2 border-slate-200 border-dashed" />
 
-                  <div className="space-y-2">
-                    <div className="d-flex justify-content-between">
+                  <div className="space-y-3 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <div className="flex justify-between items-center text-slate-600">
                       <span>Cước vận chuyển:</span>
                       <strong className="text-slate-800">{formatVND(getCargoPrice())}</strong>
                     </div>
-                    <div className="d-flex justify-content-between">
+                    <div className="flex justify-between items-center text-slate-600">
                       <span>Bảo hiểm khai giá:</span>
                       <strong className="text-slate-800">{formatVND(getInsurancePrice())}</strong>
                     </div>
-                    <hr className="my-2 border-dashed" />
-                    <div className="d-flex justify-content-between text-sm">
-                      <strong className="text-slate-900">Tổng thanh toán:</strong>
-                      <strong className="text-primary fs-5 fw-black">{formatVND(getTotalPrice())}</strong>
+                    <hr className="border-slate-200" />
+                    <div className="flex justify-between items-center">
+                      <strong className="text-slate-900 font-black">TỔNG CỘNG:</strong>
+                      <strong className="text-blue-600 text-2xl font-black">{formatVND(getTotalPrice())}</strong>
                     </div>
                   </div>
                 </div>
 
                 {currentStep === 5 && !isConfirmed && (
-                  <div className="mt-4 pt-3 border-top">
+                  <div className="mt-6 pt-6 border-t border-slate-100">
                     <button
                       type="button"
-                      className="btn btn-outline-danger w-100 py-2.5 font-bold text-xs d-flex align-items-center justify-content-center gap-1.5"
+                      className="w-full bg-white border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-bold px-4 py-3 rounded-xl transition-all flex items-center justify-center gap-2"
                       onClick={handleCancelRequest}
                     >
                       ❌ Hủy yêu cầu gửi hàng
@@ -1748,9 +1769,9 @@ export default function CargoConsignmentPage() {
 
                 {/* QR code block */}
                 {currentStep === 4 && (
-                  <div className="border bg-white rounded-3 p-3 text-center mt-4 shadow-sm">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-2">QR Code vận đơn</span>
-                    <div className="d-flex justify-content-center">
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center mt-6">
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider block mb-4">QR Code Vận Đơn</span>
+                    <div className="flex justify-center bg-white p-4 rounded-xl shadow-sm inline-block mx-auto border border-slate-100">
                       <QRCode
                         ref={qrRef}
                         value={JSON.stringify({
@@ -1761,9 +1782,9 @@ export default function CargoConsignmentPage() {
                           sender: personData.senderName,
                           receiver: personData.receiverName
                         })}
-                        size={150}
+                        size={140}
                         level="H"
-                        includeMargin={true}
+                        includeMargin={false}
                       />
                     </div>
                   </div>
@@ -1778,24 +1799,26 @@ export default function CargoConsignmentPage() {
 
       {/* WEBCAM CAMERA MODAL OVERLAY */}
       {showCameraModal && (
-        <div className="camera-modal-overlay">
-          <div className="camera-modal-content">
-            <div className="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
-              <strong className="text-xs text-slate-800 uppercase">Chụp ảnh kiện hàng thực tế</strong>
-              <button className="btn-close" onClick={closeCamera}></button>
+        <div className="fixed inset-0 z-[9999] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden w-full max-w-2xl animate-fade-in-up">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <strong className="text-sm font-black text-slate-800 uppercase tracking-wider">Chụp ảnh kiện hàng thực tế</strong>
+              <button className="text-slate-400 hover:text-slate-700 transition-colors p-2 rounded-full hover:bg-slate-200" onClick={closeCamera}>
+                <FiX size={20} />
+              </button>
             </div>
             
-            <div className="camera-video-container">
-              <video ref={videoRef} className="w-100 h-100 object-fit-cover" autoplay playsinline></video>
+            <div className="relative bg-black w-full aspect-video flex items-center justify-center overflow-hidden">
+              <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline></video>
               
               {showMockCamera && (
-                <div className="camera-mock-overlay">
-                  <span className="fs-1 mb-2">📷</span>
-                  <strong className="text-slate-800 text-sm block">Không có webcam kết nối</strong>
-                  <span className="text-slate-500 text-xs block max-w-xs mt-1">Trình duyệt không tìm thấy camera vật lý hoặc quyền truy cập bị từ chối. Hệ thống sẽ tự động tạo ảnh chụp mẫu.</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 text-center p-8">
+                  <span className="text-5xl mb-4 opacity-50">📷</span>
+                  <strong className="text-white text-lg block font-bold mb-2">Không có webcam kết nối</strong>
+                  <span className="text-slate-400 text-sm max-w-sm">Trình duyệt không tìm thấy camera vật lý hoặc quyền truy cập bị từ chối. Hệ thống sẽ tự động tạo ảnh chụp mẫu.</span>
                   <button
                     type="button"
-                    className="btn btn-primary btn-sm mt-3 fw-bold"
+                    className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold transition-colors"
                     onClick={captureMockPhoto}
                   >
                     Sử dụng ảnh mô phỏng
@@ -1804,20 +1827,20 @@ export default function CargoConsignmentPage() {
               )}
             </div>
 
-            <div className="p-3 bg-light border-top d-flex justify-content-between">
+            <div className="p-5 bg-slate-50 border-t border-slate-100 flex justify-between gap-4">
               <button
                 type="button"
-                className="btn btn-outline-secondary btn-sm"
+                className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
                 onClick={closeCamera}
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
-                className="btn btn-primary btn-sm d-flex align-items-center gap-1.5"
+                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-black px-8 py-2.5 rounded-xl shadow-lg transition-transform transform hover:-translate-y-0.5 flex items-center gap-2"
                 onClick={capturePhoto}
               >
-                <span>📸</span> Chụp ảnh ngay
+                <span className="text-xl">📸</span> Chụp ảnh ngay
               </button>
             </div>
           </div>

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import {
-  Bus, User, Calendar, MapPin, Clock, AlertTriangle, CheckCircle,
+import { 
+  Bus, User, Calendar, MapPin, Clock, AlertTriangle, CheckCircle, 
   Search, Bell, LogOut, Menu, Grid, Users, Package, ShieldAlert,
   Play, Check, Truck, Info, ChevronRight, X, Phone, Plus, ListFilter,
-  CheckCircle2, RefreshCw, Moon, Sun, ArrowRight, UserCheck, TrendingUp
+  CheckCircle2, RefreshCw, Moon, Sun, ArrowRight, UserCheck, TrendingUp, Camera
 } from 'lucide-react'
 
 // Import custom UI components (shadcn/ui style)
@@ -21,25 +21,15 @@ import { AuthUtil, FormatUtil } from '@/utils/helpers'
 import { toast } from '@/utils/toastService'
 
 // Import API services
-import {
-  getDriverTripsAPI,
-  updateTripStatusAPI,
-  getTripPassengersAPI,
-  checkInPassengerAPI,
-  getTripCargoAPI,
-  updateCargoStatusAPI
+import { 
+  getDriverTripsAPI, 
+  updateTripStatusAPI, 
+  getTripPassengersAPI, 
+  checkInPassengerAPI, 
+  getTripCargoAPI, 
+  getTruckCargoAPI,
+  updateCargoStatusAPI 
 } from '@/services/driverService'
-
-// Helper function to format Date/ISO String to HH:mm
-const formatTime = (dateObj) => {
-  if (!dateObj) return ''
-  const d = new Date(dateObj)
-  let hours = '' + d.getHours()
-  let minutes = '' + d.getMinutes()
-  if (hours.length < 2) hours = '0' + hours
-  if (minutes.length < 2) minutes = '0' + minutes
-  return [hours, minutes].join(':')
-}
 
 export default function DriverDashboard() {
   const navigate = useNavigate()
@@ -62,9 +52,7 @@ export default function DriverDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Shift working status
-  const [onShift, setOnShift] = useState(() => {
-    return localStorage.getItem('driver_on_shift') === 'true'
-  })
+  const [onShift, setOnShift] = useState(() => AuthUtil.getCurrentUser()?.role === 'TRUCK_DRIVER')
 
   // Loading skeleton state
   const [isLoading, setIsLoading] = useState(true)
@@ -86,10 +74,6 @@ export default function DriverDashboard() {
   // 4. Notifications Data
   const [notifications, setNotifications] = useState([])
 
-  // 5. Current Trip Map & Timer States
-  const [currentCoords, setCurrentCoords] = useState({ lat: 16.076, lon: 108.156 })
-  const [stopwatchTime, setStopwatchTime] = useState('00:00:00')
-
   // Dialog State
   const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false)
   const [dialogTrip, setDialogTrip] = useState(null)
@@ -97,6 +81,29 @@ export default function DriverDashboard() {
   const [incidentType, setIncidentType] = useState('Hỏng xe')
   const [incidentDesc, setIncidentDesc] = useState('')
   const [incidentLoc, setIncidentLoc] = useState('')
+
+  // Cargo Detail Dialog State
+  const [selectedCargoForDetail, setSelectedCargoForDetail] = useState(null)
+
+  // New Dedicated Incident Dialog States
+  const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false)
+  const [incidentTrip, setIncidentTrip] = useState(null)
+  const [incidentSeverity, setIncidentSeverity] = useState('Trung bình')
+  const [incidentImage, setIncidentImage] = useState('')
+  const [incidentNotes, setIncidentNotes] = useState('')
+  const [changeStatusToIncident, setChangeStatusToIncident] = useState(true)
+
+  const openIncidentDialog = (trip) => {
+    setIncidentTrip(trip)
+    setIncidentType('Xe hỏng')
+    setIncidentSeverity('Trung bình')
+    setIncidentLoc('')
+    setIncidentDesc('')
+    setIncidentImage('')
+    setIncidentNotes('')
+    setChangeStatusToIncident(true)
+    setIsIncidentDialogOpen(true)
+  }
 
   // Completed Trip Detail Dialog
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
@@ -152,6 +159,8 @@ export default function DriverDashboard() {
             setStartTripData(prev => ({ ...prev, startLocation: locStr }))
           } else if (targetForm === 'end') {
             setEndTripData(prev => ({ ...prev, location: locStr }))
+          } else if (targetForm === 'incident') {
+            setIncidentLoc(locStr)
           }
           toast.success('Lấy vị trí hiện tại thành công!')
         } catch (err) {
@@ -161,6 +170,8 @@ export default function DriverDashboard() {
             setStartTripData(prev => ({ ...prev, startLocation: fallbackLoc }))
           } else if (targetForm === 'end') {
             setEndTripData(prev => ({ ...prev, location: fallbackLoc }))
+          } else if (targetForm === 'incident') {
+            setIncidentLoc(fallbackLoc)
           }
           toast.success('Định vị thành công bằng tọa độ GPS!')
         } finally {
@@ -232,7 +243,7 @@ export default function DriverDashboard() {
     try {
       const data = await getDriverTripsAPI()
       setTrips(data || [])
-
+      
       // Auto-select the first trip if not already set or invalid
       if (data && data.length > 0) {
         setSelectedTripId(prev => {
@@ -257,7 +268,7 @@ export default function DriverDashboard() {
         getTripPassengersAPI(tripId),
         getTripCargoAPI(tripId)
       ])
-
+      
       // Update our cache/store for this specific tripId
       setPassengers(prev => {
         const filtered = prev.filter(p => p.tripId !== tripId)
@@ -275,7 +286,19 @@ export default function DriverDashboard() {
 
   // Load trips on mount
   useEffect(() => {
-    fetchTrips()
+    if (currentUser.role === 'TRUCK_DRIVER') {
+      const fetchTruckCargo = async () => {
+        try {
+          const data = await getTruckCargoAPI()
+          setCargo(data || [])
+        } catch (err) {
+          console.error('Lỗi khi lấy đơn vận tải:', err)
+        }
+      }
+      fetchTruckCargo()
+    } else {
+      fetchTrips()
+    }
   }, [])
 
   // Load passengers and cargo when selected trip changes
@@ -284,6 +307,14 @@ export default function DriverDashboard() {
       fetchPassengersAndCargo(selectedTripId)
     }
   }, [selectedTripId])
+
+  // Auto-select running trip when trips change
+  useEffect(() => {
+    const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
+    if (runningTrip && selectedTripId !== runningTrip.id) {
+      setSelectedTripId(runningTrip.id)
+    }
+  }, [trips, selectedTripId])
 
   // Handle active tab loading transition
   useEffect(() => {
@@ -295,8 +326,11 @@ export default function DriverDashboard() {
   }, [activeTab])
 
   // Watch current coordinates of driver whenever there is a running trip
+  const [currentCoords, setCurrentCoords] = useState({ lat: 16.0544, lon: 108.2022 })
+  const [stopwatchTime, setStopwatchTime] = useState('00:00:00')
+
   useEffect(() => {
-    const runningTrip = trips.find(t => t.status === 'DEPARTED')
+    const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
     if (!runningTrip || !onShift) return
 
     if (!navigator.geolocation) {
@@ -329,7 +363,7 @@ export default function DriverDashboard() {
   // Stopwatch timer for running trip starting from the START log
   useEffect(() => {
     let intervalId = null
-    const runningTrip = trips.find(t => t.status === 'DEPARTED')
+    const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
     const startLog = runningTrip?.journeyLogs?.find(l => l.type === 'START')
 
     if (runningTrip && startLog) {
@@ -366,6 +400,18 @@ export default function DriverDashboard() {
     }
   }, [trips])
 
+  // Auto-poll trip status when there is an active INCIDENT trip
+  // This ensures the driver sees the status revert to DEPARTED once Admin resolves the incident
+  useEffect(() => {
+    const hasIncidentTrip = trips.some(t => t.status === 'INCIDENT')
+    if (!hasIncidentTrip) return
+
+    const pollInterval = setInterval(() => {
+      fetchTrips(true) // silent refresh (no loading spinner)
+    }, 10000) // poll every 10 seconds
+
+    return () => clearInterval(pollInterval)
+  }, [trips])
   // Get current user (driver information)
   const currentUser = useMemo(() => {
     const user = AuthUtil.getCurrentUser()
@@ -381,7 +427,7 @@ export default function DriverDashboard() {
   // KPI Calculations
   const stats = useMemo(() => {
     const todayTrips = trips.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length
-    const runningTrips = trips.filter(t => t.status === 'DEPARTED').length
+    const runningTrips = trips.filter(t => t.status === 'DEPARTED' || t.status === 'INCIDENT').length
     const totalPassengers = passengers.filter(p => p.tripId === selectedTripId && p.status !== 'CANCELLED').length
     const pendingCargo = cargo.filter(c => c.status !== 'DELIVERED' && c.status !== 'FAILED').length
 
@@ -397,7 +443,7 @@ export default function DriverDashboard() {
   const upcomingTrip = useMemo(() => {
     if (!trips || trips.length === 0) return null
     // Find the active running trip first
-    const running = trips.find(t => t.status === 'DEPARTED')
+    const running = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
     if (running) return running
     // Otherwise find the next scheduled trip
     const scheduled = trips.find(t => t.status === 'SCHEDULED')
@@ -422,7 +468,7 @@ export default function DriverDashboard() {
   // Filter cargo based on selected trip & search query
   const filteredCargo = useMemo(() => {
     return cargo.filter(c => {
-      const matchTrip = c.tripId === selectedTripId
+      const matchTrip = currentUser.role === 'TRUCK_DRIVER' ? true : c.tripId === selectedTripId
       const matchSearch = searchQuery ? (
         c.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -430,7 +476,7 @@ export default function DriverDashboard() {
       ) : true
       return matchTrip && matchSearch
     })
-  }, [cargo, selectedTripId, searchQuery])
+  }, [cargo, selectedTripId, searchQuery, currentUser.role])
 
   // Filter trips based on search query
   const filteredTrips = useMemo(() => {
@@ -445,34 +491,33 @@ export default function DriverDashboard() {
   }, [trips, searchQuery])
 
   // Handle shift status toggle
-  const [isLoggingShift, setIsLoggingShift] = useState(false)
   const handleShiftToggle = () => {
     const willStartShift = !onShift
     setOnShift(willStartShift)
-    localStorage.setItem('driver_on_shift', willStartShift ? 'true' : 'false')
-
+    
     if (willStartShift) {
-      toast.success('Bắt đầu ca làm việc thành công! Hệ thống sẵn sàng tiếp nhận lịch trình.')
+      if (currentUser.role === 'TRUCK_DRIVER') {
+        toast.success('Chuyển trạng thái sang: Sẵn sàng nhận đơn!')
+      } else {
+        toast.success('Bắt đầu ca làm việc thành công! Hệ thống sẵn sàng tiếp nhận lịch trình.')
+      }
+    } else {
+      if (currentUser.role === 'TRUCK_DRIVER') {
+        toast.error('Chuyển trạng thái sang: Đang bận.')
+      }
     }
   }
 
   // Handle start trip action
-  const handleStartTrip = async (tripId, formData) => {
+  const handleStartTrip = async (tripId) => {
     if (!onShift) {
       toast.error('Vui lòng kích hoạt "Bắt đầu ca làm" trước khi khởi hành!')
       return
     }
 
     try {
-      await updateTripStatusAPI(tripId, {
-        status: 'DEPARTED',
-        startLocation: formData?.startLocation || '',
-        startKm: formData?.startKm ? Number(formData.startKm) : 0,
-        vehicleStatus: formData?.vehicleStatus || 'Bình thường',
-        proofImage: formData?.proofImage || '',
-        notes: formData?.notes || ''
-      })
-
+      await updateTripStatusAPI(tripId, { status: 'DEPARTED' })
+      
       const trip = trips.find(t => t.id === tripId)
       const routeStr = trip ? `${trip.from} → ${trip.to}` : ''
 
@@ -488,9 +533,7 @@ export default function DriverDashboard() {
       ])
 
       toast.success('Khởi hành chuyến xe thành công! Trạng thái đã cập nhật thành "Đang khởi hành".')
-      setIsStartTripDialogOpen(false)
       fetchTrips(true)
-      setActiveTab('current-trip')
     } catch (err) {
       console.error(err)
       toast.error(err.message || 'Lỗi khi khởi hành chuyến xe')
@@ -535,22 +578,63 @@ export default function DriverDashboard() {
     }
   }
 
+  // Handle send incident report
+  const handleSendIncidentReport = async () => {
+    if (!incidentTrip) return
+
+    try {
+      const statusData = {
+        status: 'INCIDENT',
+        updateType: 'INCIDENT',
+        incidentType,
+        incidentDesc,
+        incidentLoc,
+        incidentSeverity,
+        proofImage: incidentImage,
+        notes: incidentNotes,
+        changeStatusToIncident
+      }
+
+      await updateTripStatusAPI(incidentTrip.id, statusData)
+      
+      toast.warning('Đã gửi báo cáo sự cố về tổng đài điều hành! Ban quản lý đã được thông báo.')
+      setIsIncidentDialogOpen(false)
+      fetchTrips(true)
+    } catch (err) {
+      console.error(err)
+      toast.error(err.message || 'Lỗi khi gửi báo cáo sự cố')
+    }
+  }
+
   // Handle cargo status actions
-  const handleCargoStatusUpdate = async (cargoId, currentStatus, dbId) => {
+  const handleCargoStatusUpdate = async (cargoId, currentStatus, dbId, isConsignment = false, imageFile = null) => {
     let nextStatus = 'PENDING'
     let successMsg = ''
 
-    if (currentStatus === 'PENDING') {
-      nextStatus = 'SHIPPING'
-      successMsg = 'Đã xác nhận nhận kiện hàng thành công. Trạng thái chuyển sang "Đang vận chuyển".'
-    } else if (currentStatus === 'SHIPPING') {
-      nextStatus = 'DELIVERED'
-      successMsg = 'Đã bàn giao kiện hàng cho người nhận. Trạng thái cập nhật: "Đã giao".'
+    if (isConsignment) {
+      if (currentStatus === 'PENDING') {
+        nextStatus = 'APPROVED'
+        successMsg = 'Đã duyệt đơn ký gửi. Đang chờ khách thanh toán.'
+      } else if (currentStatus === 'APPROVED') {
+        nextStatus = 'SHIPPING'
+        successMsg = 'Đã nhận hàng ký gửi. Trạng thái chuyển sang "Đang vận chuyển".'
+      } else if (currentStatus === 'SHIPPING') {
+        nextStatus = 'DELIVERED'
+        successMsg = 'Đã giao kiện hàng thành công.'
+      }
+    } else {
+      if (currentStatus === 'PENDING') {
+        nextStatus = 'SHIPPING'
+        successMsg = 'Đã xác nhận nhận hành lý. Trạng thái chuyển sang "Đang vận chuyển".'
+      } else if (currentStatus === 'SHIPPING') {
+        nextStatus = 'DELIVERED'
+        successMsg = 'Đã bàn giao hành lý cho khách.'
+      }
     }
 
     try {
-      await updateCargoStatusAPI(dbId, nextStatus)
-      setCargo(prev =>
+      await updateCargoStatusAPI(cargoId, nextStatus, imageFile)
+      setCargo(prev => 
         prev.map(c => c.id === cargoId ? { ...c, status: nextStatus } : c)
       )
       toast.success(successMsg)
@@ -562,8 +646,8 @@ export default function DriverDashboard() {
 
   const handleCargoStatusFail = async (cargoId, dbId) => {
     try {
-      await updateCargoStatusAPI(dbId, 'FAILED')
-      setCargo(prev =>
+      await updateCargoStatusAPI(cargoId, 'FAILED')
+      setCargo(prev => 
         prev.map(c => c.id === cargoId ? { ...c, status: 'FAILED' } : c)
       )
       toast.error('Cập nhật trạng thái kiện hàng giao thất bại.')
@@ -597,16 +681,17 @@ export default function DriverDashboard() {
           setActiveTab(tabId)
           setSearchQuery('')
         }}
-        className={`flex items-center w-full rounded-xl px-4 py-3.5 text-sm font-extrabold tracking-wide transition-all group duration-200 border-none ${isActive
-          ? 'bg-sky-50 text-[#004b87]'
-          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-          }`}
+        className={`flex items-center w-full rounded-xl px-4 py-3.5 text-sm font-extrabold tracking-wide transition-all group duration-200 border-none ${
+          isActive 
+            ? 'bg-sky-50 text-[#004b87]' 
+            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+        }`}
       >
         <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
           <Icon className={`h-5 w-5 ${isActive ? 'text-[#004b87]' : 'text-slate-400 group-hover:text-slate-600'}`} />
         </div>
         {!isSidebarCollapsed && (
-          <span
+          <span 
             className="ml-3 truncate"
           >
             {label}
@@ -618,10 +703,12 @@ export default function DriverDashboard() {
 
   // Get status details for Trips
   const getTripStatusDetails = (status, incident) => {
-    if (incident) return { text: 'Sự cố: ' + incident.type, variant: 'destructive', icon: AlertTriangle }
+    // Only show incident badge when the trip status is actually INCIDENT
+    if (status === 'INCIDENT' && incident) return { text: 'Sự cố: ' + incident.type, variant: 'destructive', icon: AlertTriangle }
+    if (status === 'INCIDENT') return { text: 'Đang xảy ra sự cố', variant: 'destructive', icon: AlertTriangle }
     switch (status) {
       case 'SCHEDULED': return { text: 'Đã lên lịch', variant: 'info', icon: Clock }
-      case 'DEPARTED': return { text: 'Đang khởi hành', variant: 'warning', icon: Truck }
+      case 'DEPARTED': return { text: 'Đang di chuyển', variant: 'warning', icon: Truck }
       case 'COMPLETED': return { text: 'Đã hoàn thành', variant: 'success', icon: CheckCircle }
       case 'CANCELLED': return { text: 'Đã hủy', variant: 'destructive', icon: X }
       default: return { text: 'Đã lên lịch', variant: 'info', icon: Clock }
@@ -642,9 +729,11 @@ export default function DriverDashboard() {
   const getCargoStatusDetails = (status) => {
     switch (status) {
       case 'PENDING': return { text: 'Chờ xác nhận', variant: 'info' }
+      case 'APPROVED': return { text: 'Đã duyệt (Chờ TT)', variant: 'secondary' }
       case 'SHIPPING': return { text: 'Đang vận chuyển', variant: 'warning' }
       case 'DELIVERED': return { text: 'Đã giao', variant: 'success' }
       case 'FAILED': return { text: 'Giao thất bại', variant: 'destructive' }
+      case 'CANCELLED': return { text: 'Đã hủy', variant: 'destructive' }
       default: return { text: 'Chờ xác nhận', variant: 'info' }
     }
   }
@@ -654,13 +743,14 @@ export default function DriverDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans overflow-x-hidden antialiased">
-
+      
       {/* ==================== LEFT SIDEBAR ==================== */}
       <aside
         onMouseEnter={() => !isSidebarPinned && setIsSidebarHovered(true)}
         onMouseLeave={() => !isSidebarPinned && setIsSidebarHovered(false)}
-        className={`fixed top-0 bottom-0 left-0 z-40 bg-white border-r border-slate-100 flex flex-col justify-between py-6 px-4 transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64 shadow-[10px_0_30px_-15px_rgba(0,0,0,0.03)]'
-          }`}
+        className={`fixed top-0 bottom-0 left-0 z-40 bg-white border-r border-slate-100 flex flex-col justify-between py-6 px-4 transition-all duration-300 ${
+          isSidebarCollapsed ? 'w-20' : 'w-64 shadow-[10px_0_30px_-15px_rgba(0,0,0,0.03)]'
+        }`}
       >
         <div className="space-y-6">
           {/* Driver Info Header (Replacing BusGo logo and name) */}
@@ -670,7 +760,7 @@ export default function DriverDashboard() {
                 {currentUser.name.charAt(0)}
               </div>
               {!isSidebarCollapsed && (
-                <div
+                <div 
                   className="flex flex-col min-w-0"
                 >
                   <span className="text-sm font-black text-slate-800 truncate leading-tight">
@@ -682,9 +772,9 @@ export default function DriverDashboard() {
                 </div>
               )}
             </div>
-
+            
             {!isSidebarCollapsed && (
-              <button
+              <button 
                 onClick={() => setIsSidebarPinned(prev => !prev)}
                 className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-[#004b87] transition-all bg-transparent border-none cursor-pointer"
                 title={isSidebarPinned ? 'Thu gọn sidebar' : 'Ghim sidebar'}
@@ -699,10 +789,14 @@ export default function DriverDashboard() {
           {/* Navigation Links */}
           <nav className="space-y-1.5">
             <SidebarItem tabId="overview" icon={Grid} label="Tổng quan" />
-            <SidebarItem tabId="trips" icon={Calendar} label="Chuyến xe của tôi" />
-            <SidebarItem tabId="current-trip" icon={Truck} label="Chuyến xe hiện tại" />
-            <SidebarItem tabId="passengers" icon={Users} label="Hành khách" />
-            <SidebarItem tabId="cargo" icon={Package} label="Hàng hóa đi kèm" />
+            {currentUser.role !== 'TRUCK_DRIVER' && (
+              <>
+                <SidebarItem tabId="trips" icon={Calendar} label="Chuyến xe của tôi" />
+                <SidebarItem tabId="current-trip" icon={Truck} label="Chuyến xe hiện tại" />
+                <SidebarItem tabId="passengers" icon={Users} label="Hành khách" />
+              </>
+            )}
+            <SidebarItem tabId="cargo" icon={Package} label={currentUser.role === 'TRUCK_DRIVER' ? "Đơn hàng của tôi" : "Hàng hóa đi kèm"} />
             <SidebarItem tabId="profile" icon={User} label="Hồ sơ cá nhân" />
           </nav>
         </div>
@@ -718,7 +812,7 @@ export default function DriverDashboard() {
               <Menu className="h-5 w-5" />
             </button>
           )}
-
+          
           <button
             onClick={handleLogout}
             className={`flex items-center rounded-xl px-4 py-3.5 text-sm font-extrabold text-red-500 hover:bg-red-50 w-full transition-all border-none bg-transparent cursor-pointer`}
@@ -736,14 +830,14 @@ export default function DriverDashboard() {
       </aside>
 
       {/* ==================== MAIN CONTENT WRAPPER ==================== */}
-      <div
+      <div 
         className="flex-1 flex flex-col transition-all duration-300"
         style={{ paddingLeft: isSidebarCollapsed ? '80px' : '260px' }}
       >
-
+        
         {/* ==================== TOPBAR ==================== */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-100 h-16 flex items-center justify-between px-6 md:px-8">
-
+          
           {/* Search bar or section title */}
           <div className="flex items-center gap-4 flex-1 max-w-md">
             <div className="relative w-full">
@@ -768,7 +862,7 @@ export default function DriverDashboard() {
 
           {/* Right Topbar actions */}
           <div className="flex items-center gap-4">
-
+            
             {/* Notification Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger>
@@ -785,7 +879,7 @@ export default function DriverDashboard() {
                 <div className="p-3.5 border-b border-slate-100 flex items-center justify-between">
                   <span className="font-extrabold text-sm text-slate-800">Thông báo mới</span>
                   {unreadNotificationsCount > 0 && (
-                    <button
+                    <button 
                       onClick={markAllNotificationsAsRead}
                       className="text-xs text-[#004b87] hover:underline font-bold bg-transparent border-none cursor-pointer"
                     >
@@ -796,8 +890,8 @@ export default function DriverDashboard() {
                 <div className="p-1">
                   {notifications.length > 0 ? (
                     notifications.map(n => (
-                      <DropdownMenuItem
-                        key={n.id}
+                      <DropdownMenuItem 
+                        key={n.id} 
                         className={`flex flex-col items-start gap-1 p-3 rounded-xl transition-all ${!n.read ? 'bg-blue-50/50 hover:bg-blue-50' : 'hover:bg-slate-50'}`}
                         onClick={() => {
                           setNotifications(prev => prev.map(notif => notif.id === n.id ? { ...notif, read: true } : notif))
@@ -853,7 +947,7 @@ export default function DriverDashboard() {
                     <Card className="border-none bg-gradient-to-r from-[#004b87] to-sky-700 text-white relative overflow-hidden shadow-lg shadow-[#004b87]/15">
                       <div className="absolute top-[-50%] right-[-10%] w-96 h-96 bg-white/5 rounded-full blur-[80px]" />
                       <div className="absolute bottom-[-40%] left-[20%] w-60 h-60 bg-sky-400/10 rounded-full blur-[60px]" />
-
+                      
                       <CardContent className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
                         <div className="space-y-2">
                           <span className="text-sky-200 text-xs font-black tracking-widest uppercase">Trang quản trị tài xế</span>
@@ -863,28 +957,38 @@ export default function DriverDashboard() {
                             {FormatUtil.formatDate(new Date())} — Ca vận hành của bạn đang hoạt động
                           </p>
                         </div>
-
+                        
                         <div className="flex items-center justify-between gap-4 bg-white/10 backdrop-blur-md p-3.5 px-5 rounded-2xl border border-white/10 shadow-inner w-full md:w-auto">
                           <div className="text-left md:text-right">
                             <p className="text-[10px] font-black text-sky-200 uppercase tracking-wider">Trạng thái làm việc</p>
                             <span className="text-sm font-extrabold flex items-center gap-2 mt-0.5 md:justify-end">
                               <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${onShift ? 'bg-green-400' : 'bg-slate-450'}`} />
-                              {onShift ? 'Đang hoạt động' : 'Nghỉ ca'}
+                              {currentUser.role === 'TRUCK_DRIVER'
+                                ? (onShift ? 'Rảnh (Sẵn sàng)' : 'Đang bận')
+                                : (onShift ? 'Đang hoạt động' : 'Nghỉ ca')
+                              }
                             </span>
                           </div>
-
+                          
                           <Button
-                            variant={onShift ? 'destructive' : 'outline'}
+                            variant={onShift ? (currentUser.role === 'TRUCK_DRIVER' ? 'default' : 'destructive') : 'outline'}
                             onClick={handleShiftToggle}
-                            className={`rounded-xl px-5 h-10 text-xs font-black shadow-none border-none ${onShift ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-white hover:bg-slate-50 text-[#004b87]'}`}
+                            className={`rounded-xl px-5 h-10 text-xs font-black shadow-none border-none ${
+                              onShift 
+                                ? (currentUser.role === 'TRUCK_DRIVER' ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-red-500 hover:bg-red-600 text-white')
+                                : 'bg-white hover:bg-slate-50 text-[#004b87]'
+                            }`}
                           >
-                            {onShift ? 'Kết thúc ca' : 'Bắt đầu ca làm'}
+                            {currentUser.role === 'TRUCK_DRIVER'
+                              ? (onShift ? 'Chuyển sang Bận' : 'Chuyển sang Rảnh')
+                              : (onShift ? 'Kết thúc ca' : 'Bắt đầu ca làm')
+                            }
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
 
-                    {onShift ? (
+                    {(currentUser.role === 'TRUCK_DRIVER' || onShift) ? (
                       <>
                         {/* KPI Cards Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -925,27 +1029,31 @@ export default function DriverDashboard() {
                             </CardContent>
                           </Card>
 
-                          {/* Tổng hành khách */}
-                          <Card className="hover:shadow-md border-slate-100/80 transition-shadow">
-                            <CardContent className="p-6 flex items-center justify-between">
-                              <div className="space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Khách chuyến chọn</span>
-                                <h3 className="text-2xl font-black text-slate-800">{stats.totalPassengers} Khách</h3>
-                                <p className="text-xs font-semibold text-slate-400 flex items-center gap-1 mt-1">
-                                  {upcomingTrip ? `Chọn tuyến ${upcomingTrip.from} → ${upcomingTrip.to}` : 'Chưa chọn chuyến'}
-                                </p>
-                              </div>
-                              <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
-                                <Users className="h-6 w-6" />
-                              </div>
-                            </CardContent>
-                          </Card>
+                          {/* Tổng hành khách - HIDE FOR TRUCK DRIVER */}
+                          {currentUser.role !== 'TRUCK_DRIVER' && (
+                            <Card className="hover:shadow-md border-slate-100/80 transition-shadow">
+                              <CardContent className="p-6 flex items-center justify-between">
+                                <div className="space-y-1">
+                                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Khách chuyến chọn</span>
+                                  <h3 className="text-2xl font-black text-slate-800">{stats.totalPassengers} Khách</h3>
+                                  <p className="text-xs font-semibold text-slate-400 flex items-center gap-1 mt-1">
+                                    {upcomingTrip ? `Chọn tuyến ${upcomingTrip.from} → ${upcomingTrip.to}` : 'Chưa chọn chuyến'}
+                                  </p>
+                                </div>
+                                <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
+                                  <Users className="h-6 w-6" />
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
 
                           {/* Hàng hóa cần giao */}
                           <Card className="hover:shadow-md border-slate-100/80 transition-shadow">
                             <CardContent className="p-6 flex items-center justify-between">
                               <div className="space-y-1">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hàng hóa cần giao</span>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                  {currentUser.role === 'TRUCK_DRIVER' ? 'Đơn vận tải' : 'Hàng hóa cần giao'}
+                                </span>
                                 <h3 className="text-2xl font-black text-slate-800">{stats.pendingCargo} Kiện</h3>
                                 <p className="text-xs font-semibold text-slate-400 flex items-center gap-1 mt-1">
                                   Chờ xác nhận & vận chuyển
@@ -960,7 +1068,7 @@ export default function DriverDashboard() {
 
                         {/* Featured Trip Highlight & List */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
+                          
                           {/* Upcoming Highlight Card */}
                           <div className="lg:col-span-2 space-y-4">
                             <div className="flex items-center justify-between">
@@ -972,14 +1080,14 @@ export default function DriverDashboard() {
                                 Xem tất cả chuyến <ChevronRight className="h-3 w-3" />
                               </Button>
                             </div>
-
+                            
                             {upcomingTrip ? (
                               <Card className="border-[#004b87]/30 border-2 shadow-md relative overflow-hidden bg-white/70">
                                 <div className="absolute top-0 right-0 bg-[#004b87] text-white text-[10px] font-black uppercase tracking-wider py-1 px-4 rounded-bl-xl">
                                   Khuyên chạy
                                 </div>
                                 <CardContent className="p-6 space-y-6">
-
+                                  
                                   {/* Route details */}
                                   <div className="flex items-center gap-4 justify-between">
                                     <div className="space-y-1 flex-1">
@@ -1030,8 +1138,8 @@ export default function DriverDashboard() {
                                       Vui lòng làm thủ tục check-in cho khách trước giờ khởi hành 15 phút.
                                     </div>
                                     <div className="flex gap-2.5 w-full sm:w-auto">
-                                      <Button
-                                        variant="outline"
+                                      <Button 
+                                        variant="outline" 
                                         size="sm"
                                         onClick={() => {
                                           setSelectedTripId(upcomingTrip.id)
@@ -1042,17 +1150,17 @@ export default function DriverDashboard() {
                                         Xem chi tiết
                                       </Button>
                                       {upcomingTrip.status === 'SCHEDULED' ? (
-                                        <Button
-                                          variant="default"
+                                        <Button 
+                                          variant="default" 
                                           size="sm"
-                                          onClick={() => openStartTripDialog(upcomingTrip)}
+                                          onClick={() => handleStartTrip(upcomingTrip.id)}
                                           className="flex-1 sm:flex-none bg-[#004b87] hover:bg-[#003c6c]"
                                         >
                                           <Play className="h-3.5 w-3.5 mr-1.5 fill-current" />
                                           Bắt đầu chuyến
                                         </Button>
                                       ) : (
-                                        <Button
+                                        <Button 
                                           variant="outline"
                                           size="sm"
                                           disabled
@@ -1101,20 +1209,20 @@ export default function DriverDashboard() {
                                     <span>Cập nhật trạng thái hành trình đầy đủ trên hệ thống ứng dụng.</span>
                                   </li>
                                 </ul>
-
+                                
                                 <div className="h-px bg-slate-100" />
-
+                                
                                 <div className="space-y-2">
                                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Hỗ trợ khẩn cấp 24/7</p>
                                   <div className="flex gap-2">
-                                    <a
-                                      href="tel:19001234"
+                                    <a 
+                                      href="tel:19001234" 
                                       className="flex items-center justify-center gap-1.5 bg-red-50 text-red-600 border border-red-100 p-2.5 rounded-xl font-black text-xs hover:bg-red-100 transition-colors w-full text-center"
                                     >
                                       <Phone className="h-3.5 w-3.5" /> Gọi Tổng Đài
                                     </a>
-                                    <a
-                                      href="tel:0999999999"
+                                    <a 
+                                      href="tel:0999999999" 
                                       className="flex items-center justify-center gap-1.5 bg-slate-50 text-slate-700 border border-slate-200 p-2.5 rounded-xl font-black text-xs hover:bg-slate-100 transition-colors w-full text-center"
                                     >
                                       Kỹ Thuật Viên
@@ -1151,9 +1259,9 @@ export default function DriverDashboard() {
                           <p className="text-slate-400 text-xs font-semibold mt-1">Danh sách các chuyến xe được chỉ định chạy trong ngày của bạn</p>
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
                             onClick={() => {
                               toast.info('Đang cập nhật danh sách chuyến từ hệ thống...')
                               fetchTrips()
@@ -1183,7 +1291,7 @@ export default function DriverDashboard() {
                               </TableHeader>
                               <TableBody>
                                 {(() => {
-                                  const hasDeparted = filteredTrips.some(t => t.status === 'DEPARTED')
+                                  const hasDeparted = filteredTrips.some(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
                                   return filteredTrips.map(trip => {
                                     const statusInfo = getTripStatusDetails(trip.status, trip.incidentDetails)
                                     const isLocked = hasDeparted && trip.status === 'SCHEDULED'
@@ -1260,7 +1368,7 @@ export default function DriverDashboard() {
                                               >
                                                 {isLocked ? '🔒 Đang bị khóa' : 'Bắt đầu chuyến xe'}
                                               </Button>
-                                            ) : trip.status === 'DEPARTED' ? (
+                                            ) : (trip.status === 'DEPARTED' || trip.status === 'INCIDENT') ? (
                                               <Button
                                                 variant="outline"
                                                 size="sm"
@@ -1330,7 +1438,7 @@ export default function DriverDashboard() {
                       </div>
 
                       {(() => {
-                        const runningTrip = trips.find(t => t.status === 'DEPARTED')
+                        const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
                         if (!runningTrip) {
                           return (
                             <Card className="border-slate-100 bg-slate-50/50">
@@ -1382,6 +1490,23 @@ export default function DriverDashboard() {
                                     <div className="space-y-1">
                                       <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Users className="h-3 w-3" /> Hành khách</span>
                                       <p className="text-sm font-extrabold text-slate-700">{runningTrip.passengerCount}/{runningTrip.maxPassengers} người</p>
+                                      {(() => {
+                                        const runningTripPassengers = passengers.filter(p => p.tripId === runningTrip.id);
+                                        const boardedCount = runningTripPassengers.filter(p => p.status === 'USED').length;
+                                        const notBoardedCount = runningTripPassengers.filter(p => p.status === 'PAID').length;
+                                        return (
+                                          <div className="text-[10px] text-slate-500 font-semibold space-y-0.5 mt-1 border-t border-slate-100 pt-1">
+                                            <div className="text-green-600 flex items-center gap-1">
+                                              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                              Đã lên: {boardedCount} người
+                                            </div>
+                                            <div className="text-amber-600 flex items-center gap-1">
+                                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                              Chưa lên: {notBoardedCount} người
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                     <div className="space-y-1">
                                       <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
@@ -1500,7 +1625,7 @@ export default function DriverDashboard() {
                                                     </span>
                                                   </div>
                                                   <span className="text-[10px] font-bold text-slate-400">
-                                                    {FormatUtil.formatDate(log.time)} — {formatTime(log.time)}
+                                                    {FormatUtil.formatDate(log.time)} — {new Date(log.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                                                   </span>
                                                 </div>
 
@@ -1595,19 +1720,21 @@ export default function DriverDashboard() {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => openStatusDialog(runningTrip)}
+                                        onClick={() => openIncidentDialog(runningTrip)}
                                         className="border-red-200 text-red-650 hover:bg-red-50"
                                       >
                                         <AlertTriangle className="h-4 w-4 mr-1.5" /> Báo cáo sự cố
                                       </Button>
-                                      <Button
-                                        variant="default"
-                                        size="sm"
-                                        onClick={openEndTripDialog}
-                                        className="bg-green-600 hover:bg-green-700 text-white border-none"
-                                      >
-                                        <CheckCircle className="h-4 w-4 mr-1.5" /> Hoàn thành chuyến xe
-                                      </Button>
+                                      {runningTrip.status !== 'INCIDENT' && (
+                                        <Button
+                                          variant="default"
+                                          size="sm"
+                                          onClick={openEndTripDialog}
+                                          className="bg-green-600 hover:bg-green-700 text-white border-none"
+                                        >
+                                          <CheckCircle className="h-4 w-4 mr-1.5" /> Hoàn thành chuyến xe
+                                        </Button>
+                                      )}
                                     </div>
                                   </CardFooter>
                                 </CardContent>
@@ -1875,7 +2002,6 @@ window.addEventListener('message', function(e) {
                   )
                 )}
 
-
                 {/* ==================== TAB: PASSENGERS (HÀNH KHÁCH) ==================== */}
                 {activeTab === 'passengers' && (
                   onShift ? (
@@ -1889,8 +2015,8 @@ window.addEventListener('message', function(e) {
                         {/* Select trip filter */}
                         <div className="flex gap-2.5 flex-wrap items-center">
                           <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Chuyến chọn:</span>
-                          <select
-                            value={selectedTripId || ''}
+                          <select 
+                            value={selectedTripId || ''} 
                             onChange={(e) => {
                               const val = e.target.value ? Number(e.target.value) : null
                               setSelectedTripId(val)
@@ -1903,7 +2029,7 @@ window.addEventListener('message', function(e) {
                             <option value="">-- Chọn chuyến xe --</option>
                             {trips.map(t => (
                               <option key={t.id} value={t.id}>
-                                [{t.departureTime}] {t.from} → {t.to} ({t.licensePlate})
+                                [{t.date} - {t.departureTime}] {t.from} → {t.to} ({t.licensePlate})
                               </option>
                             ))}
                           </select>
@@ -1968,7 +2094,7 @@ window.addEventListener('message', function(e) {
                                             onClick={async () => {
                                               try {
                                                 await checkInPassengerAPI(passenger.id)
-                                                setPassengers(prev =>
+                                                setPassengers(prev => 
                                                   prev.map(p => p.id === passenger.id ? { ...p, status: 'USED' } : p)
                                                 )
                                                 toast.success(`Đã check-in soát vé thành công cho hành khách ${passenger.name}`)
@@ -2020,37 +2146,46 @@ window.addEventListener('message', function(e) {
 
                 {/* ==================== TAB: CARGO (HÀNG HÓA ĐI KÈM) ==================== */}
                 {activeTab === 'cargo' && (
-                  onShift ? (
+                  (currentUser.role === 'TRUCK_DRIVER' || onShift) ? (
                     <div className="space-y-6">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
-                          <h1 className="text-2xl font-black text-slate-800">Quản lý hàng hóa gửi theo chuyến</h1>
-                          <p className="text-slate-400 text-xs font-semibold mt-1">Quản lý việc nhận hàng gửi ký gửi, cập nhật hành trình vận chuyển hàng hóa ký gửi</p>
+                          <h1 className="text-2xl font-black text-slate-800">
+                            {currentUser.role === 'TRUCK_DRIVER' ? 'Quản lý đơn hàng vận tải' : 'Quản lý hàng hóa gửi theo chuyến'}
+                          </h1>
+                          <p className="text-slate-400 text-xs font-semibold mt-1">
+                            {currentUser.role === 'TRUCK_DRIVER' ? 'Tiếp nhận đơn hàng vận tải, cập nhật trạng thái lấy/giao hàng' : 'Quản lý việc nhận hàng gửi ký gửi, cập nhật hành trình vận chuyển hàng hóa ký gửi'}
+                          </p>
                         </div>
 
-                        {/* Select trip filter */}
-                        <div className="flex gap-2.5 flex-wrap items-center">
-                          <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Chuyến chọn:</span>
-                          <select
-                            value={selectedTripId || ''}
-                            onChange={(e) => setSelectedTripId(e.target.value ? Number(e.target.value) : null)}
-                            className="border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#004b87]"
-                          >
-                            <option value="">-- Chọn chuyến xe --</option>
-                            {trips.map(t => (
-                              <option key={t.id} value={t.id}>
-                                [{t.departureTime}] {t.from} → {t.to} ({t.licensePlate})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        {/* Select trip filter - HIDE FOR TRUCK DRIVER */}
+                        {currentUser.role !== 'TRUCK_DRIVER' && (
+                          <div className="flex gap-2.5 flex-wrap items-center">
+                            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">Chuyến chọn:</span>
+                            <select 
+                              value={selectedTripId || ''} 
+                              onChange={(e) => setSelectedTripId(e.target.value ? Number(e.target.value) : null)}
+                              className="border border-slate-200 bg-white rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:border-[#004b87]"
+                            >
+                              <option value="">-- Chọn chuyến xe --</option>
+                              {trips.map(t => (
+                                <option key={t.id} value={t.id}>
+                                  [{t.date} - {t.departureTime}] {t.from} → {t.to} ({t.licensePlate})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                       </div>
 
                       <Card className="border-slate-100">
                         <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 p-6 bg-slate-50/20">
                           <div>
                             <CardTitle className="text-sm font-black">
-                              Thông tin kiện hàng ký gửi: {trips.find(t => t.id === selectedTripId) ? `${trips.find(t => t.id === selectedTripId).from} → ${trips.find(t => t.id === selectedTripId).to}` : 'Chưa chọn chuyến'}
+                              {currentUser.role === 'TRUCK_DRIVER' 
+                                ? 'Thông tin đơn hàng nguyên chuyến'
+                                : `Thông tin kiện hàng ký gửi: ${trips.find(t => t.id === selectedTripId) ? `${trips.find(t => t.id === selectedTripId).from} → ${trips.find(t => t.id === selectedTripId).to}` : 'Chưa chọn chuyến'}`
+                              }
                             </CardTitle>
                             <CardDescription className="text-xs font-semibold mt-1">Tổng cộng có {filteredCargo.length} kiện hàng đang quản lý</CardDescription>
                           </div>
@@ -2086,28 +2221,75 @@ window.addEventListener('message', function(e) {
                                         </Badge>
                                       </TableCell>
                                       <TableCell className="text-right">
-                                        <div className="flex justify-end gap-1.5">
+                                        <div className="flex justify-end gap-1.5 flex-wrap">
+                                          {/* Nút Xem chi tiết (Always visible) */}
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setSelectedCargoForDetail(item)}
+                                            className="border-slate-200 text-slate-700 hover:bg-slate-50 h-8 text-xs px-2.5 rounded-lg"
+                                          >
+                                            <Info className="h-3.5 w-3.5 mr-1" />
+                                            Chi tiết
+                                          </Button>
+
                                           {item.status === 'PENDING' && (
                                             <Button
                                               variant="outline"
                                               size="sm"
-                                              onClick={() => handleCargoStatusUpdate(item.id, 'PENDING', item.dbId)}
+                                              onClick={() => handleCargoStatusUpdate(item.id, 'PENDING', item.dbId, item.isConsignment)}
                                               className="border-blue-200 text-[#004b87] hover:bg-blue-50/50 h-8 text-xs px-2.5 rounded-lg"
                                             >
                                               <Check className="h-3.5 w-3.5 mr-1" />
-                                              Nhận hàng
+                                              {item.isConsignment ? 'Duyệt đơn' : 'Nhận hàng'}
                                             </Button>
                                           )}
+                                          
+                                          {item.status === 'APPROVED' && item.isConsignment && (
+                                            item.paymentStatus === 'paid' ? (
+                                              (currentUser.role === 'TRUCK_DRIVER' || (onShift && trips.some(t => t.status === 'DEPARTED' || t.status === 'INCIDENT'))) ? (
+                                                <div className="flex flex-col items-end gap-1 w-full">
+                                                  <span className="text-[10px] text-amber-600 font-bold block w-full text-right">Chờ đến nhận</span>
+                                                  <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                      const fakeImage = prompt("Nhập URL hình ảnh xác nhận nhận hàng:", "https://example.com/pickup.jpg");
+                                                      if (fakeImage) {
+                                                        handleCargoStatusUpdate(item.id, 'APPROVED', item.dbId, true, fakeImage);
+                                                      }
+                                                    }}
+                                                    className="border-amber-200 text-amber-700 hover:bg-amber-50 h-8 text-xs px-2.5 rounded-lg"
+                                                  >
+                                                    <Camera className="h-3.5 w-3.5 mr-1" />
+                                                    Đã nhận
+                                                  </Button>
+                                                </div>
+                                              ) : (
+                                                <span className="text-[10px] text-slate-500 font-bold block w-full text-right">{currentUser.role === 'TRUCK_DRIVER' ? 'Đã thanh toán (Sẵn sàng nhận hàng)' : 'Đã thanh toán (Chờ xuất phát)'}</span>
+                                              )
+                                            ) : (
+                                              <span className="text-[10px] text-slate-500 font-bold italic mt-1 text-right block w-full">Chờ KH thanh toán</span>
+                                            )
+                                          )}
+
                                           {item.status === 'SHIPPING' && (
                                             <>
                                               <Button
                                                 variant="default"
                                                 size="sm"
-                                                onClick={() => handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId)}
+                                                onClick={() => {
+                                                  if (item.isConsignment) {
+                                                    const fakeImage = prompt("Nhập URL hình ảnh xác nhận giao hàng:", "https://example.com/dropoff.jpg");
+                                                    if (fakeImage) handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, item.isConsignment, fakeImage);
+                                                  } else {
+                                                    handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, false);
+                                                  }
+                                                }}
                                                 className="bg-[#004b87] hover:bg-[#003d70] h-8 text-xs px-2.5 rounded-lg border-none"
                                               >
-                                                <Truck className="h-3.5 w-3.5 mr-1" />
-                                                Đã giao
+                                                {item.isConsignment ? <Camera className="h-3.5 w-3.5 mr-1" /> : <Truck className="h-3.5 w-3.5 mr-1" />}
+                                                {item.isConsignment ? 'Chụp ảnh giao' : 'Đã giao'}
                                               </Button>
                                               <Button
                                                 variant="outline"
@@ -2128,6 +2310,11 @@ window.addEventListener('message', function(e) {
                                           {item.status === 'FAILED' && (
                                             <span className="text-xs text-red-500 font-black flex items-center justify-end gap-1 py-1">
                                               <AlertTriangle className="h-4 w-4" /> Giao thất bại
+                                            </span>
+                                          )}
+                                          {item.status === 'CANCELLED' && (
+                                            <span className="text-xs text-slate-500 font-black flex items-center justify-end gap-1 py-1">
+                                              <X className="h-4 w-4" /> Khách hủy đơn
                                             </span>
                                           )}
                                         </div>
@@ -2152,8 +2339,12 @@ window.addEventListener('message', function(e) {
                         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-350">
                           <Clock className="h-8 w-8 text-slate-400" />
                         </div>
-                        <h3 className="text-base font-extrabold text-[#004b87]">Ca làm việc của bạn đang đóng</h3>
-                        <p className="text-xs font-semibold text-slate-500 max-w-sm mx-auto">Vui lòng quay lại tab "Tổng quan" và nhấn nút "Bắt đầu ca làm" để quản lý hàng hóa ký gửi.</p>
+                        <h3 className="text-base font-extrabold text-[#004b87]">
+                          {currentUser.role === 'TRUCK_DRIVER' ? 'Chưa có dữ liệu' : 'Ca làm việc của bạn đang đóng'}
+                        </h3>
+                        <p className="text-xs font-semibold text-slate-500 max-w-sm mx-auto">
+                          {currentUser.role === 'TRUCK_DRIVER' ? 'Vui lòng kiểm tra lại sau.' : 'Vui lòng quay lại tab "Tổng quan" và nhấn nút "Bắt đầu ca làm" để quản lý hàng hóa ký gửi.'}
+                        </p>
                       </CardContent>
                     </Card>
                   )
@@ -2169,9 +2360,9 @@ window.addEventListener('message', function(e) {
                         <p className="text-slate-400 text-xs font-semibold mt-1">Thông tin điều phối lịch trình, tin tức vận hành từ Ban điều hành BusGo</p>
                       </div>
                       {unreadNotificationsCount > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
                           onClick={markAllNotificationsAsRead}
                           className="border-slate-200 bg-white font-extrabold"
                         >
@@ -2182,19 +2373,20 @@ window.addEventListener('message', function(e) {
 
                     <div className="space-y-3.5">
                       {notifications.map(n => (
-                        <Card
-                          key={n.id}
-                          className={`hover:shadow-sm transition-all border-l-4 ${!n.read
-                            ? 'border-l-[#004b87] bg-white'
-                            : 'border-l-slate-350 bg-white/70'
-                            }`}
+                        <Card 
+                          key={n.id} 
+                          className={`hover:shadow-sm transition-all border-l-4 ${
+                            !n.read 
+                              ? 'border-l-[#004b87] bg-white' 
+                              : 'border-l-slate-350 bg-white/70'
+                          }`}
                         >
                           <CardContent className="p-5 flex items-start gap-4 justify-between">
                             <div className="space-y-1">
                               <p className={`text-sm ${!n.read ? 'font-black text-slate-850' : 'font-semibold text-slate-600'}`}>{n.text}</p>
                               <span className="text-[10px] text-slate-400 font-bold block">{n.time}</span>
                             </div>
-
+                            
                             {!n.read && (
                               <Button
                                 variant="ghost"
@@ -2225,7 +2417,7 @@ window.addEventListener('message', function(e) {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
+                      
                       {/* Left card: avatar and main details */}
                       <Card className="border-slate-100">
                         <CardContent className="p-6 text-center space-y-6">
@@ -2263,40 +2455,40 @@ window.addEventListener('message', function(e) {
                             <CardTitle className="text-sm font-black">Thông tin liên lạc & Cá nhân</CardTitle>
                           </CardHeader>
                           <CardContent className="p-6 space-y-5">
-
+                            
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                               <div className="space-y-1.5">
                                 <label className="text-xs font-black text-slate-450 uppercase">Họ và tên</label>
-                                <input
-                                  type="text"
-                                  value={currentUser.name}
+                                <input 
+                                  type="text" 
+                                  value={currentUser.name} 
                                   disabled
                                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-500 font-semibold text-sm outline-none cursor-not-allowed"
                                 />
                               </div>
                               <div className="space-y-1.5">
                                 <label className="text-xs font-black text-slate-450 uppercase">Mã số tài xế</label>
-                                <input
-                                  type="text"
-                                  value={currentUser.id ? `DRV-${currentUser.id}` : 'DRV-N/A'}
+                                <input 
+                                  type="text" 
+                                  value={currentUser.id ? `DRV-${currentUser.id}` : 'DRV-N/A'} 
                                   disabled
                                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-500 font-semibold text-sm outline-none cursor-not-allowed"
                                 />
                               </div>
                               <div className="space-y-1.5">
                                 <label className="text-xs font-black text-slate-450 uppercase">Địa chỉ Email</label>
-                                <input
-                                  type="email"
-                                  value={currentUser.email}
+                                <input 
+                                  type="email" 
+                                  value={currentUser.email} 
                                   disabled
                                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-500 font-semibold text-sm outline-none cursor-not-allowed"
                                 />
                               </div>
                               <div className="space-y-1.5">
                                 <label className="text-xs font-black text-slate-450 uppercase">Số điện thoại</label>
-                                <input
-                                  type="text"
-                                  value={currentUser.phone}
+                                <input 
+                                  type="text" 
+                                  value={currentUser.phone} 
                                   disabled
                                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-500 font-semibold text-sm outline-none cursor-not-allowed"
                                 />
@@ -2313,9 +2505,9 @@ window.addEventListener('message', function(e) {
                                   <p className="text-amber-700/80 mt-0.5">Liên hệ Quản trị viên điều hành BusGo để được đổi mật khẩu cấp lại.</p>
                                 </div>
                               </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
                                 onClick={() => toast.info('Chức năng đổi mật khẩu đang bảo trì.')}
                                 className="border-amber-200 hover:bg-amber-100 text-amber-800"
                               >
@@ -2368,7 +2560,7 @@ window.addEventListener('message', function(e) {
 
             {/* Conditional input fields for Incident reporting */}
             {newStatus === 'INCIDENT' && (
-              <motion.div
+              <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 className="space-y-4 pt-2 border-t border-slate-100"
@@ -2433,20 +2625,74 @@ window.addEventListener('message', function(e) {
         </DialogContent>
       </Dialog>
 
+      {/* ==================== DIALOG: CARGO DETAILS ==================== */}
+      <Dialog open={!!selectedCargoForDetail} onOpenChange={(open) => !open && setSelectedCargoForDetail(null)}>
+        <DialogContent className="max-w-2xl bg-white rounded-2xl shadow-xl border-0 overflow-hidden p-0 max-h-[90vh] overflow-y-auto">
+          {selectedCargoForDetail && (
+            <>
+              {/* Header */}
+              <div className="bg-[#004b87] px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white">
+                    <Package className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-white m-0 leading-tight">Chi tiết đơn hàng #{selectedCargoForDetail.id}</h2>
+                    <p className="text-blue-100 text-xs font-semibold mt-0.5 opacity-80">
+                      {selectedCargoForDetail.isConsignment ? 'Đơn hàng vận tải ký gửi' : 'Hành lý gửi kèm chuyến xe khách'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedCargoForDetail(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border-none cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Trạng thái hiện tại */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Trạng thái đơn hàng</span>
+                    <Badge variant={getCargoStatusDetails(selectedCargoForDetail.status).variant} className="text-sm px-3 py-1 font-extrabold shadow-sm">
+                      {getCargoStatusDetails(selectedCargoForDetail.status).text}
+                    </Badge>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Loại hàng</span>
+                    <span className="text-sm font-extrabold text-slate-800">{selectedCargoForDetail.type}</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* ==================== DIALOG: START TRIP ==================== */}
       <Dialog open={isStartTripDialogOpen} onOpenChange={setIsStartTripDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Khai báo bắt đầu chuyến xe</DialogTitle>
+            <DialogTitle>Xác nhận khởi hành chuyến xe</DialogTitle>
             <DialogDescription>
-              Tuyến đi: {startTripTrip?.from} → {startTripTrip?.to} ({startTripTrip?.licensePlate})
+              Vui lòng điền đầy đủ thông tin điểm xuất phát trước khi bắt đầu chuyến.
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4 space-y-4">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Chuyến xe</p>
+                <p className="text-sm font-bold text-slate-700 mt-1">{startTripTrip?.from} → {startTripTrip?.to}</p>
+              </div>
+              <Badge className="bg-blue-50 text-[#004b87] border-0">{startTripTrip?.licensePlate}</Badge>
+            </div>
+
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Vị trí bắt đầu <span className="text-red-500">*</span></label>
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Địa điểm xuất phát <span className="text-red-500">*</span></label>
                 <button
                   type="button"
                   onClick={() => handleGetCurrentLocation('start')}
@@ -2459,7 +2705,7 @@ window.addEventListener('message', function(e) {
               </div>
               <input
                 type="text"
-                placeholder="Nhập bến xe xuất phát hoặc vị trí hiện tại"
+                placeholder="Nhập tên bến xe hoặc vị trí bắt đầu"
                 value={startTripData.startLocation}
                 onChange={(e) => setStartTripData(prev => ({ ...prev, startLocation: e.target.value }))}
                 className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-[#004b87] focus:ring-4 focus:ring-[#004b87]/5"
@@ -2758,7 +3004,7 @@ window.addEventListener('message', function(e) {
               variant="default"
               disabled={!endTripData.location || !endTripData.km || !endTripData.confirmedComplete}
               onClick={() => {
-                const runningTrip = trips.find(t => t.status === 'DEPARTED')
+                const runningTrip = trips.find(t => t.status === 'DEPARTED' || t.status === 'INCIDENT')
                 if (runningTrip) {
                   handleEndTrip(runningTrip.id)
                 }
@@ -2809,126 +3055,318 @@ window.addEventListener('message', function(e) {
                   ))}
                 </div>
 
-                {/* Journey Logs Timeline */}
-                <div className="mt-4">
-                  <h3 className="text-sm font-black text-slate-700 flex items-center gap-2 mb-4">
-                    <Clock className="h-4 w-4 text-[#004b87]" />
-                    Nhật ký hành trình
+                {/* Thông tin tuyến đường */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                    <MapPin className="h-4 w-4" /> Lộ trình & Địa chỉ
                   </h3>
-
-                  {detailTrip.journeyLogs && detailTrip.journeyLogs.length > 0 ? (
-                    <div className="relative border-l-2 border-slate-200 ml-4 pl-6 space-y-6">
-                      {detailTrip.journeyLogs.map((log, idx) => {
-                        let badgeColor = 'bg-slate-100 text-slate-700'
-                        let title = 'Cập nhật'
-                        let dotColor = 'border-slate-400 bg-slate-400'
-                        if (log.type === 'START') { badgeColor = 'bg-blue-100 text-[#004b87]'; title = 'Khởi hành chuyến xe'; dotColor = 'border-[#004b87] bg-[#004b87]' }
-                        else if (log.type === 'END') { badgeColor = 'bg-green-100 text-green-700'; title = 'Hoàn thành chuyến xe'; dotColor = 'border-green-600 bg-green-600' }
-                        else if (log.type === 'INCIDENT') { badgeColor = 'bg-red-100 text-red-700'; title = '⚠️ Báo cáo sự cố'; dotColor = 'border-red-500 bg-red-500' }
-
-                        let incidentData = null
-                        if (log.type === 'INCIDENT' && log.notes?.startsWith('{')) {
-                          try { incidentData = JSON.parse(log.notes) } catch (e) {}
-                        }
-
-                        return (
-                          <div key={log.id || idx} className="relative">
-                            <span className={`absolute -left-[31px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white border-2 ${dotColor.split(' ')[0]}`}>
-                              <span className={`h-1.5 w-1.5 rounded-full ${dotColor.split(' ')[1]}`} />
-                            </span>
-                            <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm space-y-3">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${badgeColor}`}>{title}</span>
-                                  <span className="text-xs font-extrabold text-slate-800">{log.location}</span>
-                                </div>
-                                <span className="text-[10px] font-bold text-slate-400">
-                                  {FormatUtil.formatDate(log.time)} — {formatTime(log.time)}
-                                </span>
-                              </div>
-
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                                <div className="space-y-1.5">
-                                  <div className="flex justify-between border-b border-slate-100 pb-1">
-                                    <span className="text-slate-400 font-semibold">Chỉ số ODO:</span>
-                                    <span className="text-slate-700 font-extrabold">{log.km} km</span>
-                                  </div>
-                                  <div className="flex justify-between border-b border-slate-100 pb-1">
-                                    <span className="text-slate-400 font-semibold">Tình trạng xe:</span>
-                                    <span className="text-slate-700 font-extrabold">{log.vehicleStatus || 'Bình thường'}</span>
-                                  </div>
-                                  {incidentData ? (
-                                    <div className="pt-1">
-                                      <span className="text-red-500 font-bold block">Chi tiết sự cố:</span>
-                                      <p className="text-slate-600 font-medium bg-red-50 p-2 rounded-lg border border-red-100 mt-1">
-                                        <strong>[{incidentData.type}]</strong> {incidentData.desc}
-                                      </p>
-                                    </div>
-                                  ) : (log.notes && (
-                                    <div className="pt-1">
-                                      <span className="text-slate-400 font-semibold block">Ghi chú:</span>
-                                      <p className="text-slate-600 font-medium bg-slate-50 p-2 rounded-lg border border-slate-100 mt-1">{log.notes}</p>
-                                    </div>
-                                  ))}
-                                </div>
-
-                                {/* Photos side */}
-                                <div className="flex gap-2">
-                                  <div className="flex-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Ảnh đồng hồ km</p>
-                                    {log.proofImage ? (
-                                      <img
-                                        src={log.proofImage}
-                                        alt="ODO"
-                                        className="w-full h-24 object-cover rounded-lg border border-slate-150 cursor-zoom-in"
-                                        onClick={() => window.open(log.proofImage)}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-24 rounded-lg border border-dashed border-slate-200 flex items-center justify-center text-slate-400 text-[10px]">Không có</div>
-                                    )}
-                                  </div>
-                                  {log.type === 'END' && (
-                                    <div className="flex-1">
-                                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Ảnh xe sau chuyến</p>
-                                      {log.vehiclePhoto ? (
-                                        <img
-                                          src={log.vehiclePhoto}
-                                          alt="Xe"
-                                          className="w-full h-24 object-cover rounded-lg border border-slate-150 cursor-zoom-in"
-                                          onClick={() => window.open(log.vehiclePhoto)}
-                                        />
-                                      ) : (
-                                        <div className="w-full h-24 rounded-lg border border-dashed border-slate-200 flex items-center justify-center text-slate-400 text-[10px]">Không có</div>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-black">Từ</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-extrabold text-slate-800 text-sm">Điểm gửi (Trạm / Tỉnh)</p>
+                          <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                            {selectedCargoForDetail.senderAddress || 'Tại trạm'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-xs text-slate-400 italic">Không có nhật ký hành trình.</p>
-                  )}
+
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-black">Đến</span>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-extrabold text-slate-800 text-sm">Điểm nhận (Địa chỉ giao)</p>
+                          <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                            {selectedCargoForDetail.receiverAddress || 'Giao tại trạm đến'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <DialogFooter className="pt-4 mt-2 border-t border-slate-100">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDetailDialogOpen(false)}
-                    className="border-slate-200"
-                  >
-                    Đóng
-                  </Button>
-                </DialogFooter>
+                {/* Thông tin người gửi / nhận */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                    <Users className="h-4 w-4" /> Người gửi & Người nhận
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0">
+                        <User className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Người gửi</p>
+                        <p className="font-extrabold text-slate-800 text-sm">{selectedCargoForDetail.sender}</p>
+                        <p className="text-xs font-semibold text-slate-500 mt-0.5 flex items-center gap-1">
+                          <Phone className="h-3 w-3" /> {selectedCargoForDetail.senderPhone || 'Không có SĐT'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0">
+                        <UserCheck className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-0.5">Người nhận</p>
+                        <p className="font-extrabold text-slate-800 text-sm">{selectedCargoForDetail.receiver}</p>
+                        <p className="text-xs font-semibold text-slate-500 mt-0.5 flex items-center gap-1">
+                          <Phone className="h-3 w-3" /> {selectedCargoForDetail.phone}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chi tiết Hàng Hóa & Cước Phí */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                    <Info className="h-4 w-4" /> Thông số kỹ thuật
+                  </h3>
+                  <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-slate-100 text-center">
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Số lượng</p>
+                        <p className="font-extrabold text-slate-800 text-sm mt-1">{selectedCargoForDetail.quantity || 1} kiện</p>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Trọng lượng</p>
+                        <p className="font-extrabold text-slate-800 text-sm mt-1">{selectedCargoForDetail.weight || 'N/A'} kg</p>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Giá cước</p>
+                        <p className="font-extrabold text-[#004b87] text-sm mt-1">{FormatUtil.formatCurrency(selectedCargoForDetail.totalPrice || 0)}</p>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Thanh toán</p>
+                        <p className={`font-extrabold text-sm mt-1 ${selectedCargoForDetail.paymentStatus === 'paid' ? 'text-green-600' : 'text-amber-500'}`}>
+                          {selectedCargoForDetail.paymentStatus === 'paid' ? 'Đã T.Toán' : 'Chưa T.Toán'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hình ảnh (nếu có) */}
+                {selectedCargoForDetail.images && selectedCargoForDetail.images.length > 0 && (
+                  <div className="space-y-3 pb-2">
+                    <h3 className="text-xs font-black text-[#004b87] uppercase tracking-wider flex items-center gap-2">
+                      <Camera className="h-4 w-4" /> Hình ảnh đính kèm
+                    </h3>
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {selectedCargoForDetail.images.map((img, i) => (
+                        <div key={i} className="flex-shrink-0 w-32 h-32 rounded-xl overflow-hidden border border-slate-200 shadow-sm relative group cursor-pointer">
+                          <img src={img} alt={`Hình ${i+1}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <Search className="h-6 w-6 text-white" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )
-          })()}
+          })}
         </DialogContent>
       </Dialog>
+      {/* ==================== DIALOG: BÁO CÁO SỰ CỐ CHUYẾN XE ==================== */}
+      <Dialog open={isIncidentDialogOpen} onOpenChange={setIsIncidentDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-red-600 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              BÁO CÁO SỰ CỐ CHUYẾN XE
+            </DialogTitle>
+            <DialogDescription className="text-slate-505 text-xs font-semibold">
+              Vui lòng cung cấp chi tiết sự cố gặp phải để nhận trợ giúp từ Ban điều phối.
+            </DialogDescription>
+          </DialogHeader>
 
+          <div className="py-2 space-y-4 text-xs">
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100/80 space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-450 font-bold">Chuyến xe:</span>
+                <span className="text-slate-800 font-extrabold">{incidentTrip?.from} → {incidentTrip?.to}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-450 font-bold">Biển số xe:</span>
+                <span className="text-slate-800 font-extrabold">{incidentTrip?.licensePlate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-450 font-bold">Trạng thái hiện tại:</span>
+                <Badge className="bg-[#004b87] text-white">Đang vận hành</Badge>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Loại sự cố *</label>
+              <select
+                value={incidentType}
+                onChange={(e) => setIncidentType(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:border-red-500"
+              >
+                <option value="Xe gặp vấn đề">Xe gặp vấn đề (Hỏng hóc, máy nóng, thủng lốp, lỗi phanh...)</option>
+                <option value="Trễ giờ / kẹt xe">Trễ giờ / kẹt xe (Kẹt xe, đường cấm, thời tiết xấu...)</option>
+                <option value="Tai nạn / va chạm">Tai nạn / va chạm (Va quẹt nhẹ, tai nạn, dừng khẩn cấp...)</option>
+                <option value="Hành khách có vấn đề">Hành khách có vấn đề (Vắng mặt, lên sai điểm, gây rối...)</option>
+                <option value="Hàng hóa có vấn đề">Hàng hóa có vấn đề (Móp méo, rách, thất lạc...)</option>
+                <option value="Sai lịch trình">Sai lịch trình (Sai điểm đón, sai tuyến, nhầm xe...)</option>
+                <option value="Sự cố khác">Sự cố khác (Vấn đề phát sinh khác...)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Mức độ sự cố *</label>
+              <div className="flex gap-2.5">
+                {['Nhẹ', 'Trung bình', 'Nghiêm trọng'].map((lvl) => {
+                  let color = 'border-slate-200 text-slate-650 hover:bg-slate-50'
+                  if (incidentSeverity === lvl) {
+                    if (lvl === 'Nhẹ') color = 'bg-yellow-50 border-yellow-400 text-yellow-800'
+                    else if (lvl === 'Trung bình') color = 'bg-orange-50 border-orange-400 text-orange-800'
+                    else color = 'bg-red-50 border-red-500 text-red-800'
+                  }
+                  return (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setIncidentSeverity(lvl)}
+                      className={`flex-1 py-2 px-3 border-2 rounded-xl text-center font-black transition-all cursor-pointer ${color}`}
+                    >
+                      {lvl}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Vị trí hiện tại *</label>
+                <button
+                  type="button"
+                  onClick={() => handleGetCurrentLocation('incident')}
+                  disabled={isLocLoading}
+                  className="text-xs font-extrabold text-[#004b87] hover:underline flex items-center gap-1 bg-transparent border-none cursor-pointer disabled:text-slate-400"
+                >
+                  <MapPin className={`h-3.5 w-3.5 ${isLocLoading ? 'animate-bounce' : ''}`} />
+                  {isLocLoading ? 'Đang định vị...' : 'Tự động lấy vị trí'}
+                </button>
+              </div>
+              <input
+                type="text"
+                placeholder="Nhập vị trí hiện tại hoặc tọa độ GPS"
+                value={incidentLoc}
+                onChange={(e) => setIncidentLoc(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Mô tả sự cố *</label>
+              <textarea
+                placeholder="Nhập nội dung chi tiết sự cố xảy ra..."
+                value={incidentDesc}
+                onChange={(e) => setIncidentDesc(e.target.value)}
+                rows={3}
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 resize-none"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Ảnh minh chứng *</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files[0]
+                  if (file) {
+                    const reader = new FileReader()
+                    reader.onloadend = () => {
+                      setIncidentImage(reader.result)
+                    }
+                    reader.readAsDataURL(file)
+                  }
+                }}
+                className="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer"
+              />
+              {incidentImage && (
+                <div className="mt-2.5 relative w-full h-36 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+                  <img src={incidentImage} alt="Incident proof" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setIncidentImage('')}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors border-none cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-500 uppercase tracking-wider">Ghi chú thêm</label>
+              <textarea
+                placeholder="Nhập ghi chú thêm nếu có..."
+                value={incidentNotes}
+                onChange={(e) => setIncidentNotes(e.target.value)}
+                rows={2}
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100 resize-none"
+              />
+            </div>
+
+            <div
+              onClick={() => setChangeStatusToIncident(!changeStatusToIncident)}
+              className={`flex items-start gap-3 rounded-xl border-2 p-3.5 cursor-pointer transition-all ${
+                changeStatusToIncident
+                  ? 'bg-red-50/50 border-red-300'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                changeStatusToIncident
+                  ? 'bg-red-500 border-red-500 text-white'
+                  : 'bg-white border-slate-300'
+              }`}>
+                {changeStatusToIncident && <Check className="h-3 w-3" />}
+              </div>
+              <div>
+                <p className="font-black text-slate-700 text-xs">Đổi trạng thái chuyến xe sang "Có sự cố"</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">Hệ thống sẽ cập nhật trạng thái chuyến đi thành "Có sự cố" trên bảng điều hành Admin.</p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsIncidentDialogOpen(false)}
+              className="border-slate-200 h-9 px-4 text-xs rounded-xl"
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!incidentLoc || !incidentDesc || !incidentImage}
+              onClick={handleSendIncidentReport}
+              className="bg-red-600 hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-450 disabled:cursor-not-allowed h-9 px-4 text-xs font-black rounded-xl"
+            >
+              Gửi báo cáo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

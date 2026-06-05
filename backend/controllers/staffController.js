@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs');
 const { sql } = require('../config/db');
 const { sendCancellationApprovedEmail, sendCancellationRejectedEmail } = require('../utils/emailService');
 
-const VALID_ROLES = ['Driver', 'Ticket-Staff', 'Support-Staff'];
+const VALID_ROLES = ['DRIVER', 'TICKET_STAFF', 'SUPPORT_STAFF'];
 
 const formatDate = (dateObj) => {
   const d = new Date(dateObj);
@@ -87,8 +87,8 @@ const createStaff = async (req, res) => {
           VALUES (@maNhanVien, @vaiTro)
         `);
 
-      // 3. Nếu là Driver, insert thêm vào TaiXe nếu bảng tồn tại
-      if (role === 'Driver') {
+      // 3. Nếu là DRIVER, insert thêm vào TaiXe nếu bảng tồn tại
+      if (role === 'DRIVER') {
         await transaction.request()
           .input('maTaiXe', sql.Int, userId)
           .query(`

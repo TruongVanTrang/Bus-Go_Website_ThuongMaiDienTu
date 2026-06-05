@@ -3,8 +3,9 @@ import { FiHeart, FiTrash2, FiMapPin, FiClock, FiDollarSign, FiX, FiDownload, Fi
 import { useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode.react'
 import { StorageUtil } from '../../utils/helpers'
-import { getMyTicketsAPI, submitFeedbackAPI, getFeedbackAPI } from '../../services/bookingService'
+import { getMyTicketsAPI, cancelBookingAPI, submitFeedbackAPI, getFeedbackAPI } from '../../services/bookingService'
 import { requestTicketCancellationAPI } from '../../services/customerService'
+import { getMyConsignmentsAPI } from '../../services/cargoService'
 import './UserHistory.css'
 
 export default function UserHistory() {
@@ -80,8 +81,41 @@ export default function UserHistory() {
       }
     }
 
-    // Dữ liệu ký gửi hàng sẽ được lấy từ backend khi API sẵn sàng
-    setConsignments([])
+    // Dữ liệu ký gửi hàng sẽ được lấy từ backend
+    const loadConsignments = async () => {
+      try {
+        const data = await getMyConsignmentsAPI(token)
+        const mappedConsignments = data.map(item => {
+          let mappedStatus = 'pending'
+          if (item.trangThaiKyGui === 'da_xac_nhan') mappedStatus = 'confirmed'
+          if (item.trangThaiKyGui === 'in_transit') mappedStatus = 'in_transit'
+          if (item.trangThaiKyGui === 'delivered') mappedStatus = 'delivered'
+          if (item.trangThaiKyGui === 'failed' || item.trangThaiKyGui === 'da_huy') mappedStatus = 'cancelled'
+
+          return {
+            id: item.consignmentId,
+            from: item.diemGui,
+            to: item.diemNhan,
+            type: item.loaiHangHoa,
+            weight: item.trongLuong,
+            declaredValue: item.giaTrucDeclare,
+            totalPrice: item.tongTien,
+            senderName: item.tenNguoiGui,
+            senderPhone: item.soDienThoaiNguoiGui,
+            receiverName: item.tenNguoiNhan,
+            receiverPhone: item.soDienThoaiNguoiNhan,
+            cargoStatus: mappedStatus,
+            date: item.ngayGui,
+            images: item.hinhAnh || []
+          }
+        })
+        setConsignments(mappedConsignments)
+      } catch (err) {
+        console.error('Lỗi khi tải lịch sử ký gửi:', err)
+      }
+    }
+    
+    loadConsignments()
 
     // Auto refresh lịch sử vé mỗi 10 giây để cập nhật trạng thái hủy từ staff
     const refreshInterval = setInterval(() => {
@@ -815,14 +849,6 @@ export default function UserHistory() {
                             <FiPackage size={14} className="me-1" />
                             Xem chi tiết
                           </button>
-                          {consignment.cargoStatus === 'pending' && (
-                            <button
-                              className="btn btn-outline-secondary btn-sm"
-                              onClick={() => updateConsignmentStatus(consignment.id, 'confirmed')}
-                            >
-                              Xác nhận
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -1383,49 +1409,58 @@ export default function UserHistory() {
                 </div>
               </div>
 
-              {/* Status Update Section */}
-              {selectedConsignment.cargoStatus !== 'delivered' && (
-                <>
-                  <hr />
-                  <div className="section">
-                    <h6 className="fw-bold mb-3">🔄 Cập Nhật Trạng Thái</h6>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {selectedConsignment.cargoStatus === 'pending' && (
-                        <>
-                          <button
-                            className="btn btn-sm"
-                            onClick={() => updateConsignmentStatus(selectedConsignment.id, 'confirmed')}
-                            style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none' }}
-                          >
-                            <FiCheckSquare size={14} className="me-1" />
-                            Xác nhận
-                          </button>
-                        </>
-                      )}
-                      {(selectedConsignment.cargoStatus === 'confirmed' || selectedConsignment.cargoStatus === 'pending') && (
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => updateConsignmentStatus(selectedConsignment.id, 'in_transit')}
-                          style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none' }}
-                        >
-                          <FiTruck size={14} className="me-1" />
-                          Bắt đầu vận chuyển
-                        </button>
-                      )}
-                      {selectedConsignment.cargoStatus === 'in_transit' && (
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => updateConsignmentStatus(selectedConsignment.id, 'delivered')}
-                          style={{ backgroundColor: '#10b981', color: 'white', border: 'none' }}
-                        >
-                          <FiCheckCircle size={14} className="me-1" />
-                          Đã giao
-                        </button>
+              {/* Timeline & Images Section */}
+              <div className="section mb-4 mt-4">
+                <h6 className="fw-bold mb-3">🕒 Lịch Trình & Hình Ảnh</h6>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', paddingLeft: '0.5rem', borderLeft: '2px solid #e5e7eb', marginLeft: '0.5rem' }}>
+                  
+                  {/* Step 1: Đã gửi yêu cầu */}
+                  <div style={{ display: 'flex', gap: '1rem', opacity: ['pending', 'confirmed', 'in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
+                    <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>⏳</div>
+                    <div>
+                      <div className="fw-600">Đã gửi yêu cầu</div>
+                      <div className="small text-muted">Đang chờ tài xế duyệt</div>
+                    </div>
+                  </div>
+                  
+                  {/* Step 2: Đã duyệt */}
+                  <div style={{ display: 'flex', gap: '1rem', opacity: ['confirmed', 'in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
+                    <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>✅</div>
+                    <div>
+                      <div className="fw-600">Đã duyệt (Chờ nhận hàng)</div>
+                      <div className="small text-muted">Tài xế đã đồng ý và đang chờ lấy hàng</div>
+                    </div>
+                  </div>
+                  
+                  {/* Step 3: Đang vận chuyển */}
+                  <div style={{ display: 'flex', gap: '1rem', opacity: ['in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
+                    <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>🚚</div>
+                    <div>
+                      <div className="fw-600">Đã lấy hàng & Đang vận chuyển</div>
+                      <div className="small text-muted">Tài xế đã xác nhận nhận hàng</div>
+                      {selectedConsignment.images?.[0] && ['in_transit', 'delivered'].includes(selectedConsignment.cargoStatus) && (
+                        <div className="mt-2">
+                          <img src={selectedConsignment.images[0]} alt="Hình ảnh nhận hàng" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', objectFit: 'cover' }} />
+                        </div>
                       )}
                     </div>
                   </div>
-                </>
-              )}
+
+                  {/* Step 4: Đã giao */}
+                  <div style={{ display: 'flex', gap: '1rem', opacity: ['delivered'].includes(selectedConsignment.cargoStatus) ? 1 : 0.5 }}>
+                    <div style={{ marginLeft: '-1.15rem', backgroundColor: 'white', padding: '0.2rem' }}>🎉</div>
+                    <div>
+                      <div className="fw-600">Đã giao thành công</div>
+                      <div className="small text-muted">Hàng đã đến tay người nhận</div>
+                      {selectedConsignment.images?.[1] && selectedConsignment.cargoStatus === 'delivered' && (
+                        <div className="mt-2">
+                          <img src={selectedConsignment.images[1]} alt="Hình ảnh giao hàng" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '0.5rem', border: '1px solid #e5e7eb', objectFit: 'cover' }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="modal-footer">

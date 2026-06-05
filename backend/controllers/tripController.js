@@ -147,11 +147,12 @@ const searchTrips = async (req, res) => {
     }
 
     let queryStr = `
-      SELECT cx.*, td.danhSachTramDung, pt.tienIch as vehicleAmenities
+      SELECT cx.*, td.danhSachTramDung, pt.tienIch as vehicleAmenities, pt.bienSoXe, nd.tenNguoiDung AS tenNhanVien
       FROM vw_ChuyenXeChiTiet cx
       LEFT JOIN ChuyenXe realCx ON cx.maChuyenXe = realCx.maChuyenXe
       LEFT JOIN TuyenDuong td ON realCx.maTuyenDuong = td.maTuyenDuong
       LEFT JOIN PhuongTien pt ON realCx.maPhuongTien = pt.maPhuongTien
+      LEFT JOIN NguoiDung nd ON realCx.maNhanVien = nd.maNguoiDung
     `;
 
     const request = pool.request();
@@ -260,6 +261,8 @@ const searchTrips = async (req, res) => {
         rating: row.diemDanhGia || 4.5,
         reviewCount: row.soLuotDanhGia || 0,
         description: `Chuyến xe tuyến đường ${row.diemDi} - ${row.diemDen} với dịch vụ chất lượng cao.`,
+        driver: row.tenNhanVien || 'Đang phân bổ',
+        licensePlate: row.bienSoXe || 'Đang cập nhật',
         occupiedSeats,
         stops
       });
@@ -287,11 +290,12 @@ const getTripById = async (req, res) => {
     const result = await pool.request()
       .input('maChuyenXe', sql.Int, id)
       .query(`
-        SELECT cx.*, pt.tienIch as vehicleAmenities, td.danhSachTramDung
+        SELECT cx.*, pt.tienIch as vehicleAmenities, pt.bienSoXe, nd.tenNguoiDung AS tenNhanVien, td.danhSachTramDung
         FROM vw_ChuyenXeChiTiet cx
         LEFT JOIN ChuyenXe realCx ON cx.maChuyenXe = realCx.maChuyenXe
         LEFT JOIN TuyenDuong td ON realCx.maTuyenDuong = td.maTuyenDuong
         LEFT JOIN PhuongTien pt ON realCx.maPhuongTien = pt.maPhuongTien
+        LEFT JOIN NguoiDung nd ON realCx.maNhanVien = nd.maNguoiDung
         WHERE cx.maChuyenXe = @maChuyenXe
       `);
 
@@ -353,6 +357,8 @@ const getTripById = async (req, res) => {
       rating: row.diemDanhGia || 4.5,
       reviewCount: row.soLuotDanhGia || 0,
       description: `Chuyến xe tuyến đường ${row.diemDi} - ${row.diemDen} với dịch vụ chất lượng cao.`,
+      driver: row.tenNhanVien || 'Đang phân bổ',
+      licensePlate: row.bienSoXe || 'Đang cập nhật',
       occupiedSeats,
       stops
     };
@@ -364,7 +370,62 @@ const getTripById = async (req, res) => {
   }
 };
 
+// @desc    Lấy danh sách chuyến xe theo tài xế (driverId) - dùng cho trang tài xế
+// @route   GET /api/trips?driverId=:id
+const getDriverTrips = async (req, res) => {
+  const { driverId } = req.query;
+  if (!driverId) {
+    return res.status(400).json({ message: 'Thiếu driverId' });
+  }
+
+  try {
+    const pool = await sql.connect();
+    const result = await pool.request()
+      .input('driverId', sql.Int, parseInt(driverId))
+      .query(`
+        SELECT
+          cx.maChuyenXe,
+          cx.maNhanVien,
+          td.diemDi,
+          td.diemDen,
+          td.loaiDichVu,
+          cx.thoiGianDi,
+          cx.thoiGianDen,
+          cx.giaCoBan,
+          cx.soGheConTrong,
+          cx.trangThaiChuyen,
+          pt.bienSoXe,
+          pt.loaiXe,
+          pt.phanLoaiXe
+        FROM ChuyenXe cx
+        INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
+        INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien
+        WHERE cx.maNhanVien = @driverId
+        ORDER BY cx.thoiGianDi DESC
+      `);
+
+    res.json(result.recordset.map(row => ({
+      maChuyenXe: row.maChuyenXe,
+      diemDi: row.diemDi,
+      diemDen: row.diemDen,
+      loaiDichVu: row.loaiDichVu,
+      thoiGianDi: row.thoiGianDi,
+      thoiGianDen: row.thoiGianDen,
+      giaCoBan: row.giaCoBan,
+      soGheConTrong: row.soGheConTrong,
+      trangThaiChuyen: row.trangThaiChuyen,
+      bienSoXe: row.bienSoXe,
+      loaiXe: row.loaiXe,
+      phanLoaiXe: row.phanLoaiXe
+    })));
+  } catch (error) {
+    console.error('Lỗi lấy chuyến xe theo tài xế:', error);
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
 module.exports = {
   searchTrips,
-  getTripById
+  getTripById,
+  getDriverTrips
 };

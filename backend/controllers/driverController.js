@@ -18,6 +18,7 @@ const mapStatusToClient = (dbStatus) => {
     case 'dang_khoi_hanh': return 'DEPARTED';
     case 'da_hoan_thanh': return 'COMPLETED';
     case 'da_huy': return 'CANCELLED';
+    case 'co_su_co': return 'INCIDENT';
     default: return 'SCHEDULED';
   }
 };
@@ -28,6 +29,7 @@ const mapStatusToDb = (clientStatus) => {
     case 'DEPARTED': return 'dang_khoi_hanh';
     case 'COMPLETED': return 'da_hoan_thanh';
     case 'CANCELLED': return 'da_huy';
+    case 'INCIDENT': return 'co_su_co';
     default: return 'da_len_lich';
   }
 };
@@ -51,6 +53,17 @@ const mapCargoStatusToClient = (dbStatus) => {
   }
 };
 
+const mapKyGuiStatusToClient = (dbStatus) => {
+  switch (dbStatus) {
+    case 'dang_cho_xac_nhan': return 'PENDING';
+    case 'da_xac_nhan': return 'APPROVED';
+    case 'in_transit': return 'SHIPPING';
+    case 'delivered': return 'DELIVERED';
+    case 'da_huy': return 'CANCELLED';
+    default: return 'PENDING';
+  }
+};
+
 const mapCargoStatusToDb = (clientStatus) => {
   switch (clientStatus) {
     case 'PENDING': return 'pending';
@@ -58,6 +71,17 @@ const mapCargoStatusToDb = (clientStatus) => {
     case 'DELIVERED': return 'delivered';
     case 'FAILED': return 'failed';
     default: return 'pending';
+  }
+};
+
+const mapKyGuiStatusToDb = (clientStatus) => {
+  switch (clientStatus) {
+    case 'PENDING': return 'dang_cho_xac_nhan';
+    case 'APPROVED': return 'da_xac_nhan';
+    case 'SHIPPING': return 'in_transit';
+    case 'DELIVERED': return 'delivered';
+    case 'CANCELLED': return 'da_huy';
+    default: return 'dang_cho_xac_nhan';
   }
 };
 
@@ -124,6 +148,7 @@ const getDriverTrips = async (req, res) => {
 
       return {
         id: row.maChuyenXe,
+        date: new Date(row.thoiGianDi).toLocaleDateString('vi-VN'),
         from: row.diemDi,
         to: row.diemDen,
         departureTime: formatTime(row.thoiGianDi),
@@ -166,7 +191,8 @@ const updateTripStatus = async (req, res) => {
     tinhTrangXe,
     anhMinhChung,
     anhXeSauChuyen,
-    ghiChu
+    ghiChu,
+    incidentSeverity
   } = req.body;
 
   try {
@@ -208,17 +234,73 @@ const updateTripStatus = async (req, res) => {
         VALUES (@tripId, @kieuCapNhat, @viTri, @soKm, @tinhTrangXe, @anhMinhChung, @anhXeSauChuyen, @ghiChu, GETDATE())
       `);
 
-    // 2. Xác định trạng thái của chuyến xe tương ứng
+    // 2. Nếu kiểu cập nhật là INCIDENT, lưu sự cố chi tiết và gửi thông báo Admin
+    if (kieuCapNhat === 'INCIDENT') {
+      const severity = incidentSeverity || req.body.severity || 'Trung bình';
+      
+      // Lưu vào bảng SuCo
+      await pool.request()
+        .input('tripId', sql.Int, parseInt(tripId, 10))
+        .input('driverId', sql.Int, req.user.id)
+        .input('loaiSuCo', sql.NVarChar, incidentType || 'Khác')
+        .input('mucDo', sql.NVarChar, severity)
+        .input('viTri', sql.NVarChar, finalViTri)
+        .input('moTa', sql.NVarChar, incidentDesc || '')
+        .input('anhMinhChung', sql.NVarChar, finalAnh)
+        .input('ghiChu', sql.NVarChar, finalGhiChu)
+        .query(`
+          INSERT INTO SuCo (maChuyenXe, maNhanVien, loaiSuCo, mucDo, viTri, moTa, anhMinhChung, ghiChu, trangThaiSuCo, thoiGianTao, thoiGianCapNhat)
+          VALUES (@tripId, @driverId, @loaiSuCo, @mucDo, @viTri, @moTa, @anhMinhChung, @ghiChu, 'cho_xu_ly', GETDATE(), GETDATE())
+        `);
+
+      // Lấy thông tin chuyến xe để làm nội dung thông báo
+      const routeResult = await pool.request()
+        .input('tripId', sql.Int, parseInt(tripId, 10))
+        .query(`
+          SELECT td.diemDi, td.diemDen, pt.bienSoXe
+          FROM ChuyenXe cx
+          INNER JOIN TuyenDuong td ON cx.maTuyenDuong = td.maTuyenDuong
+          INNER JOIN PhuongTien pt ON cx.maPhuongTien = pt.maPhuongTien
+          WHERE cx.maChuyenXe = @tripId
+        `);
+      const routeInfo = routeResult.recordset[0];
+      const tripStr = routeInfo ? `${routeInfo.diemDi} → ${routeInfo.diemDen}` : `Chuyến xe #${tripId}`;
+      const plateStr = routeInfo ? routeInfo.bienSoXe : 'N/A';
+
+      const title = `⚠️ Báo cáo sự cố: ${incidentType || 'Khác'} - Xe ${plateStr}`;
+      const content = `Chuyến xe: ${tripStr}. Tài xế vừa báo cáo sự cố [${incidentType || 'Khác'}] mức độ [${severity}] tại vị trí: ${finalViTri}. Mô tả chi tiết: ${incidentDesc || 'Không có'}.`;
+
+      // Lưu vào bảng ThongBao hợp nhất
+      await pool.request()
+        .input('tieuDe', sql.NVarChar, title)
+        .input('noiDung', sql.NVarChar, content)
+        .input('loaiThongBao', sql.NVarChar, 'incident')
+        .input('lienKet', sql.VarChar, '/admin/reports?tab=incidents')
+        .input('doiTuong', sql.NVarChar, 'ADMIN')
+        .query(`
+          INSERT INTO ThongBao (doiTuong, tieuDe, noiDung, loaiThongBao, lienKet, daDoc, thoiGianTao)
+          VALUES (@doiTuong, @tieuDe, @noiDung, @loaiThongBao, @lienKet, 0, GETDATE())
+        `);
+    }
+
+    // 3. Xác định trạng thái mới của chuyến xe tương ứng
     let dbStatus;
     if (kieuCapNhat === 'START') {
       dbStatus = 'dang_khoi_hanh'; // DEPARTED
     } else if (kieuCapNhat === 'END') {
       dbStatus = 'da_hoan_thanh'; // COMPLETED
+    } else if (kieuCapNhat === 'INCIDENT') {
+      dbStatus = (req.body.changeStatusToIncident === true || req.body.changeStatusToIncident === 'true')
+        ? 'co_su_co' 
+        : 'dang_khoi_hanh';
     } else {
-      dbStatus = 'dang_khoi_hanh'; // CHECKPOINT và INCIDENT vẫn giữ dang_khoi_hanh
+      const currentTripRes = await pool.request()
+        .input('tripId', sql.Int, parseInt(tripId, 10))
+        .query('SELECT trangThaiChuyen FROM ChuyenXe WHERE maChuyenXe = @tripId');
+      dbStatus = currentTripRes.recordset[0]?.trangThaiChuyen || 'dang_khoi_hanh';
     }
 
-    // 3. Cập nhật trạng thái mới nhất trên bảng ChuyenXe (Không cập nhật cột ghiChu vì không tồn tại trong DB của bạn!)
+    // 4. Cập nhật trạng thái mới nhất trên bảng ChuyenXe
     await pool.request()
       .input('tripId', sql.Int, parseInt(tripId, 10))
       .input('status', sql.NVarChar, dbStatus)
@@ -295,7 +377,7 @@ const checkInPassenger = async (req, res) => {
   }
 };
 
-// @desc    Lấy danh sách kiện hàng ký gửi theo chuyến xe (Tự động seeding nếu trống)
+// @desc    Lấy danh sách kiện hàng ký gửi theo chuyến xe (bao gồm Hành lý xách tay + Hàng gửi kèm)
 // @route   GET /api/driver/trips/:tripId/cargo
 // @access  Private (Driver only)
 const getTripCargo = async (req, res) => {
@@ -304,8 +386,8 @@ const getTripCargo = async (req, res) => {
   try {
     const pool = await sql.connect();
 
-    // 1. Truy vấn kiện hàng
-    const cargoResult = await pool.request()
+    // 1. Truy vấn hành lý xách tay (HangHoa)
+    const carryOnResult = await pool.request()
       .input('tripId', sql.Int, tripId)
       .query(`
         SELECT h.*, v.maChuyenXe
@@ -314,20 +396,87 @@ const getTripCargo = async (req, res) => {
         WHERE v.maChuyenXe = @tripId
       `);
 
-    const cargoList = cargoResult.recordset.map(row => ({
-      id: `BG-${row.maHangHoa}`,
+    const carryOnList = carryOnResult.recordset.map(row => ({
+      id: `HH-${row.maHangHoa}`,
       dbId: row.maHangHoa,
       tripId: row.maChuyenXe,
       type: row.loaiHangHoa,
       sender: row.tenNguoiGui,
       receiver: row.tenNguoiNhan,
       phone: row.soDienThoaiNguoiNhan,
-      status: mapCargoStatusToClient(row.trangThaiVanChuyen)
+      status: mapCargoStatusToClient(row.trangThaiVanChuyen),
+      isConsignment: false
+    }));
+
+    // 2. Truy vấn đơn ký gửi độc lập (KyGuiHang - Gửi Kèm Xe Khách)
+    const consignmentResult = await pool.request()
+      .input('tripId', sql.Int, tripId)
+      .query(`
+        SELECT *
+        FROM KyGuiHang
+        WHERE maChuyenXe = @tripId AND loaiDichVu = 'gui_kem'
+      `);
+
+    const consignmentList = consignmentResult.recordset.map(row => ({
+      id: `CSM-${row.consignmentId}`,
+      dbId: row.consignmentId,
+      tripId: row.maChuyenXe,
+      type: row.loaiHangHoa,
+      sender: row.tenNguoiGui,
+      receiver: row.tenNguoiNhan,
+      phone: row.soDienThoaiNguoiNhan,
+      status: mapKyGuiStatusToClient(row.trangThaiKyGui),
+      isConsignment: true,
+      paymentStatus: row.trangThaiThanhToan
+    }));
+
+    // Trả về danh sách gộp
+    res.json([...carryOnList, ...consignmentList]);
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách hàng hóa:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ' });
+  }
+};
+
+// @desc    Lấy danh sách hàng hóa nguyên chuyến (Dành riêng cho Truck Driver)
+// @route   GET /api/driver/truck-cargo
+// @access  Private (Driver only)
+const getTruckCargo = async (req, res) => {
+  const driverId = req.user.id; // maNhanVien
+
+  try {
+    const pool = await sql.connect();
+    
+    // Chỉ lấy đơn hàng thuộc loại dịch vụ 'van_tai' được gán cho tài xế này
+    const result = await pool.request()
+      .input('driverId', sql.Int, driverId)
+      .query(`
+        SELECT *
+        FROM KyGuiHang
+        WHERE maTaiXe = @driverId AND loaiDichVu = 'van_tai'
+      `);
+
+    const cargoList = result.recordset.map(row => ({
+      id: `CSM-${row.consignmentId}`,
+      dbId: row.consignmentId,
+      tripId: null, // Không gắn với chuyến xe cố định
+      type: row.loaiHangHoa,
+      sender: row.tenNguoiGui,
+      receiver: row.tenNguoiNhan,
+      phone: row.soDienThoaiNguoiNhan,
+      status: mapKyGuiStatusToClient(row.trangThaiKyGui),
+      isConsignment: true,
+      paymentStatus: row.trangThaiThanhToan,
+      from: row.diemGui,
+      to: row.diemNhan,
+      pickupLocation: row.diaChiGuiChiTiet,
+      deliveryLocation: row.diaChiNhanChiTiet,
+      date: row.ngayGui
     }));
 
     res.json(cargoList);
   } catch (error) {
-    console.error('Lỗi khi lấy danh sách hàng hóa:', error);
+    console.error('Lỗi khi lấy danh sách vận tải nguyên chuyến:', error);
     res.status(500).json({ message: 'Lỗi máy chủ' });
   }
 };
@@ -337,20 +486,82 @@ const getTripCargo = async (req, res) => {
 // @access  Private (Driver only)
 const updateCargoStatus = async (req, res) => {
   const { cargoId } = req.params;
-  const { status } = req.body;
+  const { status } = req.body; // PENDING, APPROVED, SHIPPING, DELIVERED, CANCELLED, FAILED
 
   try {
     const pool = await sql.connect();
-    const dbStatus = mapCargoStatusToDb(status);
 
-    await pool.request()
-      .input('cargoId', sql.Int, cargoId)
-      .input('status', sql.NVarChar, dbStatus)
-      .query(`
-        UPDATE HangHoa
-        SET trangThaiVanChuyen = @status
-        WHERE maHangHoa = @cargoId
-      `);
+    if (cargoId.startsWith('CSM-')) {
+      const dbId = cargoId.replace('CSM-', '');
+      const dbStatus = mapKyGuiStatusToDb(status);
+      
+      let hinhAnhStr = undefined;
+      
+      // If imageUrl is provided, we fetch the current images, append, and save
+      if (req.body.imageUrl) {
+        const checkRes = await pool.request()
+          .input('consignmentId', sql.VarChar, dbId)
+          .query('SELECT hinhAnh FROM KyGuiHang WHERE consignmentId = @consignmentId');
+          
+        if (checkRes.recordset.length > 0) {
+          let hinhAnhArr = [];
+          try {
+            hinhAnhArr = JSON.parse(checkRes.recordset[0].hinhAnh || '[]');
+          } catch (e) {
+            hinhAnhArr = [];
+          }
+          hinhAnhArr.push(req.body.imageUrl);
+          hinhAnhStr = JSON.stringify(hinhAnhArr);
+        }
+      }
+
+      if (hinhAnhStr !== undefined) {
+        await pool.request()
+          .input('consignmentId', sql.VarChar, dbId)
+          .input('status', sql.NVarChar, dbStatus)
+          .input('hinhAnh', sql.NVarChar, hinhAnhStr)
+          .query(`
+            UPDATE KyGuiHang
+            SET trangThaiKyGui = @status,
+                hinhAnh = @hinhAnh,
+                ngayCapNhat = GETDATE()
+            WHERE consignmentId = @consignmentId
+          `);
+      } else {
+        await pool.request()
+          .input('consignmentId', sql.VarChar, dbId)
+          .input('status', sql.NVarChar, dbStatus)
+          .query(`
+            UPDATE KyGuiHang
+            SET trangThaiKyGui = @status,
+                ngayCapNhat = GETDATE()
+            WHERE consignmentId = @consignmentId
+          `);
+      }
+    } else if (cargoId.startsWith('HH-')) {
+      const dbId = parseInt(cargoId.replace('HH-', ''), 10);
+      const dbStatus = mapCargoStatusToDb(status);
+      await pool.request()
+        .input('cargoId', sql.Int, dbId)
+        .input('status', sql.NVarChar, dbStatus)
+        .query(`
+          UPDATE HangHoa
+          SET trangThaiVanChuyen = @status
+          WHERE maHangHoa = @cargoId
+        `);
+    } else {
+      // Fallback cho logic cũ nếu lỡ lưu số id
+      const dbId = parseInt(cargoId, 10);
+      const dbStatus = mapCargoStatusToDb(status);
+      await pool.request()
+        .input('cargoId', sql.Int, dbId)
+        .input('status', sql.NVarChar, dbStatus)
+        .query(`
+          UPDATE HangHoa
+          SET trangThaiVanChuyen = @status
+          WHERE maHangHoa = @cargoId
+        `);
+    }
 
     res.json({ message: 'Cập nhật trạng thái kiện hàng thành công' });
   } catch (error) {
@@ -365,5 +576,6 @@ module.exports = {
   getTripPassengers,
   checkInPassenger,
   getTripCargo,
+  getTruckCargo,
   updateCargoStatus
 };

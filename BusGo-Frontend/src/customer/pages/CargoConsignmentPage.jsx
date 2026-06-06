@@ -16,9 +16,8 @@ export default function CargoConsignmentPage() {
   useEffect(() => {
     if (location.state && location.state.reorderData) {
       const c = location.state.reorderData;
-      setServiceType(c.loaiDichVu || 'van_tai');
-      if (c.loaiDichVu === 'gui_kem') setSelectedTripId(c.maChuyenXe);
-      if (c.loaiDichVu === 'van_tai') setSelectedTruckType(c.loaiXeVanTai || 'truck_10t');
+      setServiceType('gui_kem');
+      setSelectedTripId(c.maChuyenXe);
       
       setRouteData({
         from: c.diemGui || '',
@@ -948,37 +947,6 @@ export default function CargoConsignmentPage() {
                         <span className="flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 text-xl shadow-inner">📍</span>
                         Chọn Dịch Vụ & Tuyến Đường
                       </h3>
-
-                      {/* Service Type Buttons */}
-                      <div className="mb-10">
-                        <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Hình Thức Gửi Hàng</label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <button
-                            type="button"
-                            className={`group relative overflow-hidden text-left p-6 rounded-2xl border-2 transition-all duration-300 ${serviceType === 'gui_kem' ? 'border-blue-500 bg-blue-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}
-                            onClick={() => {
-                              setServiceType('gui_kem')
-                              setSelectedTripId(null)
-                            }}
-                          >
-                            {serviceType === 'gui_kem' && <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500 opacity-10 rounded-bl-full rounded-tr-xl"></div>}
-                            <span className="text-4xl block mb-4 group-hover:scale-110 transition-transform origin-left">🚌</span>
-                            <span className={`block font-black text-lg mb-2 ${serviceType === 'gui_kem' ? 'text-blue-700' : 'text-slate-800'}`}>Gửi Kèm Xe Khách</span>
-                            <span className="text-sm text-slate-500 leading-relaxed">Gửi hàng theo các chuyến xe khách chạy hàng ngày, giá rẻ tối ưu.</span>
-                          </button>
-                          
-                          <button
-                            type="button"
-                            className={`group relative overflow-hidden text-left p-6 rounded-2xl border-2 transition-all duration-300 ${serviceType === 'van_tai' ? 'border-indigo-500 bg-indigo-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'}`}
-                            onClick={() => setServiceType('van_tai')}
-                          >
-                            {serviceType === 'van_tai' && <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500 opacity-10 rounded-bl-full rounded-tr-xl"></div>}
-                            <span className="text-4xl block mb-4 group-hover:scale-110 transition-transform origin-left">🚚</span>
-                            <span className={`block font-black text-lg mb-2 ${serviceType === 'van_tai' ? 'text-indigo-700' : 'text-slate-800'}`}>Thuê Xe Vận Tải Riêng</span>
-                            <span className="text-sm text-slate-500 leading-relaxed">Bao trọn xe tải nhỏ/lớn để chuyển hàng cồng kềnh, nhận tận nơi.</span>
-                          </button>
-                        </div>
-                      </div>
 
                       {/* Route selector dropdowns */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

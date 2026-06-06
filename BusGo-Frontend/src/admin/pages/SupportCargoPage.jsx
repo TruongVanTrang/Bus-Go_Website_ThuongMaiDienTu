@@ -10,7 +10,7 @@ import { approveEditConsignmentAPI } from '../../services/cargoService';
 
 const API = 'http://localhost:5000/api';
 
-function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
+function SupportCargoPage({ defaultTab = 'ticket-lookup' }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userRole, setUserRole] = useState(null);
@@ -18,7 +18,7 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
   const [loading, setLoading] = useState(true);
 
   // Tabs: 'cargo-assign', 'ticket-lookup', 'refund', 'cancel-requests'
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [activeTab, setActiveTab] = useState(defaultTab === 'lookup' ? 'ticket-lookup' : (defaultTab === 'refund' ? 'cancel-requests' : defaultTab));
 
   // Cargo Assign states
   const [consignments, setConsignments] = useState([]);
@@ -44,7 +44,13 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
   const [loadingCancelReqs, setLoadingCancelReqs] = useState(false);
 
   useEffect(() => {
-    setActiveTab(defaultTab);
+    if (defaultTab === 'lookup') {
+      setActiveTab('ticket-lookup');
+    } else if (defaultTab === 'refund') {
+      setActiveTab('cancel-requests');
+    } else {
+      setActiveTab(defaultTab);
+    }
   }, [defaultTab]);
 
   useEffect(() => {
@@ -297,18 +303,12 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
         <main className="admin-content">
           <div className="dashboard-content">
             <h1 className="page-title mb-4">
-              {activeTab === 'cargo-assign' && '🚚 Phân phối & Điều phối xe Ký gửi'}
               {activeTab === 'ticket-lookup' && '🔍 Tra cứu thông tin đặt vé'}
               {activeTab === 'cancel-requests' && '🔴 Yêu cầu hủy đơn sau thanh toán'}
             </h1>
 
             {/* Sub Tabs */}
             <ul className="nav nav-tabs mb-4">
-              <li className="nav-item">
-                <button className={`nav-link ${activeTab === 'cargo-assign' ? 'active' : ''}`} onClick={() => setActiveTab('cargo-assign')}>
-                  🚚 Phân phối xe ký gửi
-                </button>
-              </li>
               <li className="nav-item">
                 <button className={`nav-link ${activeTab === 'ticket-lookup' ? 'active' : ''}`} onClick={() => setActiveTab('ticket-lookup')}>
                   🔍 Tra cứu vé
@@ -326,134 +326,7 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
               </li>
             </ul>
 
-            {/* ====================================================== */}
-            {/* CARGO ASSIGN TAB CONTENT */}
-            {/* ====================================================== */}
-            {activeTab === 'cargo-assign' && (
-              <div className="card shadow-sm p-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <p className="text-muted mb-0">Tất cả đơn ký gửi hàng trong hệ thống (gửi kèm xe khách & vận tải riêng)</p>
-                  <button className="btn btn-sm btn-outline-primary" onClick={fetchConsignments}>🔄 Làm mới</button>
-                </div>
 
-                {/* Filter Buttons */}
-                <div className="btn-group btn-group-sm mb-3">
-                  {[
-                    { key: 'all', label: 'Tất cả' },
-                    { key: 'van_tai_pending', label: '🚚 Chờ gán xe tải' },
-                    { key: 'gui_kem_pending', label: '🚌 Chờ tài xế duyệt' },
-                    { key: 'paid', label: '✅ Đã thanh toán' },
-                    { key: 'cancelled', label: '❌ Đã hủy' },
-                  ].map(f => (
-                    <button
-                      key={f.key}
-                      className={`btn btn-outline-secondary ${filterStatus === f.key ? 'active' : ''}`}
-                      onClick={() => setFilterStatus(f.key)}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-
-                {loadingCargo ? (
-                  <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
-                ) : getFilteredConsignments().length === 0 ? (
-                  <div className="text-center py-5 text-muted">
-                    <div style={{ fontSize: '3rem' }}>📦</div>
-                    <p>Không có đơn hàng nào phù hợp với bộ lọc</p>
-                  </div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Mã đơn</th>
-                          <th>Loại dịch vụ</th>
-                          <th>Hành trình</th>
-                          <th>Thông tin hàng</th>
-                          <th>Tài xế / Xe</th>
-                          <th>Thanh toán</th>
-                          <th>Trạng thái</th>
-                          <th>Hành động</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {getFilteredConsignments().map(cargo => {
-                          const orderId = cargo.consignmentId || cargo.id;
-                          const isTruck = cargo.loaiDichVu === 'van_tai';
-                          const isUnassigned = cargo.trangThaiKyGui === 'dang_tim_xe_trong';
-                          const isPaid = cargo.trangThaiThanhToan === 'paid';
-                          const isCancelled = cargo.trangThaiKyGui === 'failed';
-
-                          return (
-                            <tr key={orderId} className={isCancelled ? 'table-danger' : cargo.yeuCauHuy === 'pending' ? 'table-warning' : ''}>
-                              <td className="fw-bold">
-                                #{orderId}
-                                {cargo.isEdited && <div className="badge bg-warning text-dark mt-1 d-block">KHÁCH ĐÃ CHỈNH SỬA</div>}
-                              </td>
-                              <td>
-                                <span className={`badge ${isTruck ? 'bg-dark text-white' : 'bg-primary text-white'}`}>
-                                  {isTruck ? '🚚 Vận tải riêng' : '🚌 Gửi kèm xe khách'}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="fw-bold text-slate-800">{cargo.diemGui} ➔ {cargo.diemNhan}</div>
-                                <div className="text-xs text-slate-500">
-                                  {cargo.tenNguoiNhan} ({cargo.soDienThoaiNguoiNhan})
-                                </div>
-                              </td>
-                              <td>
-                                <div className="fw-semibold text-slate-700">{getLoaiHangLabel(cargo.loaiHangHoa)}</div>
-                                <div className="text-xs text-slate-500">{cargo.trongLuong} kg • {cargo.soLuong} kiện</div>
-                                {isTruck && (
-                                  <span className="badge bg-secondary text-white mt-1">
-                                    {cargo.loaiXeVanTai === 'truck_30t' ? '30 Tấn' : cargo.loaiXeVanTai === 'truck_10t' ? '10 Tấn' : '5 Tấn'}
-                                  </span>
-                                )}
-                              </td>
-                              <td>
-                                {cargo.driverInfo ? (
-                                  <div>
-                                    <div className="fw-semibold text-slate-700 text-xs">{cargo.driverInfo.split('•')[0]}</div>
-                                    <div className="text-xs text-slate-400">{cargo.driverInfo.split('•').slice(1).join('•').trim()}</div>
-                                  </div>
-                                ) : (
-                                  <span className="text-danger text-xs italic">Chưa phân phối</span>
-                                )}
-                              </td>
-                              <td>
-                                <span className={`badge bg-${isPaid ? 'success' : 'secondary'}`}>
-                                  {isPaid ? 'Đã thanh toán' : 'Chờ thanh toán'}
-                                </span>
-                              </td>
-                              <td>{getStatusBadge(cargo.trangThaiKyGui, cargo.yeuCauHuy)}</td>
-                              <td>
-                                <div className="d-flex gap-1 flex-wrap">
-                                  <button
-                                    className="btn btn-sm btn-outline-info py-1 px-2 text-xs"
-                                    onClick={() => handleViewDetail(cargo)}
-                                  >
-                                    👁 Chi tiết
-                                  </button>
-                                  {isTruck && isUnassigned && !isCancelled && (
-                                    <button
-                                      className="btn btn-sm btn-primary py-1 px-2 text-xs fw-bold"
-                                      onClick={() => handleOpenAssignModal(cargo)}
-                                    >
-                                      🚚 Gán xe & Tài xế
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* ====================================================== */}
             {/* TICKET LOOKUP TAB CONTENT */}
@@ -709,17 +582,6 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowDetailModal(false)}>Đóng</button>
-                {selectedCargo.loaiDichVu === 'van_tai' && selectedCargo.trangThaiKyGui === 'dang_tim_xe_trong' && (
-                  <button
-                    className="btn btn-primary fw-bold"
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      handleOpenAssignModal(selectedCargo);
-                    }}
-                  >
-                    🚚 Gán Xe & Tài xế
-                  </button>
-                )}
               </div>
             </div>
           </div>

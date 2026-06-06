@@ -564,6 +564,10 @@ export default function DriverDashboard() {
     const willStartShift = !onShift
     setOnShift(willStartShift)
     
+    if (currentUser && currentUser.id) {
+      localStorage.setItem(`driver_on_shift_${currentUser.id}`, willStartShift ? 'true' : 'false')
+    }
+    
     if (willStartShift) {
       if (currentUser.role === 'TRUCK_DRIVER') {
         toast.success('Chuyển trạng thái sang: Sẵn sàng nhận đơn!')
@@ -2341,23 +2345,19 @@ window.addEventListener('message', function(e) {
                                           
                                           {item.status === 'APPROVED' && item.isConsignment && (
                                             item.paymentStatus === 'paid' ? (
-                                              (currentUser.role === 'TRUCK_DRIVER' || (onShift && trips.some(t => t.status === 'DEPARTED' || t.status === 'INCIDENT'))) ? (
-                                                <div className="flex flex-col items-end gap-1 w-full">
-                                                  <span className="text-[10px] text-amber-600 font-bold block w-full text-right">Chờ đến nhận</span>
-                                                  <Button
-                                                      variant="outline"
-                                                      size="sm"
-                                                      disabled={isCargoUploading && uploadingCargoId === item.id}
-                                                      onClick={() => handleCargoButtonClick(item, 'APPROVED')}
-                                                      className="border-amber-200 text-amber-700 hover:bg-amber-50 h-8 text-xs px-2.5 rounded-lg"
-                                                    >
-                                                      <Camera className="h-3.5 w-3.5 mr-1" />
-                                                      {isCargoUploading && uploadingCargoId === item.id ? 'Đang gửi...' : 'Đã nhận'}
-                                                    </Button>
-                                                </div>
-                                              ) : (
-                                                <span className="text-[10px] text-slate-500 font-bold block w-full text-right">{currentUser.role === 'TRUCK_DRIVER' ? 'Đã thanh toán (Sẵn sàng nhận hàng)' : 'Đã thanh toán (Chờ xuất phát)'}</span>
-                                              )
+                                              <div className="flex flex-col items-end gap-1 w-full">
+                                                <span className="text-[10px] text-amber-600 font-bold block w-full text-right">Chờ đến nhận</span>
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  disabled={isCargoUploading && uploadingCargoId === item.id}
+                                                  onClick={() => handleCargoButtonClick(item, 'APPROVED')}
+                                                  className="border-amber-200 text-amber-700 hover:bg-amber-50 h-8 text-xs px-2.5 rounded-lg"
+                                                >
+                                                  <Camera className="h-3.5 w-3.5 mr-1" />
+                                                  {isCargoUploading && uploadingCargoId === item.id ? 'Đang gửi...' : 'Đã nhận'}
+                                                </Button>
+                                              </div>
                                             ) : (
                                               <span className="text-[10px] text-slate-500 font-bold italic mt-1 text-right block w-full">Chờ KH thanh toán</span>
                                             )
@@ -2365,22 +2365,22 @@ window.addEventListener('message', function(e) {
 
                                           {item.status === 'SHIPPING' && (
                                             <>
-                                                                                              <Button
-                                                    variant="default"
-                                                    size="sm"
-                                                    disabled={isCargoUploading && uploadingCargoId === item.id}
-                                                    onClick={() => {
-                                                      if (item.isConsignment) {
-                                                        handleCargoButtonClick(item, 'SHIPPING');
-                                                      } else {
-                                                        handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, false);
-                                                      }
-                                                    }}
-                                                    className="bg-[#004b87] hover:bg-[#003d70] h-8 text-xs px-2.5 rounded-lg border-none w-full"
-                                                  >
-                                                    {item.isConsignment ? <Camera className="h-3.5 w-3.5 mr-1" /> : <Truck className="h-3.5 w-3.5 mr-1" />}
-                                                    {item.isConsignment && isCargoUploading && uploadingCargoId === item.id ? 'Đang gửi...' : (item.isConsignment ? 'Chụp ảnh giao' : 'Đã giao')}
-                                                  </Button>
+                                              <Button
+                                                variant="default"
+                                                size="sm"
+                                                disabled={isCargoUploading && uploadingCargoId === item.id}
+                                                onClick={() => {
+                                                  if (item.isConsignment) {
+                                                    handleCargoButtonClick(item, 'SHIPPING');
+                                                  } else {
+                                                    handleCargoStatusUpdate(item.id, 'SHIPPING', item.dbId, false);
+                                                  }
+                                                }}
+                                                className="bg-[#004b87] hover:bg-[#003d70] h-8 text-xs px-2.5 rounded-lg border-none"
+                                              >
+                                                {item.isConsignment ? <Camera className="h-3.5 w-3.5 mr-1" /> : <Truck className="h-3.5 w-3.5 mr-1" />}
+                                                {item.isConsignment && isCargoUploading && uploadingCargoId === item.id ? 'Đang gửi...' : 'Đã giao'}
+                                              </Button>
                                               <Button
                                                 variant="outline"
                                                 size="sm"

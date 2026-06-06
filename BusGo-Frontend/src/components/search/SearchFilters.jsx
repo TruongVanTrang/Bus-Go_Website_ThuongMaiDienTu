@@ -24,7 +24,7 @@ import {
   FiGrid
 } from 'react-icons/fi'
 
-export default function SearchFilters({ filters, setFilters, isOpen, onClose }) {
+export default function SearchFilters({ filters, setFilters, isOpen, onClose, mobileOnly = false, desktopOnly = false }) {
   const getPriceConfig = () => {
     if (filters?.category === 'city') {
       return { maxLimit: 100000, step: 5000, defaultMax: 100000 }
@@ -529,12 +529,14 @@ export default function SearchFilters({ filters, setFilters, isOpen, onClose }) 
   return (
     <>
       {/* Desktop Sidebar Layout */}
-      <div className="hidden lg:flex bg-white rounded-[28px] border border-slate-200/80 shadow-md flex-col h-[calc(100vh-120px)] sticky top-24 overflow-hidden">
-        {renderFilterContent(false)}
-      </div>
+      {!mobileOnly && (
+        <div className="hidden lg:flex bg-white rounded-[28px] border border-slate-200/80 shadow-md flex-col h-[calc(100vh-120px)] sticky top-24 overflow-hidden">
+          {renderFilterContent(false)}
+        </div>
+      )}
 
       {/* Mobile Drawer Layout */}
-      {isOpen && (
+      {!desktopOnly && isOpen && (
         <div className="lg:hidden fixed inset-0 z-[100] flex items-end justify-center">
           {/* Backdrop overlay */}
           <div 

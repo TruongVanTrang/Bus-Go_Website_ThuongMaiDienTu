@@ -711,6 +711,7 @@ BEGIN
         kg.tenNguoiNhan,
         kg.soDienThoaiNguoiNhan,
         kg.trangThaiKyGui,
+        kg.trangThaiThanhToan,
         kg.soLuong,
         kg.trongLuong,
         kg.loaiHangHoa,

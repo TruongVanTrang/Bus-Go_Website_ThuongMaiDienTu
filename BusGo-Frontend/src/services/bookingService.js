@@ -73,14 +73,17 @@ export const getTicketDetailAPI = async (token, bookingId) => {
 }
 
 /**
- * Hủy đặt vé
+ * Hủy đặt vé - Tạo yêu cầu hủy cho nhân viên support duyệt
  * @param {string} token - JWT Token
  * @param {string} bookingId - Mã đặt vé
+ * @param {string} cancelReason - Lý do hủy vé
  * @returns {Promise<object>} response - Kết quả trả về từ backend
  */
-export const cancelBookingAPI = async (token, bookingId) => {
+export const cancelBookingAPI = async (token, bookingId, cancelReason = '') => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/bookings/${bookingId}/cancel`, {}, {
+    const response = await axios.post(`${API_BASE_URL}/bookings/${bookingId}/cancel`, {
+      cancelReason
+    }, {
       headers: {
         Authorization: `Bearer ${token}`
       }

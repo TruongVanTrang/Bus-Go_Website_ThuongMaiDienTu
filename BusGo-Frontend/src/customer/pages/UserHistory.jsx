@@ -22,6 +22,7 @@ export default function UserHistory() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelRequest, setCancelRequest] = useState(null)
+  const [cancelReason, setCancelReason] = useState('')
   const [showRatingModal, setShowRatingModal] = useState(false)
   const [ratingValue, setRatingValue] = useState(0)
   const [ratingComment, setRatingComment] = useState('')
@@ -138,6 +139,7 @@ export default function UserHistory() {
   // Get trip status based on DB tripStatus
   const getTripStatus = (booking) => {
     if (booking.status === 'Da huy') return 'cancelled'
+    if (booking.status === 'Cho xu ly huy') return 'pending_cancellation'
 
     if (booking.tripStatus === 'da_len_lich') return 'upcoming'
     if (booking.tripStatus === 'dang_khoi_hanh') return 'in_transit'
@@ -158,6 +160,11 @@ export default function UserHistory() {
 
   // Check if cancellation is allowed
   const canCancelBooking = (booking) => {
+    // Không thể hủy nếu đã ở trạng thái "Cho xu ly huy" hoặc "Da huy"
+    if (booking.status === 'Cho xu ly huy' || booking.status === 'Da huy') {
+      return false
+    }
+
     const departureDate = parseDateTimeUTC(booking.date, booking.departureTime)
     const now = new Date()
     return departureDate > now && booking.status === 'Da thanh toan'
@@ -199,6 +206,7 @@ export default function UserHistory() {
 
   const handleCancelRequest = (booking) => {
     setCancelRequest(booking)
+    setCancelReason('')
     setShowCancelModal(true)
   }
 
@@ -210,17 +218,18 @@ export default function UserHistory() {
           navigate('/login')
           return
         }
-        await cancelBookingAPI(token, cancelRequest.id)
-        const refundAmount = calculateRefund(cancelRequest)
+        await cancelBookingAPI(token, cancelRequest.id, cancelReason)
         setBookings(prev =>
           prev.map(b =>
             b.id === cancelRequest.id
-              ? { ...b, status: 'Da huy', refundAmount }
+              ? { ...b, status: 'Cho xu ly huy', cancellationRequest: { trangThai: 'pending' } }
               : b
           )
         )
         setShowCancelModal(false)
         setCancelRequest(null)
+        setCancelReason('')
+        alert('Yêu cầu hủy vé đã được gửi. Nhân viên support sẽ xử lý sớm nhất.')
       } catch (err) {
         console.error('Lỗi khi hủy đặt vé:', err)
         alert(err.message || 'Lỗi khi hủy đặt vé. Vui lòng thử lại.')
@@ -488,6 +497,7 @@ export default function UserHistory() {
                 { key: 'upcoming',   label: `Sắp khởi hành (${bookings.filter(b => getTripStatus(b) === 'upcoming').length})` },
                 { key: 'in_transit', label: `Đang di chuyển (${bookings.filter(b => getTripStatus(b) === 'in_transit').length})` },
                 { key: 'completed',  label: `Hoàn thành (${bookings.filter(b => getTripStatus(b) === 'completed').length})` },
+                { key: 'pending_cancellation', label: `Chờ xử lý hủy (${bookings.filter(b => getTripStatus(b) === 'pending_cancellation').length})` },
                 { key: 'cancelled',  label: `Đã hủy (${bookings.filter(b => getTripStatus(b) === 'cancelled').length})` },
               ].map(f => (
                 <button
@@ -927,11 +937,11 @@ export default function UserHistory() {
 
       {/* ══ MODAL: Hủy vé ════════════════════════════════════════════════ */}
       {showCancelModal && cancelRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowCancelModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => { setShowCancelModal(false); setCancelReason('') }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <h3 className="font-extrabold text-slate-800 text-xl">Xác nhận hủy vé</h3>
-              <button onClick={() => setShowCancelModal(false)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors"><FiX size={20} /></button>
+              <button onClick={() => { setShowCancelModal(false); setCancelReason('') }} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-colors"><FiX size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
               <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">
@@ -949,7 +959,7 @@ export default function UserHistory() {
               <textarea rows={3} value={cancelReason} onChange={e => setCancelReason(e.target.value)} placeholder="Lý do hủy vé (tùy chọn)..." className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-400" />
             </div>
             <div className="flex gap-3 p-6 border-t border-slate-100">
-              <button onClick={() => setShowCancelModal(false)} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-sm transition-colors">Quay lại</button>
+              <button onClick={() => { setShowCancelModal(false); setCancelReason('') }} className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-sm transition-colors">Quay lại</button>
               <button onClick={confirmCancel} className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm transition-colors">Xác nhận hủy vé</button>
             </div>
           </div>

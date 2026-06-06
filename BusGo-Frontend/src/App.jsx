@@ -98,6 +98,7 @@ function App() {
         <Route path="/admin/staff/passengers" element={<StaffProtectedRoute><TicketStaffPage /></StaffProtectedRoute>} />
 
         {/* SUPPORT STAFF ROUTES */}
+        <Route path="/admin/support/cargo-assign" element={<StaffProtectedRoute><SupportCargoPage defaultTab="cargo-assign" /></StaffProtectedRoute>} />
         <Route path="/admin/support/lookup" element={<StaffProtectedRoute><SupportCargoPage defaultTab="lookup" /></StaffProtectedRoute>} />
         <Route path="/admin/support/refund" element={<StaffProtectedRoute><SupportCargoPage defaultTab="refund" /></StaffProtectedRoute>} />
 

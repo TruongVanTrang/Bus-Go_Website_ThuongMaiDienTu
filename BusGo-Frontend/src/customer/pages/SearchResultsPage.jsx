@@ -321,7 +321,7 @@ export default function SearchResultsPage() {
           
           {/* Filters Sidebar - Left Column (Desktop) */}
           <div className="hidden lg:block lg:col-span-3">
-            <SearchFilters filters={filters} setFilters={setFilters} desktopOnly />
+            <SearchFilters filters={filters} setFilters={setFilters} />
           </div>
 
           {/* Results - Right Column */}
@@ -422,7 +422,6 @@ export default function SearchResultsPage() {
         setFilters={setFilters} 
         isOpen={isMobileFilterOpen}
         onClose={() => setIsMobileFilterOpen(false)}
-        mobileOnly
       />
     </div>
   )

@@ -908,6 +908,38 @@ export default function EditConsignmentPage() {
                         <span className="text-primary">📍</span> Chọn Dịch Vụ & Tuyến Đường
                       </h3>
 
+                      {/* Service Type Buttons */}
+                      <div className="mb-4">
+                        <label className="form-label fw-bold text-slate-700">Hình Thức Gửi Hàng</label>
+                        <div className="row g-3">
+                          <div className="col-md-6">
+                            <button
+                              type="button"
+                              className={`service-btn p-4 rounded-3 w-100 ${serviceType === 'gui_kem' ? 'active' : ''}`}
+                              onClick={() => {
+                                setServiceType('gui_kem')
+                                setSelectedTripId(null)
+                              }}
+                            >
+                              <span className="fs-2 block mb-2">🚌</span>
+                              <span className="d-block fw-bold text-slate-800 text-sm">Gửi Kèm Xe Khách</span>
+                              <span className="text-[11px] text-slate-500 d-block mt-1">Gửi hàng theo các chuyến xe khách chạy hàng ngày, giá rẻ tối ưu.</span>
+                            </button>
+                          </div>
+                          <div className="col-md-6">
+                            <button
+                              type="button"
+                              className={`service-btn p-4 rounded-3 w-100 ${serviceType === 'van_tai' ? 'active' : ''}`}
+                              onClick={() => setServiceType('van_tai')}
+                            >
+                              <span className="fs-2 block mb-2">🚚</span>
+                              <span className="d-block fw-bold text-slate-800 text-sm">Thuê Xe Vận Tải Riêng</span>
+                              <span className="text-[11px] text-slate-500 d-block mt-1">Bao trọn xe tải nhỏ/lớn để chuyển hàng cồng kềnh, nhận tận nơi.</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Route selector dropdowns */}
                       <div className="row g-3 mb-3">
                         <div className="col-md-6">

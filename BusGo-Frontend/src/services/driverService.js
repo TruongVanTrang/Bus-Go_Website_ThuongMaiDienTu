@@ -95,26 +95,15 @@ export const updateCargoStatusAPI = async (cargoId, status, imageUrl = null) => 
 // Upload ảnh
 export const uploadImageAPI = async (file) => {
   try {
-    const token = StorageUtil.getToken()
     const formData = new FormData();
     formData.append('image', file);
-
-    const response = await fetch(`${API_BASE_URL}/upload`, {
-      method: 'POST',
+    const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
       headers: {
-        Authorization: `Bearer ${token}`
-      },
-      body: formData
+        ...getAuthHeaders().headers
+      }
     });
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.message || 'Lỗi tải ảnh');
-    }
-
-    return await response.json();
+    return response.data;
   } catch (error) {
-    console.error('Lỗi uploadImageAPI:', error);
-    throw error;
+    throw error.response?.data || { message: 'Lỗi tải ảnh' }
   }
 }

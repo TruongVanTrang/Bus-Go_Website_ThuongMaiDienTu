@@ -10,7 +10,7 @@
   --orange: #fb8c00;
   --teal: #00897b;
   --purple: #7b1fa2;
-  --bg-page: #f3f6fb;
+  --bg-page: #f8fafc; /* matches Driver page's bg-slate-50 */
   --border: #e5e7eb;
   --text-dark: #111827;
   --text-medium: #374151;

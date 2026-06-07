@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { FiCheckCircle, FiXCircle, FiAlertCircle } from 'react-icons/fi'
 import { StorageUtil } from '../../utils/helpers'
 import { cancelBookingAPI } from '../../services/bookingService'
+import { cancelConsignmentAPI } from '../../services/cargoService'
 
 export default function VNPayReturnPage() {
   const location = useLocation()
@@ -50,11 +51,16 @@ export default function VNPayReturnPage() {
         // Hủy đơn hàng để nhả ghế nếu thanh toán thất bại
         const token = StorageUtil.getToken()
         if (token && params.vnp_TxnRef) {
-          cancelBookingAPI(token, params.vnp_TxnRef)
-            .then(() => {
-              sessionStorage.removeItem('pendingVNPayBooking')
-            })
-            .catch(console.error)
+          if (params.vnp_TxnRef.startsWith('CSM')) {
+            cancelConsignmentAPI(params.vnp_TxnRef, token)
+              .catch(console.error)
+          } else {
+            cancelBookingAPI(token, params.vnp_TxnRef)
+              .then(() => {
+                sessionStorage.removeItem('pendingVNPayBooking')
+              })
+              .catch(console.error)
+          }
         }
       }
     } else {

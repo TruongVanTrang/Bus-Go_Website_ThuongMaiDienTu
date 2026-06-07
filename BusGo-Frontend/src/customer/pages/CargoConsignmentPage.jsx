@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { FiCheckCircle, FiArrowRight, FiDownload, FiEdit2, FiAlertCircle, FiCamera, FiUpload, FiTrash2, FiPrinter, FiX, FiLock, FiInfo } from 'react-icons/fi'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { FiCheckCircle, FiArrowRight, FiDownload, FiEdit2, FiAlertCircle, FiCamera, FiUpload, FiTrash2, FiPrinter, FiX, FiLock, FiInfo, FiClock } from 'react-icons/fi'
 import { MdDirectionsBus, MdLocalShipping, MdCreditCard } from 'react-icons/md'
 import QRCode from 'qrcode.react'
 import Stepper from '../../components/common/Stepper'
@@ -10,6 +10,48 @@ import './CargoConsignmentPage.css'
 
 export default function CargoConsignmentPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Tự động load dữ liệu từ Đặt lại đơn
+  useEffect(() => {
+    if (location.state && location.state.reorderData) {
+      const c = location.state.reorderData;
+      setServiceType('gui_kem');
+      setSelectedTripId(c.maChuyenXe);
+      
+      setRouteData({
+        from: c.diemGui || '',
+        to: c.diemNhan || '',
+        date: '', // Khách hàng phải tự chọn lại ngày
+        senderAddress: c.diaChiGuiChiTiet || '',
+        receiverAddress: c.diaChiNhanChiTiet || ''
+      });
+      
+      setCargoData({
+        type: c.loaiHangHoa || 'documents',
+        weight: c.trongLuong || '',
+        quantity: c.soLuong || 1,
+        images: c.hinhAnh || []
+      });
+      
+      setPersonData({
+        senderName: c.tenNguoiGui || '',
+        senderPhone: c.soDienThoaiNguoiGui || '',
+        senderCCCD: c.soCCCD || '',        senderEmail: c.emailNguoiGui || '',
+        receiverName: c.tenNguoiNhan || '',
+        receiverPhone: c.soDienThoaiNguoiNhan || ''
+      });
+    } else if (location.state && location.state.payNowData) {
+      const c = location.state.payNowData;
+      setActiveConsignmentId(c.consignmentId);
+      setActiveConsignment(c);
+      setConsignmentStatus('da_xac_nhan');
+      setIsConfirmed(true);
+      setCurrentStep(5);
+    }
+  }, [location.state]);
+  const [isEditingMode, setIsEditingMode] = useState(false)
+  const [editingId, setEditingId] = useState(null)
   const canvasRef = useRef(null)
   const qrRef = useRef(null)
   const videoRef = useRef(null)
@@ -452,12 +494,10 @@ export default function CargoConsignmentPage() {
         }
 
         setTimeout(() => {
-          navigate('/cargo-payment', {
-            state: {
-              activeConsignmentId: savedId,
-              activeConsignment: fullConsignment
-            }
-          })
+          setConfirmLoading(false)
+          setActiveConsignmentId(savedId)
+          setActiveConsignment(fullConsignment)
+          setCurrentStep(5)
         }, 800)
       } else {
         const errData = await response.json()
@@ -536,45 +576,15 @@ export default function CargoConsignmentPage() {
   }, [currentStep, activeConsignmentId, isConfirmed])
 
   // Payment confirmation click
-  const handlePaymentConfirm = async () => {
-    setPaymentLoading(true)
-
-    // 1. Call Backend Payment API
-    let success = false
-    try {
-      const response = await fetch(`http://localhost:5000/api/cargo/consignment/${activeConsignmentId}/pay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentMethod: selectedPaymentMethod })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setActiveConsignment(data.consignment)
-        success = true
-      }
-    } catch (err) {
-      console.warn('Backend payment endpoint offline. Processing local mock payment.')
-    }
-
-    // 2. Update local storage to synchronize offline prototypes
-    const list = JSON.parse(localStorage.getItem('busgo_consignments') || '[]')
-    const idx = list.findIndex(item => item.id === activeConsignmentId)
-    if (idx !== -1) {
-      list[idx].trangThaiThanhToan = 'paid'
-      list[idx].ngayCapNhat = new Date().toISOString()
-      localStorage.setItem('busgo_consignments', JSON.stringify(list))
-      window.dispatchEvent(new Event('storage'))
-
-      if (!success) {
-        setActiveConsignment(list[idx])
-      }
-    }
-
-    setTimeout(() => {
-      setPaymentLoading(false)
-      setIsConfirmed(true) // Display the final printable E-Receipt
-    }, 1500)
+  const handlePaymentConfirm = () => {
+    navigate('/cargo-payment', { 
+      state: { 
+        activeConsignment: {
+          id: activeConsignmentId,
+          ...activeConsignment
+        }
+      } 
+    })
   }
 
   // Parse receipt statuses
@@ -896,7 +906,7 @@ export default function CargoConsignmentPage() {
           { title: 'Tuyến đường', description: 'Chọn tuyến & dịch vụ' },
           { title: 'Hàng hóa', description: 'Khai báo & Đính kèm' },
           { title: 'Người gửi/nhận', description: 'CCCD & Liên hệ' },
-          { title: 'Phê duyệt & Trả phí', description: 'Ký số & Thanh toán' }
+          { title: 'Phê duyệt & Trả phí', description: isEditingMode ? 'Ký số & Cập nhật' : 'Ký số & Thanh toán' }
         ]}
       />
 
@@ -937,37 +947,6 @@ export default function CargoConsignmentPage() {
                         <span className="flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 text-xl shadow-inner">📍</span>
                         Chọn Dịch Vụ & Tuyến Đường
                       </h3>
-
-                      {/* Service Type Buttons */}
-                      <div className="mb-10">
-                        <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Hình Thức Gửi Hàng</label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <button
-                            type="button"
-                            className={`group relative overflow-hidden text-left p-6 rounded-2xl border-2 transition-all duration-300 ${serviceType === 'gui_kem' ? 'border-blue-500 bg-blue-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}
-                            onClick={() => {
-                              setServiceType('gui_kem')
-                              setSelectedTripId(null)
-                            }}
-                          >
-                            {serviceType === 'gui_kem' && <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500 opacity-10 rounded-bl-full rounded-tr-xl"></div>}
-                            <span className="text-4xl block mb-4 group-hover:scale-110 transition-transform origin-left">🚌</span>
-                            <span className={`block font-black text-lg mb-2 ${serviceType === 'gui_kem' ? 'text-blue-700' : 'text-slate-800'}`}>Gửi Kèm Xe Khách</span>
-                            <span className="text-sm text-slate-500 leading-relaxed">Gửi hàng theo các chuyến xe khách chạy hàng ngày, giá rẻ tối ưu.</span>
-                          </button>
-                          
-                          <button
-                            type="button"
-                            className={`group relative overflow-hidden text-left p-6 rounded-2xl border-2 transition-all duration-300 ${serviceType === 'van_tai' ? 'border-indigo-500 bg-indigo-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm'}`}
-                            onClick={() => setServiceType('van_tai')}
-                          >
-                            {serviceType === 'van_tai' && <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500 opacity-10 rounded-bl-full rounded-tr-xl"></div>}
-                            <span className="text-4xl block mb-4 group-hover:scale-110 transition-transform origin-left">🚚</span>
-                            <span className={`block font-black text-lg mb-2 ${serviceType === 'van_tai' ? 'text-indigo-700' : 'text-slate-800'}`}>Thuê Xe Vận Tải Riêng</span>
-                            <span className="text-sm text-slate-500 leading-relaxed">Bao trọn xe tải nhỏ/lớn để chuyển hàng cồng kềnh, nhận tận nơi.</span>
-                          </button>
-                        </div>
-                      </div>
 
                       {/* Route selector dropdowns */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -1567,78 +1546,109 @@ export default function CargoConsignmentPage() {
                         <span className="text-3xl">💳</span> Thanh Toán Cước Vận Chuyển
                       </h4>
                       
-                      {/* Payment Choice */}
-                      <div className="mb-8">
-                        <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Phương thức thanh toán</label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'momo' ? 'border-pink-500 bg-pink-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-pink-300 hover:shadow-sm'}`}>
-                            <input
-                              type="radio"
-                              name="pay-waiting"
-                              value="momo"
-                              className="w-5 h-5 text-pink-600 focus:ring-pink-500 border-slate-300"
-                              checked={selectedPaymentMethod === 'momo'}
-                              onChange={() => setSelectedPaymentMethod('momo')}
-                            />
-                            <div>
-                              <strong className="text-slate-800 text-base block mb-0.5">📱 Ví Điện Tử MoMo</strong>
-                              <span className="text-xs text-slate-500">Trả qua app MoMo</span>
-                            </div>
-                            {selectedPaymentMethod === 'momo' && <div className="absolute top-4 right-4 text-pink-500"><FiCheckCircle size={20} /></div>}
-                          </label>
+                      {['dang_cho_xac_nhan', 'dang_tim_xe_trong', 'pending'].includes(consignmentStatus) ? (
+                        <div className="pt-8 border-t border-slate-100 flex flex-col items-center gap-4 text-center">
+                          <div className="w-16 h-16 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mb-2">
+                            <FiClock size={32} />
+                          </div>
+                          <strong className="text-amber-600 text-xl font-black tracking-tight">Đang Chờ Phê Duyệt</strong>
+                          <p className="text-slate-500 max-w-md">
+                            Đơn hàng của bạn đã được gửi thành công và đang chờ xác nhận từ {serviceType === 'gui_kem' ? 'tài xế' : 'nhân viên điều phối'}. Bạn sẽ nhận được thông báo ngay khi đơn hàng được duyệt để tiến hành thanh toán.
+                          </p>
+                          <div className="flex gap-4 mt-4">
+                            <button
+                              type="button"
+                              className="bg-white border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-bold px-6 py-3 rounded-xl transition-all"
+                              onClick={handleCancelConsignment}
+                              disabled={paymentLoading}
+                            >
+                              Hủy Đơn
+                            </button>
+                            <button
+                              type="button"
+                              className="bg-emerald-50 text-emerald-600 border-2 border-emerald-200 hover:bg-emerald-100 font-bold px-8 py-3 rounded-xl transition-all"
+                              onClick={() => navigate('/history')}
+                            >
+                              Về Lịch Sử
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Payment Choice */}
+                          <div className="mb-8">
+                            <label className="block text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Phương thức thanh toán</label>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'momo' ? 'border-pink-500 bg-pink-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-pink-300 hover:shadow-sm'}`}>
+                                <input
+                                  type="radio"
+                                  name="pay-waiting"
+                                  value="momo"
+                                  className="w-5 h-5 text-pink-600 focus:ring-pink-500 border-slate-300"
+                                  checked={selectedPaymentMethod === 'momo'}
+                                  onChange={() => setSelectedPaymentMethod('momo')}
+                                />
+                                <div>
+                                  <strong className="text-slate-800 text-base block mb-0.5">📱 Ví Điện Tử MoMo</strong>
+                                  <span className="text-xs text-slate-500">Trả qua app MoMo</span>
+                                </div>
+                                {selectedPaymentMethod === 'momo' && <div className="absolute top-4 right-4 text-pink-500"><FiCheckCircle size={20} /></div>}
+                              </label>
 
-                          <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'visa' ? 'border-blue-500 bg-blue-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}>
-                            <input
-                              type="radio"
-                              name="pay-waiting"
-                              value="visa"
-                              className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-slate-300"
-                              checked={selectedPaymentMethod === 'visa'}
-                              onChange={() => setSelectedPaymentMethod('visa')}
-                            />
-                            <div>
-                              <strong className="text-slate-800 text-base block mb-0.5">💳 Thẻ Visa/Mastercard</strong>
-                              <span className="text-xs text-slate-500">Cổng thanh toán thẻ quốc tế</span>
+                              <label className={`relative p-5 rounded-2xl border-2 flex items-center gap-4 cursor-pointer transition-all duration-300 ${selectedPaymentMethod === 'visa' ? 'border-blue-500 bg-blue-50 shadow-md transform -translate-y-1' : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm'}`}>
+                                <input
+                                  type="radio"
+                                  name="pay-waiting"
+                                  value="visa"
+                                  className="w-5 h-5 text-blue-600 focus:ring-blue-500 border-slate-300"
+                                  checked={selectedPaymentMethod === 'visa'}
+                                  onChange={() => setSelectedPaymentMethod('visa')}
+                                />
+                                <div>
+                                  <strong className="text-slate-800 text-base block mb-0.5">💳 Thẻ Visa/Mastercard</strong>
+                                  <span className="text-xs text-slate-500">Cổng thanh toán thẻ quốc tế</span>
+                                </div>
+                                {selectedPaymentMethod === 'visa' && <div className="absolute top-4 right-4 text-blue-500"><FiCheckCircle size={20} /></div>}
+                              </label>
                             </div>
-                            {selectedPaymentMethod === 'visa' && <div className="absolute top-4 right-4 text-blue-500"><FiCheckCircle size={20} /></div>}
-                          </label>
-                        </div>
-                      </div>
+                          </div>
 
-                      {/* Pay button */}
-                      <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                        <div className="text-center md:text-left">
-                          <span className="text-slate-400 text-[10px] font-bold block uppercase tracking-wider mb-1">Tổng số tiền cần thanh toán</span>
-                          <strong className="text-emerald-600 text-4xl font-black tracking-tight">{formatVND(getTotalPrice())}</strong>
-                        </div>
-                        <div className="flex gap-4 w-full md:w-auto">
-                          <button
-                            type="button"
-                            className="w-full md:w-auto bg-white border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-bold px-6 py-4 rounded-xl transition-all"
-                            onClick={handleCancelConsignment}
-                            disabled={paymentLoading}
-                          >
-                            Hủy Đơn
-                          </button>
-                          <button
-                            type="button"
-                            className="w-full md:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black px-8 py-4 rounded-xl shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5"
-                            disabled={paymentLoading}
-                            onClick={handlePaymentConfirm}
-                          >
-                            {paymentLoading ? (
-                              <>
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                Đang giao dịch...
-                              </>
-                            ) : (
-                              <>
-                                <MdCreditCard size={20} /> Thanh toán ngay
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
+                          {/* Pay button */}
+                          <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                            <div className="text-center md:text-left">
+                              <span className="text-slate-400 text-[10px] font-bold block uppercase tracking-wider mb-1">Tổng số tiền cần thanh toán</span>
+                              <strong className="text-emerald-600 text-4xl font-black tracking-tight">{formatVND(getTotalPrice())}</strong>
+                            </div>
+                            <div className="flex gap-4 w-full md:w-auto">
+                              <button
+                                type="button"
+                                className="w-full md:w-auto bg-white border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 font-bold px-6 py-4 rounded-xl transition-all"
+                                onClick={handleCancelConsignment}
+                                disabled={paymentLoading}
+                              >
+                                Hủy Đơn
+                              </button>
+                              <button
+                                type="button"
+                                className="w-full md:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black px-8 py-4 rounded-xl shadow-lg hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5"
+                                disabled={paymentLoading}
+                                onClick={handlePaymentConfirm}
+                              >
+                                {paymentLoading ? (
+                                  <>
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Đang giao dịch...
+                                  </>
+                                ) : (
+                                  <>
+                                    <MdCreditCard size={16} /> {isEditingMode ? 'Cập nhật' : 'Thanh toán'} ngay
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
 
                     </div>
                   )}

@@ -9,6 +9,7 @@ import BookingPage from './customer/pages/BookingPage'
 import PaymentPage from './customer/pages/PaymentPage'
 import VNPayReturnPage from './customer/pages/VNPayReturnPage'
 import CargoConsignmentPage from './customer/pages/CargoConsignmentPage'
+import EditConsignmentPage from './customer/pages/EditConsignmentPage'
 import CargoPaymentPage from './customer/pages/CargoPaymentPage'
 import ETicketPage from './customer/pages/ETicketPage'
 import UserHistory from './customer/pages/UserHistory'
@@ -97,7 +98,6 @@ function App() {
         <Route path="/admin/staff/passengers" element={<StaffProtectedRoute><TicketStaffPage /></StaffProtectedRoute>} />
 
         {/* SUPPORT STAFF ROUTES */}
-        <Route path="/admin/support/cargo-assign" element={<StaffProtectedRoute><SupportCargoPage defaultTab="cargo-assign" /></StaffProtectedRoute>} />
         <Route path="/admin/support/lookup" element={<StaffProtectedRoute><SupportCargoPage defaultTab="lookup" /></StaffProtectedRoute>} />
         <Route path="/admin/support/refund" element={<StaffProtectedRoute><SupportCargoPage defaultTab="refund" /></StaffProtectedRoute>} />
 
@@ -119,6 +119,7 @@ function App() {
         <Route path="/payment" element={<PageLayout><PaymentPage /></PageLayout>} />
         <Route path="/vnpay-return" element={<PageLayout><VNPayReturnPage /></PageLayout>} />
         <Route path="/cargo-consignment" element={<PageLayout><CargoConsignmentPage /></PageLayout>} />
+        <Route path="/edit-consignment" element={<PageLayout><EditConsignmentPage /></PageLayout>} />
         <Route path="/cargo-payment" element={<PageLayout><CargoPaymentPage /></PageLayout>} />
         <Route path="/ticket/:bookingId" element={<PageLayout><ETicketPage /></PageLayout>} />
         <Route path="/history" element={<PageLayout><UserHistory /></PageLayout>} />

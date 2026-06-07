@@ -37,7 +37,8 @@ const createToastElement = (message, type = 'info', duration = 4000, action = nu
     success: { bg: '#10b981', icon: '✓' },
     error: { bg: '#ef4444', icon: '✕' },
     warning: { bg: '#f59e0b', icon: '!' },
-    info: { bg: '#3b82f6', icon: 'ℹ' }
+    info: { bg: '#3b82f6', icon: 'ℹ' },
+    loading: { bg: '#6b7280', icon: '⏳' }
   }
   
   const color = colors[type] || colors.info
@@ -183,6 +184,15 @@ export const toast = {
   // For permanent notifications (must be manually closed)
   permanent: (message, type = 'info', action = null) => {
     createToastElement(message, type, -1, action)
+  },
+  loading: (message) => {
+    const { id } = createToastElement(message, 'loading', -1)
+    return id
+  },
+  dismiss: (id) => {
+    if (id !== undefined && id !== null) {
+      removeToast(id)
+    }
   }
 }
 

@@ -498,19 +498,25 @@ const getTicketDetail = async (req, res) => {
   }
 };
 
-// @desc    Hủy đặt vé
+// @desc    Hủy đặt vé - Tạo yêu cầu hủy cho nhân viên support duyệt
 // @route   POST /api/bookings/:id/cancel
 // @access  Private
 const cancelBooking = async (req, res) => {
   const { id } = req.params;
+  const { cancelReason } = req.body;
+  const maKhachHang = req.user.id;
+  
   try {
     const pool = getPool();
     
+    // 1. Lấy tất cả vé thuộc booking này
     const ticketsResult = await pool.request()
       .input('bookingId', sql.VarChar, id)
       .query(`
-        SELECT maVe, maGhe, maChuyenXe FROM VeDienTu 
-        WHERE maQR LIKE @bookingId + '%' OR CAST(maVe AS VARCHAR) = @bookingId
+        SELECT vdt.maVe, vdt.maGhe, vdt.maChuyenXe, vdt.giaVe, vdt.trangThaiVe, cr.maYeuCau, cr.trangThai
+        FROM VeDienTu vdt
+        LEFT JOIN CancellationRequest cr ON vdt.maVe = cr.maVe
+        WHERE vdt.maQR LIKE @bookingId + '%' OR CAST(vdt.maVe AS VARCHAR) = @bookingId
       `);
 
     const tickets = ticketsResult.recordset;
@@ -518,26 +524,58 @@ const cancelBooking = async (req, res) => {
       return res.status(404).json({ message: 'Không tìm thấy vé cần hủy' });
     }
 
+    // 2. Kiểm tra điều kiện hủy
+    // - Vé phải ở trạng thái "da_thanh_toan"
+    // - Chuyến xe phải chưa khởi hành
+    for (const t of tickets) {
+      if (t.trangThaiVe !== 'da_thanh_toan' && t.trangThaiVe !== 'da_dat') {
+        return res.status(400).json({ message: 'Vé không thể hủy vì đã ở trạng thái: ' + t.trangThaiVe });
+      }
+
+      // Kiểm tra xem đã có yêu cầu hủy pending chưa
+      if (t.maYeuCau && (t.trangThai === 'pending' || t.trangThai === 'approved')) {
+        return res.status(400).json({ message: 'Vé này đã có yêu cầu hủy đang chờ xử lý' });
+      }
+    }
+
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
 
     try {
+      // Chỉ tạo 1 CancellationRequest cho vé đầu tiên (đại diện cho cả booking)
+      const firstTicket = tickets[0];
+      let totalPrice = 0;
+
       for (const t of tickets) {
-        // 1. Cập nhật trạng thái vé
+        totalPrice += Number(t.giaVe || 0);
+      }
+
+      // 3. Tạo CancellationRequest với trạng thái 'pending' (chờ nhân viên support duyệt)
+      await transaction.request()
+        .input('maVe', sql.Int, firstTicket.maVe)
+        .input('maKhachHang', sql.Int, maKhachHang)
+        .input('lyDoHuy', sql.NVarChar, cancelReason || 'Yêu cầu hủy từ khách hàng')
+        .input('giaVeGoc', sql.Decimal(18, 2), totalPrice)
+        .query(`
+          INSERT INTO CancellationRequest 
+            (maVe, maKhachHang, lyDoHuy, trangThai, trangThaiHoan, giaVeGoc, soTienHoan)
+          VALUES 
+            (@maVe, @maKhachHang, @lyDoHuy, 'pending', 'pending', @giaVeGoc, 0)
+        `);
+
+      // 4. Cập nhật trạng thái vé thành "cho_xu_ly_huy" (chờ xử lý hủy)
+      for (const t of tickets) {
         await transaction.request()
           .input('maVe', sql.Int, t.maVe)
-          .query("UPDATE VeDienTu SET trangThaiVe = 'da_huy', ngayCapNhat = GETDATE() WHERE maVe = @maVe");
-
-        // 2. Giải phóng ghế ngồi
-        if (t.maGhe) {
-          await transaction.request()
-            .input('maGhe', sql.Int, t.maGhe)
-            .query("UPDATE GheNgoi SET trangThaiGhe = 'trong' WHERE maGhe = @maGhe");
-        }
+          .query("UPDATE VeDienTu SET trangThaiVe = 'cho_xu_ly_huy', ngayCapNhat = GETDATE() WHERE maVe = @maVe");
       }
 
       await transaction.commit();
-      res.json({ message: 'Hủy vé thành công' });
+      
+      res.json({ 
+        message: 'Yêu cầu hủy vé đã được gửi. Nhân viên support sẽ xử lý sớm nhất.',
+        status: 'pending'
+      });
     } catch (err) {
       await transaction.rollback();
       throw err;

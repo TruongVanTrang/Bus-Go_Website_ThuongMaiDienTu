@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { FiRefreshCw, FiSearch, FiAlertTriangle, FiLoader, FiFilter, FiCalendar, FiMapPin } from 'react-icons/fi'
+import { BUS_CATEGORIES, CITY_STOPS, INTERCITY_ROUTES } from '../../utils/constants'
+import { AuthUtil } from '../../utils/helpers'
 import TripCard from '../../components/search/TripCard'
 import SearchFilters from '../../components/search/SearchFilters'
 import { searchTrips } from '../../services/tripService'
-import { FiRefreshCw, FiSearch, FiAlertTriangle, FiLoader } from 'react-icons/fi'
-import { AuthUtil } from '../../utils/helpers'
 
 export default function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -26,6 +27,74 @@ export default function SearchResultsPage() {
     to: searchParams.get('to') || location.state?.to || '',
     departureDate: searchParams.get('date') || ''
   })
+
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+
+  // Local state for the horizontal search bar to commit on button click
+  const [searchFrom, setSearchFrom] = useState(filters.from)
+  const [searchTo, setSearchTo] = useState(filters.to)
+  const [searchDate, setSearchDate] = useState(filters.departureDate)
+  const [searchCategory, setSearchCategory] = useState(filters.category)
+
+  // Synchronize top search bar parameters if they update from parent or URL
+  useEffect(() => {
+    setSearchFrom(filters.from)
+    setSearchTo(filters.to)
+    setSearchDate(filters.departureDate)
+    setSearchCategory(filters.category)
+  }, [filters.from, filters.to, filters.departureDate, filters.category])
+
+  const swapSearchLocations = () => {
+    const temp = searchFrom
+    setSearchFrom(searchTo)
+    setSearchTo(temp)
+  }
+
+  const handleSearchCommit = () => {
+    setFilters(prev => ({
+      ...prev,
+      from: searchFrom,
+      to: searchTo,
+      departureDate: searchDate,
+      category: searchCategory,
+      busType: '' // Reset vehicle type to prevent incompatibilities
+    }))
+    
+    // Sync URL search parameters
+    const params = {}
+    if (searchFrom) params.from = searchFrom
+    if (searchTo) params.to = searchTo
+    if (searchDate) params.date = searchDate
+    if (searchCategory) params.category = searchCategory
+    setSearchParams(params)
+  }
+
+  const getActiveFiltersCount = () => {
+    let count = 0
+    if (filters.busType) count++
+    if (filters.departureTime) count++
+    if (filters.amenities && filters.amenities.length > 0) {
+      count += filters.amenities.length
+    }
+    const defaultMaxPrice = filters.category === 'city' ? 100000 : 1000000
+    const isPriceChanged = filters.priceRange[0] !== 0 || filters.priceRange[1] !== defaultMaxPrice
+    if (isPriceChanged) count++
+    
+    return count
+  }
+
+  // Disable Bootstrap styling on this page to let Tailwind render cleanly
+  useEffect(() => {
+    const bootstrapCss = document.getElementById('bootstrap-css')
+    if (bootstrapCss) {
+      bootstrapCss.disabled = true
+    }
+    return () => {
+      if (bootstrapCss) {
+        bootstrapCss.disabled = false
+      }
+    }
+  }, [])
 
   // Fetch matching trips from backend API when core filters change
   useEffect(() => {
@@ -133,25 +202,132 @@ export default function SearchResultsPage() {
   return (
     <div className="min-h-screen bg-slate-50 py-16 px-4 sm:px-8 md:px-16">
       <div className="max-w-[1400px] mx-auto">
+
+        {/* Premium Horizontal Top Search Bar */}
+        <div className="bg-white border border-slate-200/80 shadow-md rounded-[28px] p-4 mb-8 transition-all">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 lg:gap-3">
+            
+            {/* Origin Stop */}
+            <div className="flex-1 min-w-[200px] relative">
+              <label className="absolute left-10 top-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Điểm đi</label>
+              <div className="relative pt-6 pb-1.5 flex items-center">
+                <select 
+                  className="w-full pl-10 pr-8 bg-transparent text-sm font-bold text-slate-800 outline-none cursor-pointer appearance-none h-8" 
+                  value={searchFrom || ''}
+                  onChange={(e) => setSearchFrom(e.target.value)}
+                >
+                  <option value="">-- Chọn điểm đi --</option>
+                  {searchCategory === 'city' 
+                    ? CITY_STOPS.map((stop, idx) => <option key={idx} value={stop}>{stop}</option>) 
+                    : Array.from(new Set(INTERCITY_ROUTES.map(r => r.from))).map((city, idx) => <option key={idx} value={city}>{city}</option>)}
+                </select>
+                <FiMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500 text-base" />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[10px]">▼</span>
+              </div>
+            </div>
+
+            {/* Swap Button */}
+            <div className="flex items-center justify-center shrink-0">
+              <button
+                type="button"
+                onClick={swapSearchLocations}
+                className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200 hover:border-blue-500 hover:text-blue-600 flex items-center justify-center shadow-sm text-slate-500 transition-all hover:scale-105 active:scale-95 lg:rotate-0 rotate-90"
+                title="Đổi chiều điểm đi/đến"
+              >
+                <FiRefreshCw size={13} className="transform rotate-90" />
+              </button>
+            </div>
+
+            {/* Vertical Divider */}
+            <div className="hidden lg:block w-px h-10 bg-slate-200"></div>
+
+            {/* Destination Stop */}
+            <div className="flex-1 min-w-[200px] relative">
+              <label className="absolute left-10 top-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Điểm đến</label>
+              <div className="relative pt-6 pb-1.5 flex items-center">
+                <select 
+                  className="w-full pl-10 pr-8 bg-transparent text-sm font-bold text-slate-800 outline-none cursor-pointer appearance-none h-8" 
+                  value={searchTo || ''}
+                  onChange={(e) => setSearchTo(e.target.value)}
+                >
+                  <option value="">-- Chọn điểm đến --</option>
+                  {searchCategory === 'city' 
+                    ? CITY_STOPS.map((stop, idx) => <option key={idx} value={stop}>{stop}</option>) 
+                    : filters?.from && Array.from(new Set(INTERCITY_ROUTES.filter(r => r.from === filters.from).map(r => r.to))).map((city, idx) => <option key={idx} value={city}>{city}</option>)}
+                </select>
+                <FiMapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500 text-base" />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[10px]">▼</span>
+              </div>
+            </div>
+
+            {/* Vertical Divider */}
+            <div className="hidden lg:block w-px h-10 bg-slate-200"></div>
+
+            {/* Departure Date */}
+            <div className="flex-1 min-w-[180px] relative">
+              <label className="absolute left-10 top-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Ngày xuất phát</label>
+              <div className="relative pt-6 pb-1.5 flex items-center">
+                <input 
+                  type="date" 
+                  className="w-full pl-10 pr-4 bg-transparent text-sm font-bold text-slate-800 outline-none cursor-pointer h-8" 
+                  value={searchDate || ''} 
+                  onChange={(e) => setSearchDate(e.target.value)} 
+                  min={new Date().toISOString().split('T')[0]} 
+                />
+                <FiCalendar className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500 text-base" />
+              </div>
+            </div>
+
+            {/* Vertical Divider */}
+            <div className="hidden lg:block w-px h-10 bg-slate-200"></div>
+
+            {/* Service Category */}
+            <div className="flex-1 min-w-[180px] relative">
+              <label className="absolute left-10 top-2.5 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Dịch vụ</label>
+              <div className="relative pt-6 pb-1.5 flex items-center">
+                <select 
+                  className="w-full pl-10 pr-8 bg-transparent text-sm font-bold text-slate-800 outline-none cursor-pointer appearance-none h-8" 
+                  value={searchCategory || ''}
+                  onChange={(e) => {
+                    setSearchCategory(e.target.value)
+                    setSearchFrom('')
+                    setSearchTo('')
+                  }}
+                >
+                  <option value="">Tất cả dịch vụ</option>
+                  {Object.entries(BUS_CATEGORIES).map(([key, cat]) => (
+                    <option key={key} value={key}>{cat.name}</option>
+                  ))}
+                </select>
+                <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500 text-base" />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[10px]">▼</span>
+              </div>
+            </div>
+
+            {/* Search Action Button */}
+            <div className="shrink-0 flex items-center justify-stretch">
+              <button
+                onClick={handleSearchCommit}
+                className="w-full lg:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-2xl flex items-center justify-center gap-2 transition-all hover:shadow-lg active:scale-95 uppercase tracking-wider text-xs shadow-md h-12"
+              >
+                <FiSearch /> Tìm kiếm
+              </button>
+            </div>
+
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-8 xl:gap-10">
           
-          {/* Filters Sidebar - Left Column */}
-          <div className="lg:col-span-3">
-            <SearchFilters filters={filters} setFilters={setFilters} />
+          {/* Filters Sidebar - Left Column (Desktop) */}
+          <div className="hidden lg:block lg:col-span-3">
+            <SearchFilters filters={filters} setFilters={setFilters} desktopOnly />
           </div>
 
           {/* Results - Right Column */}
           <div className="lg:col-span-7">
             
-            <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-black text-slate-900 mb-2">Kết quả tìm kiếm</h1>
-                <p className="text-slate-500 font-medium">
-                  {loading ? 'Đang phân tích dữ liệu chuyến xe...' : `Tìm thấy ${filteredTrips.length} chuyến xe phù hợp`}
-                </p>
-              </div>
-            </div>
+
 
             {loading ? (
               <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-16 flex flex-col items-center justify-center text-center">
@@ -223,6 +399,31 @@ export default function SearchResultsPage() {
         </div>
 
       </div>
+
+      {/* Floating Filter Button (Mobile) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden">
+        <button
+          onClick={() => setIsMobileFilterOpen(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 border border-blue-500 hover:scale-105 active:scale-95 transition-all text-xs uppercase tracking-wider"
+        >
+          <FiFilter size={16} /> 
+          <span>Bộ lọc</span>
+          {getActiveFiltersCount() > 0 && (
+            <span className="w-5 h-5 bg-white text-blue-600 rounded-full flex items-center justify-center text-[10px] font-black">
+              {getActiveFiltersCount()}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Mobile Filters Drawer */}
+      <SearchFilters 
+        filters={filters} 
+        setFilters={setFilters} 
+        isOpen={isMobileFilterOpen}
+        onClose={() => setIsMobileFilterOpen(false)}
+        mobileOnly
+      />
     </div>
   )
 }

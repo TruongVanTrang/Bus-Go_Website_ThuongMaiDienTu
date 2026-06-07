@@ -6,10 +6,11 @@ import AdminSidebar from '../components/AdminSidebar';
 import AdminTopbar from '../components/AdminTopbar';
 import axios from 'axios';
 import './AdminDashboard.css';
+import { approveEditConsignmentAPI } from '../../services/cargoService';
 
 const API = 'http://localhost:5000/api';
 
-function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
+function SupportCargoPage({ defaultTab = 'ticket-lookup' }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userRole, setUserRole] = useState(null);
@@ -17,7 +18,7 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
   const [loading, setLoading] = useState(true);
 
   // Tabs: 'cargo-assign', 'ticket-lookup', 'refund', 'cancel-requests'
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [activeTab, setActiveTab] = useState(defaultTab === 'lookup' ? 'ticket-lookup' : (defaultTab === 'refund' ? 'cancel-requests' : defaultTab));
 
   // Cargo Assign states
   const [consignments, setConsignments] = useState([]);
@@ -43,7 +44,13 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
   const [loadingCancelReqs, setLoadingCancelReqs] = useState(false);
 
   useEffect(() => {
-    setActiveTab(defaultTab);
+    if (defaultTab === 'lookup') {
+      setActiveTab('ticket-lookup');
+    } else if (defaultTab === 'refund') {
+      setActiveTab('cancel-requests');
+    } else {
+      setActiveTab(defaultTab);
+    }
   }, [defaultTab]);
 
   useEffect(() => {
@@ -153,6 +160,18 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
   };
 
   // Xác nhận phân phối tài xế + xe tải
+  const handleApproveEdit = async (consignmentId, keepDriver) => {
+    try {
+      const token = localStorage.getItem('busgo_token')
+      await approveEditConsignmentAPI(consignmentId, keepDriver, token)
+      toast.success(keepDriver ? 'Đã duyệt chỉnh sửa và giữ tài xế' : 'Đã duyệt chỉnh sửa và yêu cầu chọn lại tài xế')
+      setShowAssignModal(false)
+      fetchConsignments()
+    } catch (error) {
+      toast.error(error.message || 'Lỗi khi duyệt chỉnh sửa')
+    }
+  }
+
   const handleAssignSubmit = async (e) => {
     e.preventDefault();
     if (!selectedDriverId || !selectedVehicleId) {
@@ -284,18 +303,12 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
         <main className="admin-content">
           <div className="dashboard-content">
             <h1 className="page-title mb-4">
-              {activeTab === 'cargo-assign' && '🚚 Phân phối & Điều phối xe Ký gửi'}
               {activeTab === 'ticket-lookup' && '🔍 Tra cứu thông tin đặt vé'}
               {activeTab === 'cancel-requests' && '🔴 Yêu cầu hủy đơn sau thanh toán'}
             </h1>
 
             {/* Sub Tabs */}
             <ul className="nav nav-tabs mb-4">
-              <li className="nav-item">
-                <button className={`nav-link ${activeTab === 'cargo-assign' ? 'active' : ''}`} onClick={() => setActiveTab('cargo-assign')}>
-                  🚚 Phân phối xe ký gửi
-                </button>
-              </li>
               <li className="nav-item">
                 <button className={`nav-link ${activeTab === 'ticket-lookup' ? 'active' : ''}`} onClick={() => setActiveTab('ticket-lookup')}>
                   🔍 Tra cứu vé
@@ -313,131 +326,7 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
               </li>
             </ul>
 
-            {/* ====================================================== */}
-            {/* CARGO ASSIGN TAB CONTENT */}
-            {/* ====================================================== */}
-            {activeTab === 'cargo-assign' && (
-              <div className="card shadow-sm p-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <p className="text-muted mb-0">Tất cả đơn ký gửi hàng trong hệ thống (gửi kèm xe khách & vận tải riêng)</p>
-                  <button className="btn btn-sm btn-outline-primary" onClick={fetchConsignments}>🔄 Làm mới</button>
-                </div>
 
-                {/* Filter Buttons */}
-                <div className="btn-group btn-group-sm mb-3">
-                  {[
-                    { key: 'all', label: 'Tất cả' },
-                    { key: 'van_tai_pending', label: '🚚 Chờ gán xe tải' },
-                    { key: 'gui_kem_pending', label: '🚌 Chờ tài xế duyệt' },
-                    { key: 'paid', label: '✅ Đã thanh toán' },
-                    { key: 'cancelled', label: '❌ Đã hủy' },
-                  ].map(f => (
-                    <button
-                      key={f.key}
-                      className={`btn btn-outline-secondary ${filterStatus === f.key ? 'active' : ''}`}
-                      onClick={() => setFilterStatus(f.key)}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-
-                {loadingCargo ? (
-                  <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
-                ) : getFilteredConsignments().length === 0 ? (
-                  <div className="text-center py-5 text-muted">
-                    <div style={{ fontSize: '3rem' }}>📦</div>
-                    <p>Không có đơn hàng nào phù hợp với bộ lọc</p>
-                  </div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Mã đơn</th>
-                          <th>Loại dịch vụ</th>
-                          <th>Hành trình</th>
-                          <th>Thông tin hàng</th>
-                          <th>Tài xế / Xe</th>
-                          <th>Thanh toán</th>
-                          <th>Trạng thái</th>
-                          <th>Hành động</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {getFilteredConsignments().map(cargo => {
-                          const orderId = cargo.consignmentId || cargo.id;
-                          const isTruck = cargo.loaiDichVu === 'van_tai';
-                          const isUnassigned = cargo.trangThaiKyGui === 'dang_tim_xe_trong';
-                          const isPaid = cargo.trangThaiThanhToan === 'paid';
-                          const isCancelled = cargo.trangThaiKyGui === 'failed';
-
-                          return (
-                            <tr key={orderId} className={isCancelled ? 'table-danger' : cargo.yeuCauHuy === 'pending' ? 'table-warning' : ''}>
-                              <td className="fw-bold">#{orderId}</td>
-                              <td>
-                                <span className={`badge ${isTruck ? 'bg-dark text-white' : 'bg-primary text-white'}`}>
-                                  {isTruck ? '🚚 Vận tải riêng' : '🚌 Gửi kèm xe khách'}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="fw-bold text-slate-800">{cargo.diemGui} ➔ {cargo.diemNhan}</div>
-                                <div className="text-xs text-slate-500">
-                                  {cargo.tenNguoiNhan} ({cargo.soDienThoaiNguoiNhan})
-                                </div>
-                              </td>
-                              <td>
-                                <div className="fw-semibold text-slate-700">{getLoaiHangLabel(cargo.loaiHangHoa)}</div>
-                                <div className="text-xs text-slate-500">{cargo.trongLuong} kg • {cargo.soLuong} kiện</div>
-                                {isTruck && (
-                                  <span className="badge bg-secondary text-white mt-1">
-                                    {cargo.loaiXeVanTai === 'truck_30t' ? '30 Tấn' : cargo.loaiXeVanTai === 'truck_10t' ? '10 Tấn' : '5 Tấn'}
-                                  </span>
-                                )}
-                              </td>
-                              <td>
-                                {cargo.driverInfo ? (
-                                  <div>
-                                    <div className="fw-semibold text-slate-700 text-xs">{cargo.driverInfo.split('•')[0]}</div>
-                                    <div className="text-xs text-slate-400">{cargo.driverInfo.split('•').slice(1).join('•').trim()}</div>
-                                  </div>
-                                ) : (
-                                  <span className="text-danger text-xs italic">Chưa phân phối</span>
-                                )}
-                              </td>
-                              <td>
-                                <span className={`badge bg-${isPaid ? 'success' : 'secondary'}`}>
-                                  {isPaid ? 'Đã thanh toán' : 'Chờ thanh toán'}
-                                </span>
-                              </td>
-                              <td>{getStatusBadge(cargo.trangThaiKyGui, cargo.yeuCauHuy)}</td>
-                              <td>
-                                <div className="d-flex gap-1 flex-wrap">
-                                  <button
-                                    className="btn btn-sm btn-outline-info py-1 px-2 text-xs"
-                                    onClick={() => handleViewDetail(cargo)}
-                                  >
-                                    👁 Chi tiết
-                                  </button>
-                                  {isTruck && isUnassigned && !isCancelled && (
-                                    <button
-                                      className="btn btn-sm btn-primary py-1 px-2 text-xs fw-bold"
-                                      onClick={() => handleOpenAssignModal(cargo)}
-                                    >
-                                      🚚 Gán xe & Tài xế
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* ====================================================== */}
             {/* TICKET LOOKUP TAB CONTENT */}
@@ -644,21 +533,55 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
                       <div className="p-2 bg-success bg-opacity-10 rounded text-success fw-bold">📍 {selectedCargo.viTriHienTai}</div>
                     </div>
                   )}
+                  
+                  {/* HÌNH ẢNH */}
+                  {(() => {
+                    const imgs = selectedCargo.hinhAnh || [];
+                    if (imgs.length === 0) return null;
+
+                    let customerImages = imgs;
+                    let pickupImage = null;
+                    let deliveryImage = null;
+                    const dbStatus = selectedCargo.trangThaiKyGui;
+
+                    if (dbStatus === 'delivered' && imgs.length >= 2) {
+                      deliveryImage = imgs[imgs.length - 1];
+                      pickupImage = imgs[imgs.length - 2];
+                      customerImages = imgs.slice(0, imgs.length - 2);
+                    } else if (dbStatus === 'delivered' && imgs.length === 1) {
+                      deliveryImage = imgs[0];
+                      customerImages = [];
+                    } else if (['in_transit', 'received_at_station'].includes(dbStatus) && imgs.length >= 1) {
+                      pickupImage = imgs[imgs.length - 1];
+                      customerImages = imgs.slice(0, imgs.length - 1);
+                    }
+
+                    const renderImageGroup = (title, imagesArray) => {
+                      if (!imagesArray || imagesArray.length === 0) return null;
+                      return (
+                        <div className="mt-3">
+                          <label className="text-xs text-slate-400 fw-bold uppercase"><i className="bi bi-camera"></i> {title}</label>
+                          <div className="d-flex flex-wrap gap-2 mt-2">
+                            {imagesArray.map((img, i) => (
+                              <img key={i} src={img} alt={`${title} ${i+1}`} style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #dee2e6' }} />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <div className="col-12 border-top pt-3 mt-3">
+                        {renderImageGroup("Hình ảnh khách gửi", customerImages)}
+                        {renderImageGroup("Ảnh nhận hàng", pickupImage ? [pickupImage] : [])}
+                        {renderImageGroup("Ảnh giao hàng", deliveryImage ? [deliveryImage] : [])}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowDetailModal(false)}>Đóng</button>
-                {selectedCargo.loaiDichVu === 'van_tai' && selectedCargo.trangThaiKyGui === 'dang_tim_xe_trong' && (
-                  <button
-                    className="btn btn-primary fw-bold"
-                    onClick={() => {
-                      setShowDetailModal(false);
-                      handleOpenAssignModal(selectedCargo);
-                    }}
-                  >
-                    🚚 Gán Xe & Tài xế
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -676,9 +599,23 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
                 <h5 className="modal-title fw-bold">🚚 Gán xe tải & Tài xế cho đơn #{selectedCargo.consignmentId}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowAssignModal(false)} />
               </div>
-              <form onSubmit={handleAssignSubmit}>
-                <div className="modal-body p-4">
-                  <div className="alert alert-info py-2 mb-3 text-sm">
+              {selectedCargo?.isEdited ? (
+                <div className="alert alert-warning m-4">
+                  <h5 className="alert-heading fw-bold mb-3">Đơn hàng đã được khách chỉnh sửa</h5>
+                  <p>Khách hàng đã thay đổi thông tin đơn ký gửi này. Bạn có muốn giữ tài xế cũ không?</p>
+                  <div className="d-flex gap-2 mt-4">
+                    <button type="button" className="btn btn-success flex-grow-1" onClick={() => handleApproveEdit(selectedCargo.consignmentId || selectedCargo.id, true)}>
+                      Duyệt (Giữ Tài Xế)
+                    </button>
+                    <button type="button" className="btn btn-danger flex-grow-1" onClick={() => handleApproveEdit(selectedCargo.consignmentId || selectedCargo.id, false)}>
+                      Chọn Lại Tài Xế
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleAssignSubmit}>
+                  <div className="modal-body p-4">
+                    <div className="alert alert-info py-2 mb-3 text-sm">
                     <strong>Yêu cầu:</strong> {selectedCargo.loaiXeVanTai === 'truck_30t' ? 'Xe tải 30 Tấn' : selectedCargo.loaiXeVanTai === 'truck_10t' ? 'Xe tải 10 Tấn' : 'Xe tải 5 Tấn'} •
                     Hành trình: {selectedCargo.diemGui} → {selectedCargo.diemNhan}
                   </div>
@@ -738,6 +675,7 @@ function SupportCargoPage({ defaultTab = 'cargo-assign' }) {
                   </button>
                 </div>
               </form>
+              )}
             </div>
           </div>
         </div>

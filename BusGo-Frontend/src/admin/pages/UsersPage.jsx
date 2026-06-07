@@ -7,6 +7,13 @@ import AdminTopbar from '../components/AdminTopbar';
 import axios from 'axios';
 import './AdminDashboard.css';
 
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Users, User, UserCheck, Plus, Inbox, CheckCircle2, Lock, X } from 'lucide-react';
+
 const API = 'http://localhost:5000/api';
 const VALID_ROLES = ['Driver', 'Ticket-Staff', 'Support-Staff'];
 
@@ -18,11 +25,9 @@ function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('customers');
 
-  // Customers
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
 
-  // Staff
   const [staffList, setStaffList] = useState([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -53,11 +58,8 @@ function UsersPage() {
       setLoadingUsers(true);
       const res = await axios.get(`${API}/admin/users`, { headers: headers() });
       setUsers(res.data);
-    } catch (err) {
-      console.error('Lỗi khi tải danh sách người dùng:', err);
-    } finally {
-      setLoadingUsers(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoadingUsers(false); }
   };
 
   const fetchStaff = async () => {
@@ -65,37 +67,24 @@ function UsersPage() {
       setLoadingStaff(true);
       const res = await axios.get(`${API}/admin/staff`, { headers: headers() });
       setStaffList(res.data);
-    } catch (err) {
-      console.error('Lỗi khi tải danh sách nhân sự:', err);
-    } finally {
-      setLoadingStaff(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoadingStaff(false); }
   };
 
   const toggleUserStatus = async (userId, currentStatus) => {
     const newStatus = currentStatus === 'active' ? 'locked' : 'active';
     try {
-      await axios.put(`${API}/admin/users/${userId}`,
-        { trangThaiTaiKhoan: newStatus },
-        { headers: headers() }
-      );
+      await axios.put(`${API}/admin/users/${userId}`, { trangThaiTaiKhoan: newStatus }, { headers: headers() });
       setUsers(users.map(u => u.maNguoiDung === userId ? { ...u, trangThaiTaiKhoan: newStatus } : u));
-    } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
-    }
+    } catch (err) { alert(err.response?.data?.message || 'Có lỗi xảy ra'); }
   };
 
   const toggleStaffStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === 'active' ? 'locked' : 'active';
     try {
-      await axios.put(`${API}/admin/users/${id}`,
-        { trangThaiTaiKhoan: newStatus },
-        { headers: headers() }
-      );
+      await axios.put(`${API}/admin/users/${id}`, { trangThaiTaiKhoan: newStatus }, { headers: headers() });
       setStaffList(staffList.map(s => s.maNguoiDung === id ? { ...s, trangThaiTaiKhoan: newStatus } : s));
-    } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra');
-    }
+    } catch (err) { alert(err.response?.data?.message || 'Có lỗi xảy ra'); }
   };
 
   const handleCreateStaff = async (e) => {
@@ -114,19 +103,39 @@ function UsersPage() {
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
       setFormError(err.response?.data?.message || 'Lỗi khi tạo tài khoản');
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
-  const roleBadge = (role) => {
-    const map = { ADMIN: 'danger', CUSTOMER: 'success', Driver: 'primary', 'Ticket-Staff': 'info', 'Support-Staff': 'warning' };
-    return <span className={`badge bg-${map[role] || 'secondary'}`}>{role}</span>;
+  const roleBadgeClass = (role) => {
+    const map = {
+      ADMIN: 'bg-rose-50 text-rose-700',
+      CUSTOMER: 'bg-emerald-50 text-emerald-700',
+      Driver: 'bg-sky-50 text-sky-700',
+      'Ticket-Staff': 'bg-indigo-50 text-indigo-700',
+      'Support-Staff': 'bg-amber-50 text-amber-700'
+    };
+    return map[role] || 'bg-slate-100 text-slate-600';
   };
+
+  const roleBadgeVariant = (role) => {
+    const map = {
+      ADMIN: 'destructive',
+      CUSTOMER: 'success',
+      Driver: 'info',
+      'Ticket-Staff': 'info',
+      'Support-Staff': 'warning'
+    };
+    return map[role] || 'secondary';
+  };
+
+  // Also fix staff toggle button inline style
+  const staffToggleBtnStyle = (status) => status === 'active'
+    ? { background: '#fff1f2', border: '1px solid #fecdd3', color: '#e11d48' }
+    : { background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d' };
 
   if (loading) return (
     <div className="admin-loading">
-      <div className="spinner-border text-primary" role="status" />
+      <div className="loading-spinner" />
     </div>
   );
 
@@ -138,166 +147,243 @@ function UsersPage() {
       <div className="admin-main">
         <AdminTopbar userName={userName} userRole={userRole} onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
         <main className="admin-content">
-          <div className="dashboard-content">
-            <h1 className="page-title mb-4">👥 Quản lý người dùng & Nhân sự</h1>
+          <div className="p-6 max-w-7xl mx-auto space-y-6">
 
-            {successMsg && <div className="alert alert-success">{successMsg}</div>}
+            {/* Header */}
+            <div>
+              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-800 flex items-center gap-2">
+                <Users className="h-8 w-8 text-[#004b87]" />
+                Quản lý người dùng & Nhân sự
+              </h1>
+              <p className="text-slate-500 text-sm font-semibold mt-1">Quản lý tài khoản khách hàng và nhân sự vận hành</p>
+            </div>
 
-            {/* Tabs */}
-            <ul className="nav nav-tabs mb-4">
-              <li className="nav-item">
-                <button className={`nav-link ${activeTab === 'customers' ? 'active' : ''}`} onClick={() => setActiveTab('customers')}>
-                  👤 Khách hàng
-                </button>
-              </li>
-              <li className="nav-item">
-                <button className={`nav-link ${activeTab === 'staff' ? 'active' : ''}`} onClick={() => setActiveTab('staff')}>
-                  👨‍💼 Nhân sự
-                </button>
-              </li>
-            </ul>
-
-            {/* Tab Khách hàng */}
-            {activeTab === 'customers' && (
-              <div className="card shadow-sm p-4">
-                {loadingUsers ? (
-                  <div className="text-center my-5"><div className="spinner-border text-primary" /></div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="table-light">
-                        <tr><th>ID</th><th>Họ tên</th><th>Email</th><th>Số điện thoại</th><th>Trạng thái</th><th>Hành động</th></tr>
-                      </thead>
-                      <tbody>
-                        {users.length === 0 ? (
-                          <tr><td colSpan={6} className="text-center py-4">Không có dữ liệu người dùng</td></tr>
-                        ) : users.filter(u => u.role === 'CUSTOMER').map(user => (
-                          <tr key={user.maNguoiDung}>
-                            <td>#{user.maNguoiDung}</td>
-                            <td className="fw-bold">{user.tenNguoiDung}</td>
-                            <td>{user.email}</td>
-                            <td>{user.soDienThoai}</td>
-                            <td>
-                              <span className={`badge bg-${user.trangThaiTaiKhoan === 'active' ? 'success' : 'secondary'}`}>
-                                {user.trangThaiTaiKhoan === 'active' ? 'Hoạt động' : 'Đã khóa'}
-                              </span>
-                            </td>
-                            <td>
-                              <button
-                                className={`btn btn-sm ${user.trangThaiTaiKhoan === 'active' ? 'btn-outline-danger' : 'btn-outline-success'}`}
-                                onClick={() => toggleUserStatus(user.maNguoiDung, user.trangThaiTaiKhoan)}
-                              >
-                                {user.trangThaiTaiKhoan === 'active' ? 'Khóa' : 'Mở khóa'}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+            {/* Success banner */}
+            {successMsg && (
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm">
+                <CheckCircle2 className="h-4 w-4" />
+                {successMsg}
               </div>
             )}
 
-            {/* Tab Nhân sự */}
-            {activeTab === 'staff' && (
-              <div className="card shadow-sm p-4">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <p className="mb-0 text-muted">Danh sách Driver, Ticket-Staff, Support-Staff</p>
-                  <button className="btn btn-primary btn-sm" onClick={() => { setFormError(''); setShowModal(true); }}>
-                    + Thêm nhân sự
+            {/* Tab Pills */}
+            <div className="flex gap-2 p-1 bg-slate-100/80 rounded-2xl w-fit border border-slate-200/50">
+              {[['customers', '👤 Khách hàng', User], ['staff', '👨‍💼 Nhân sự', UserCheck]].map(([key, label, Icon]) => {
+                const isActive = activeTab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setActiveTab(key)}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-extrabold transition-all border-none ${
+                      isActive ? 'bg-white text-[#004b87] shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 ${isActive ? 'text-[#004b87]' : 'text-slate-400'}`} />
+                    {label.substring(2)}
                   </button>
-                </div>
-                {loadingStaff ? (
-                  <div className="text-center my-5"><div className="spinner-border text-primary" /></div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle">
-                      <thead className="table-light">
-                        <tr><th>ID</th><th>Họ tên</th><th>Email</th><th>Số điện thoại</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày tạo</th><th>Hành động</th></tr>
-                      </thead>
-                      <tbody>
-                        {staffList.length === 0 ? (
-                          <tr><td colSpan={8} className="text-center py-4">Chưa có nhân sự nào</td></tr>
-                        ) : staffList.map(s => (
-                          <tr key={s.maNguoiDung}>
-                            <td>#{s.maNguoiDung}</td>
-                            <td className="fw-bold">{s.tenNguoiDung}</td>
-                            <td>{s.email}</td>
-                            <td>{s.soDienThoai}</td>
-                            <td>{roleBadge(s.vaiTro)}</td>
-                            <td>
-                              <span className={`badge bg-${s.trangThaiTaiKhoan === 'active' ? 'success' : 'secondary'}`}>
-                                {s.trangThaiTaiKhoan === 'active' ? 'Hoạt động' : 'Đã khóa'}
-                              </span>
-                            </td>
-                            <td>{s.ngayTaoTaiKhoan ? new Date(s.ngayTaoTaiKhoan).toLocaleDateString('vi-VN') : '-'}</td>
-                            <td>
+                );
+              })}
+            </div>
+
+            {/* Customers Tab */}
+            {activeTab === 'customers' && (
+              <Card className="border-slate-100 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                    <User className="h-5 w-5 text-[#004b87]" /> Danh sách khách hàng
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {loadingUsers ? (
+                    <div className="flex justify-center py-16">
+                      <div className="h-8 w-8 border-4 border-[#004b87] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader className="bg-slate-50">
+                        <TableRow>
+                          <TableHead className="font-extrabold text-slate-600">ID</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Họ tên</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Email</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Số điện thoại</TableHead>
+                          <TableHead className="font-extrabold text-slate-600 text-center">Trạng thái</TableHead>
+                          <TableHead className="font-extrabold text-slate-600 text-end">Hành động</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.filter(u => u.role === 'CUSTOMER').length === 0 ? (
+                          <TableRow><TableCell colSpan={6} className="text-center py-10 text-slate-400">
+                            <Inbox className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                            Không có dữ liệu người dùng
+                          </TableCell></TableRow>
+                        ) : users.filter(u => u.role === 'CUSTOMER').map(user => (
+                          <TableRow key={user.maNguoiDung} className="hover:bg-slate-50/50">
+                            <TableCell className="font-bold text-slate-500">#{user.maNguoiDung}</TableCell>
+                            <TableCell className="font-bold text-slate-800">{user.tenNguoiDung}</TableCell>
+                            <TableCell className="text-slate-600 font-medium">{user.email}</TableCell>
+                            <TableCell className="text-slate-600 font-medium">{user.soDienThoai}</TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant={user.trangThaiTaiKhoan === 'active' ? 'success' : 'secondary'} className="font-bold rounded-lg text-xs px-2.5 py-0.5">
+                                {user.trangThaiTaiKhoan === 'active' ? 'Hoạt động' : 'Đã khóa'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-end">
                               <button
-                                className={`btn btn-sm ${s.trangThaiTaiKhoan === 'active' ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                                onClick={() => toggleUserStatus(user.maNguoiDung, user.trangThaiTaiKhoan)}
+                                style={user.trangThaiTaiKhoan === 'active'
+                                  ? { background: '#fff1f2', border: '1px solid #fecdd3', color: '#e11d48' }
+                                  : { background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d' }
+                                }
+                                className="h-8 rounded-lg text-xs font-extrabold px-3 cursor-pointer transition-colors"
+                              >
+                                {user.trangThaiTaiKhoan === 'active' ? 'Khóa' : 'Mở khóa'}
+                              </button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Staff Tab */}
+            {activeTab === 'staff' && (
+              <Card className="border-slate-100 shadow-sm">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <CardTitle className="text-lg font-extrabold text-slate-800 flex items-center gap-2">
+                      <UserCheck className="h-5 w-5 text-[#004b87]" /> Danh sách nhân sự
+                    </CardTitle>
+                    <CardDescription>Driver, Ticket-Staff, Support-Staff trong hệ thống</CardDescription>
+                  </div>
+                  <Button
+                    onClick={() => { setFormError(''); setShowModal(true); }}
+                    className="bg-[#004b87] hover:bg-[#003b6b] text-white font-extrabold h-9 rounded-xl px-4 border-none flex items-center gap-2 shadow-sm"
+                  >
+                    <Plus className="h-4 w-4" /> Thêm nhân sự
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {loadingStaff ? (
+                    <div className="flex justify-center py-16">
+                      <div className="h-8 w-8 border-4 border-[#004b87] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader className="bg-slate-50">
+                        <TableRow>
+                          <TableHead className="font-extrabold text-slate-600">ID</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Họ tên</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Email</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Số điện thoại</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Vai trò</TableHead>
+                          <TableHead className="font-extrabold text-slate-600 text-center">Trạng thái</TableHead>
+                          <TableHead className="font-extrabold text-slate-600">Ngày tạo</TableHead>
+                          <TableHead className="font-extrabold text-slate-600 text-end">Hành động</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {staffList.length === 0 ? (
+                          <TableRow><TableCell colSpan={8} className="text-center py-10 text-slate-400">
+                            <Inbox className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                            Chưa có nhân sự nào
+                          </TableCell></TableRow>
+                        ) : staffList.map(s => (
+                          <TableRow key={s.maNguoiDung} className="hover:bg-slate-50/50">
+                            <TableCell className="font-bold text-slate-500">#{s.maNguoiDung}</TableCell>
+                            <TableCell className="font-bold text-slate-800">{s.tenNguoiDung}</TableCell>
+                            <TableCell className="text-slate-600 font-medium">{s.email}</TableCell>
+                            <TableCell className="text-slate-600 font-medium">{s.soDienThoai}</TableCell>
+                            <TableCell>
+                              <Badge variant={roleBadgeVariant(s.vaiTro)} className="font-bold rounded-lg text-xs px-2.5 py-0.5">
+                                {s.vaiTro}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant={s.trangThaiTaiKhoan === 'active' ? 'success' : 'secondary'} className="font-bold rounded-lg text-xs px-2.5 py-0.5">
+                                {s.trangThaiTaiKhoan === 'active' ? 'Hoạt động' : 'Đã khóa'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm font-semibold text-slate-500">
+                              {s.ngayTaoTaiKhoan ? new Date(s.ngayTaoTaiKhoan).toLocaleDateString('vi-VN') : '-'}
+                            </TableCell>
+                            <TableCell className="text-end">
+                              <button
                                 onClick={() => toggleStaffStatus(s.maNguoiDung, s.trangThaiTaiKhoan)}
+                                style={staffToggleBtnStyle(s.trangThaiTaiKhoan)}
+                                className="h-8 rounded-lg text-xs font-extrabold px-3 cursor-pointer transition-colors"
                               >
                                 {s.trangThaiTaiKhoan === 'active' ? 'Khóa' : 'Mở khóa'}
                               </button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </div>
         </main>
       </div>
 
-      {/* Modal thêm nhân sự */}
-      {showModal && (
-        <div className="modal show d-block" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setShowModal(false)}>
-          <div className="modal-dialog" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Thêm nhân sự mới</h5>
-                <button className="btn-close" onClick={() => setShowModal(false)} />
+      {/* Create Staff Dialog */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-lg rounded-2xl bg-white border border-slate-200 p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="bg-slate-900 text-white p-6 pb-4">
+            <DialogTitle className="text-lg font-black text-white flex items-center gap-2">
+              <Plus className="h-5 w-5 text-sky-400" /> Thêm nhân sự mới
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs font-semibold">
+              Tạo tài khoản mới cho Driver, Ticket-Staff hoặc Support-Staff
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateStaff}>
+            <div className="p-6 space-y-4">
+              {formError && (
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-bold text-sm">
+                  <X className="h-4 w-4" />{formError}
+                </div>
+              )}
+              {[
+                { label: 'Họ tên *', field: 'fullName', type: 'text', placeholder: 'Nguyễn Văn A' },
+                { label: 'Email *', field: 'email', type: 'email', placeholder: 'email@busgo.vn' },
+                { label: 'Số điện thoại *', field: 'phone', type: 'text', placeholder: '0901234567' },
+                { label: 'Mật khẩu *', field: 'password', type: 'password', placeholder: 'Tối thiểu 6 ký tự' },
+              ].map(({ label, field, type, placeholder }) => (
+                <div key={field}>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">{label}</label>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-800 shadow-sm focus:border-[#004b87] focus:outline-none focus:ring-2 focus:ring-[#004b87]/15 transition-all"
+                    type={type} placeholder={placeholder}
+                    value={form[field]} onChange={e => setForm({ ...form, [field]: e.target.value })}
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-1.5">Vai trò *</label>
+                <select
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-800 shadow-sm focus:border-[#004b87] focus:outline-none focus:ring-2 focus:ring-[#004b87]/15 transition-all"
+                  value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}
+                >
+                  {VALID_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
               </div>
-              <form onSubmit={handleCreateStaff}>
-                <div className="modal-body">
-                  {formError && <div className="alert alert-danger py-2">{formError}</div>}
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Họ tên *</label>
-                    <input className="form-control" value={form.fullName} onChange={e => setForm({...form, fullName: e.target.value})} placeholder="Nguyễn Văn A" />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Email *</label>
-                    <input className="form-control" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="email@busgo.vn" />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Số điện thoại *</label>
-                    <input className="form-control" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="0901234567" />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Mật khẩu *</label>
-                    <input className="form-control" type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Tối thiểu 6 ký tự" />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Vai trò *</label>
-                    <select className="form-select" value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-                      {VALID_ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Hủy</button>
-                  <button type="submit" className="btn btn-primary" disabled={submitting}>
-                    {submitting ? 'Đang tạo...' : 'Tạo tài khoản'}
-                  </button>
-                </div>
-              </form>
             </div>
-          </div>
-        </div>
-      )}
+            <DialogFooter className="bg-slate-50 p-4 border-t border-slate-100 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-100 h-10 px-5 shadow-none">
+                Hủy
+              </Button>
+              <Button type="submit" disabled={submitting} className="bg-[#004b87] hover:bg-[#003b6b] text-white font-extrabold h-10 px-5 rounded-xl border-none">
+                {submitting ? 'Đang tạo...' : 'Tạo tài khoản'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
